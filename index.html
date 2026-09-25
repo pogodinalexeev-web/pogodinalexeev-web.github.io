@@ -5,219 +5,235 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Владислав: AI-инженер</title>
 <meta name="description" content="Проектирую и внедряю автоматизации на нейросетях: персональные ассистенты, ассистенты для бизнеса, звук, наглядная наука.">
-<link rel="preload" href="/f/Unbounded.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/f/Lit-B.woff2" as="font" type="font/woff2" crossorigin>
 <style>
-@font-face{font-family:Unb;src:url(/f/Unbounded.woff2) format("woff2");font-weight:200 900;font-display:swap}
-@font-face{font-family:Mono;src:url(/f/Mono.woff2) format("woff2");font-weight:100 800;font-display:swap}
+@font-face{font-family:Lit;src:url(/f/Lit.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Lit;font-style:italic;src:url(/f/Lit-It.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Lit;font-weight:600 800;src:url(/f/Lit-B.woff2) format("woff2");font-display:swap}
 @font-face{font-family:Inter;src:url(/f/Inter.woff2) format("woff2");font-weight:400;font-display:swap}
 @font-face{font-family:Inter;src:url(/f/Inter-Semi.woff2) format("woff2");font-weight:600;font-display:swap}
+/* палитра сада интеграла */
 :root{
-  --paper:#EDF1EF; --ink:#15201C; --grid:#D3DCD8; --muted:#5F6B66;
-  --cobalt:#2B4FDB; --amber:#EFA21B; --card:#F7F9F8;
-  --wrap:min(1120px, 100% - 40px);
+  --ink:#2A1C13; --inkSoft:#5B4331; --inkFaint:#8A735C;
+  --paper:#EFE3C9; --paperShade:#E2D1B0;
+  --sun:#F1BF4A; --warm:#D8742B; --teal:#3C8783; --cold:#3B8EE0; --rose:#C88C86; --wood:#8A5A34;
+  --wrap:min(1080px, 100% - 32px);
 }
 *{box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.6 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+html{scroll-behavior:smooth;overflow-x:clip}
+body{margin:0;color:var(--ink);background:var(--paper) url(/img/paper.jpg);font:400 17px/1.6 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 a{color:inherit}
-:focus-visible{outline:2px solid var(--cobalt);outline-offset:3px}
+:focus-visible{outline:3px solid var(--warm);outline-offset:3px}
 .wrap{width:var(--wrap);margin-inline:auto}
-.mono{font-family:Mono,ui-monospace,monospace;font-size:13px;letter-spacing:.02em;text-transform:lowercase}
 
-/* шапка */
-.top{position:absolute;inset:0 0 auto;z-index:2}
-.top .wrap{display:flex;justify-content:space-between;align-items:center;padding:22px 0}
-.top nav{display:flex;gap:22px}
-.top nav a{text-decoration:none;color:var(--muted)}
-.top nav a:hover{color:var(--ink)}
+/* ===== первый экран: вход в сад ===== */
+.gate{position:relative;overflow:hidden;
+  background:linear-gradient(180deg,#46356A 0%,#6F4F86 20%,#B47C9A 40%,#E9A58A 54%,#F3C99A 62%,#EFE3C9 62.1%)}
+.gate .stars i{position:absolute;width:3px;height:3px;border-radius:50%;background:#FBF6EA;opacity:.8}
+.gate svg.land{position:absolute;left:0;right:0;bottom:0;width:100%;height:62%;display:block}
+.top{position:relative;z-index:3;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:18px 0}
+.top .logo{font:700 15px Lit,serif;color:#FBF6EA;text-decoration:none}
+.top nav{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.pill{font:600 14px/1 Inter,sans-serif;color:var(--ink);text-decoration:none;background:var(--paper) url(/img/paper.jpg);background-size:256px;
+  border:2px solid var(--ink);border-radius:20px;padding:9px 14px;box-shadow:0 3px 0 var(--ink);display:inline-block;transition:transform .12s,box-shadow .12s}
+.pill:hover{transform:translateY(2px);box-shadow:0 1px 0 var(--ink)}
+.pill.sun{background:var(--sun)}
 
-/* первый экран: график, под которым копится площадь */
-.hero{position:relative;min-height:92svh;display:flex;align-items:flex-end;overflow:hidden;border-bottom:1px solid var(--grid)}
-.hero canvas{position:absolute;inset:0;width:100%;height:100%}
-.hero .wrap{position:relative;padding:0 0 9vh;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:40px;align-items:end}
-.portrait{width:clamp(200px,24vw,320px);height:auto;aspect-ratio:679/708;object-fit:cover;border-radius:10px;border:1px solid var(--grid);box-shadow:0 14px 40px rgba(21,32,28,.18)}
-.hero h1{font:800 clamp(40px,6.6vw,96px)/.95 Unb,sans-serif;letter-spacing:-.03em;margin:0 0 18px}
-.hero h1 span{display:block;font-weight:300;font-size:.42em;letter-spacing:-.01em;margin-top:.35em}
-.hero p{max-width:34em;margin:0;font-size:clamp(17px,1.6vw,20px)}
-.readout{position:absolute;right:20px;top:84px;background:var(--card);border:1px solid var(--grid);padding:8px 12px;border-radius:6px;font-variant-numeric:tabular-nums;text-transform:none}
-.readout b{color:var(--amber);font-weight:700}
+/* вывеска на двух столбах с флажками */
+.sign{position:relative;z-index:2;width:min(900px,100% - 24px);margin:5vh auto 0;padding-top:34px}
+.sign .flags{position:absolute;left:0;right:0;top:0;width:100%;height:46px;z-index:1}
+.board{position:relative;z-index:2;margin:24px 6% 0;background:
+   repeating-linear-gradient(135deg,rgba(241,191,74,.30) 0 18px,transparent 18px 36px),
+   var(--paper) url(/img/paper.jpg);
+  border:2.5px solid var(--ink);border-radius:6px;padding:clamp(16px,3vw,28px) clamp(14px,4vw,40px) clamp(18px,3vw,28px);
+  box-shadow:inset 0 0 0 6px var(--paper),inset 0 0 0 8px var(--ink),0 6px 0 var(--wood)}
+.board h1{font:800 clamp(38px,8vw,84px)/1 Lit,Georgia,serif;margin:0;text-align:center;letter-spacing:-.01em}
+.board h1 small{display:block;font:italic 400 clamp(15px,2.3vw,23px)/1.3 Lit,serif;color:var(--inkSoft);margin-top:10px}
+.board .wave{display:block;margin:0 auto 6px;width:120px;height:22px}
+.beam{position:absolute;z-index:1;left:0;right:0;top:34px;height:16px;background:var(--wood);border:2.5px solid var(--ink);border-radius:4px}
+.post{position:absolute;z-index:0;top:34px;bottom:-60vh;width:22px;background:var(--wood);border:2.5px solid var(--ink);border-radius:4px}
+.post.l{left:2%}.post.r{right:2%}
+.knob{position:absolute;z-index:2;top:24px;width:34px;height:34px;border-radius:50%;background:var(--sun);border:2.5px solid var(--ink)}
+.knob.l{left:calc(2% - 6px)}.knob.r{right:calc(2% - 6px)}
 
-/* разделы */
-section.dir{padding:clamp(56px,9vw,110px) 0;border-bottom:1px solid var(--grid)}
-.dir .wrap{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:clamp(24px,5vw,72px)}
-.dir h2{font:700 clamp(30px,4.2vw,52px)/1 Unb,sans-serif;letter-spacing:-.02em;margin:10px 0 0}
-.dir .lead{margin:0 0 22px;font-size:clamp(18px,1.7vw,21px)}
-.dir ul{list-style:none;padding:0;margin:0}
-.dir li{padding:14px 0;border-top:1px solid var(--grid)}
-.dir li:last-child{border-bottom:1px solid var(--grid)}
-.dir li b{font-weight:600}
-.tag{color:var(--cobalt)}
-.stage{display:block;width:100%;height:auto;border-radius:10px;margin-top:8px}
-.sub{margin:28px 0 10px;color:var(--muted)}
+/* табличка у входа: кто я */
+.hello{position:relative;z-index:2;width:min(740px,100% - 64px);margin:clamp(40px,9vh,90px) auto 0;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;
+  background:var(--paper) url(/img/paper.jpg);border:2.5px solid var(--ink);border-radius:14px;padding:16px;box-shadow:0 5px 0 var(--ink)}
+.hello img{width:124px;height:124px;object-fit:cover;border-radius:50%;border:2.5px solid var(--ink);background:var(--sun)}
+.hello p{margin:0;font-size:17px;color:var(--inkSoft)}
+.hello .go{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
 
-/* наука: две живые сцены */
-.demos{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.demo{display:flex;flex-direction:column;justify-content:space-between;min-height:230px;padding:22px;background:var(--card);border:1px solid var(--grid);border-radius:10px;text-decoration:none;transition:border-color .2s,transform .2s}
-.demo:hover{border-color:var(--cobalt);transform:translateY(-2px)}
-.demo h3{font:700 22px/1.15 Unb,sans-serif;margin:0 0 10px}
-.demo p{margin:0;color:var(--muted);font-size:16px}
-.demo .go{margin-top:18px;color:var(--cobalt)}
-.demo svg{display:block;margin-bottom:16px}
+/* ===== станции ===== */
+main{position:relative;padding-top:10px}
+.path{position:absolute;left:50%;top:0;bottom:0;width:0;border-left:3px dashed var(--inkFaint);opacity:.45;transform:translateX(-50%)}
+.station{position:relative;padding:clamp(28px,5vw,56px) 0}
+.card{position:relative;background:var(--paper) url(/img/paper.jpg);border:2.5px solid var(--ink);border-radius:14px;box-shadow:0 5px 0 var(--ink);
+  padding:clamp(20px,3.4vw,36px);display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:clamp(18px,4vw,48px)}
+.badge{display:inline-flex;align-items:center;gap:10px;font:600 13px Inter,sans-serif;color:var(--inkSoft);text-transform:uppercase;letter-spacing:.12em}
+.badge b{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;border:2.5px solid var(--ink);font:700 20px Lit,serif;color:var(--ink);text-transform:none;letter-spacing:0}
+.card h2{font:800 clamp(28px,4vw,42px)/1.08 Lit,Georgia,serif;margin:14px 0 0}
+.card .lead{margin:0 0 18px;font-size:clamp(17px,1.6vw,19px)}
+.card ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.card li{background:rgba(255,252,242,.55);border:2px solid var(--ink);border-radius:10px;padding:12px 14px}
+.card li b{font-weight:600}
+.sub{font:italic 16px Lit,serif;color:var(--inkSoft);margin:4px 0 10px}
+.photo{display:block;width:100%;height:auto;border:2.5px solid var(--ink);border-radius:10px;margin-top:6px;transform:rotate(-1deg);box-shadow:0 5px 0 var(--ink)}
+.c1 .badge b{background:var(--sun)} .c2 .badge b{background:var(--teal);color:#FBF6EA} .c3 .badge b{background:var(--warm);color:#FBF6EA} .c4 .badge b{background:var(--cold);color:#FBF6EA}
+.c1{border-top:8px solid var(--sun)} .c2{border-top:8px solid var(--teal)} .c3{border-top:8px solid var(--warm)} .c4{border-top:8px solid var(--cold)}
 
-/* связь */
-.contact .wrap{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:clamp(24px,5vw,72px)}
-form{display:grid;gap:12px}
-input,textarea{font:inherit;color:inherit;background:var(--card);border:1px solid var(--grid);border-radius:8px;padding:13px 14px;width:100%}
-textarea{min-height:120px;resize:vertical}
-a.btn{display:inline-block;text-decoration:none;font:600 16px Inter,sans-serif;background:var(--ink);color:var(--paper);border-radius:8px;padding:15px 22px}
-a.btn:hover{background:var(--cobalt)}
-button{font:600 16px Inter,sans-serif;background:var(--ink);color:var(--paper);border:0;border-radius:8px;padding:15px 22px;cursor:pointer;justify-self:start}
-button:hover{background:var(--cobalt)}
-.note{font-size:13px;color:var(--muted)}
-.trap{position:absolute;left:-9999px}
-footer{padding:28px 0 40px;color:var(--muted)}
-footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.demos{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.demo{display:flex;flex-direction:column;gap:8px;text-decoration:none;background:#FBF6EA;border:2.5px solid var(--ink);border-radius:12px;padding:14px;box-shadow:0 4px 0 var(--ink);transition:transform .12s,box-shadow .12s}
+.demo:hover{transform:translateY(2px);box-shadow:0 2px 0 var(--ink)}
+.demo h3{font:800 21px/1.15 Lit,serif;margin:4px 0 0}
+.demo p{margin:0;font-size:15.5px;color:var(--inkSoft)}
+.demo .pill{align-self:flex-start;margin-top:auto}
+.demo svg{width:100%;height:auto;border-radius:8px;border:2px solid var(--ink);display:block}
+
+/* финал: связь */
+.final{padding:20px 0 60px;text-align:center}
+.final .card{display:block;text-align:center;max-width:720px;margin:0 auto}
+.final h2{margin-top:0}
+footer{padding:0 0 40px;text-align:center;color:var(--inkFaint);font:italic 15px Lit,serif}
+footer a{color:var(--inkSoft)}
 
 @media (max-width:760px){
-  .top nav{display:none}
-  .dir .wrap,.contact .wrap{grid-template-columns:1fr}
+  .top nav .opt{display:none}
+  .card{grid-template-columns:1fr}
   .demos{grid-template-columns:1fr}
-  .readout{top:70px;right:12px}
-  .hero .wrap{grid-template-columns:1fr;gap:22px}
-  .portrait{order:-1;width:150px}
+  .hello{grid-template-columns:1fr;text-align:center;justify-items:center;width:calc(100% - 72px)}
+  .hello .go{justify-content:center}
+  .path{left:26px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}
 </style>
 </head>
 <body>
 
-<header class="top"><div class="wrap">
-  <span class="mono">pogodinalexeev.ru</span>
-  <nav class="mono"><a href="#personal">personal</a><a href="#business">business</a><a href="#creative">creative</a><a href="#science">science</a><a href="/blog/">блог</a><a href="#contact">связь</a></nav>
-</div></header>
+<header class="gate">
+  <div class="stars" aria-hidden="true">
+    <i style="left:8%;top:6%"></i><i style="left:22%;top:12%"></i><i style="left:37%;top:4%"></i><i style="left:55%;top:10%"></i>
+    <i style="left:71%;top:4%"></i><i style="left:84%;top:12%"></i><i style="left:93%;top:7%"></i><i style="left:63%;top:17%"></i>
+  </div>
 
-<section class="hero" aria-label="Кто я">
-  <canvas id="g" aria-hidden="true"></canvas>
-  <div class="readout mono" id="ro" aria-hidden="true">∫ sin x dx = <b>0.00</b></div>
-  <div class="wrap">
-    <div>
-    <h1>Владислав<span>AI-инженер</span></h1>
-    <p>Проектирую и внедряю автоматизации на нейросетях: системы, которые берут на себя рутинную работу целиком и работают без участия разработчика.</p>
+  <!-- холмы, солнце, лес: плоская заливка и чернильный контур, как в саду -->
+  <svg class="land" viewBox="0 0 1440 520" preserveAspectRatio="xMidYMin slice" aria-hidden="true">
+    <circle cx="1330" cy="34" r="46" fill="#F1BF4A" stroke="#2A1C13" stroke-width="2.5"/>
+    <path d="M0 90 C180 30 320 60 480 76 S820 20 1000 66 1300 40 1440 76 V520 H0Z" fill="#C9A8A6" stroke="#2A1C13" stroke-width="2"/>
+    <path d="M0 140 C200 96 360 116 560 132 S900 88 1120 124 1320 106 1440 118 V520 H0Z" fill="#B7B39A" stroke="#2A1C13" stroke-width="2"/>
+    <g stroke="#2A1C13" stroke-width="2" stroke-linejoin="round">
+      <path d="M60 170 l30 -92 l30 92z" fill="#3C8783"/><path d="M110 174 l24 -70 l24 70z" fill="#4E9A8F"/>
+      <path d="M1270 170 l30 -96 l30 96z" fill="#3C8783"/><path d="M1330 172 l22 -66 l22 66z" fill="#4E9A8F"/>
+      <circle cx="300" cy="136" r="30" fill="#8FB38A"/><path d="M300 166 v24"/><circle cx="1180" cy="140" r="26" fill="#8FB38A"/><path d="M1180 166 v22"/>
+    </g>
+    <path d="M0 190 C300 172 600 184 900 178 S1300 172 1440 184 V520 H0Z" fill="#EFE3C9" stroke="#2A1C13" stroke-width="2"/>
+    <g stroke="#2A1C13" stroke-width="1.5">
+      <path d="M200 300 v-44 M210 300 v-32 M1240 300 v-46 M1250 300 v-34" stroke="#5E8A4E" stroke-width="3"/>
+      <circle cx="200" cy="254" r="8" fill="#C88C86"/><circle cx="210" cy="266" r="6" fill="#F1BF4A"/>
+      <circle cx="1240" cy="252" r="8" fill="#C88C86"/><circle cx="1250" cy="264" r="6" fill="#F1BF4A"/>
+    </g>
+  </svg>
+
+  <div class="wrap top">
+    <a class="logo" href="/">pogodinalexeev.ru</a>
+    <nav>
+      <a class="pill opt" href="#personal">personal</a><a class="pill opt" href="#business">business</a>
+      <a class="pill opt" href="#creative">creative</a><a class="pill opt" href="#science">science</a>
+      <a class="pill" href="/blog/">блог</a>
+    </nav>
+  </div>
+
+  <div class="sign">
+    <svg class="flags" viewBox="0 0 900 46" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M20 4 Q450 38 880 4" fill="none" stroke="#2A1C13" stroke-width="2"/>
+      <g stroke="#2A1C13" stroke-width="1.5">
+        <path d="M70 8 l16 2 l-10 24z" fill="#D8742B"/><path d="M160 15 l18 1 l-11 25z" fill="#3C8783"/>
+        <path d="M260 20 l18 1 l-9 23z" fill="#F1BF4A"/><path d="M360 23 l18 0 l-9 21z" fill="#C88C86"/>
+        <path d="M460 23 l18 0 l-9 21z" fill="#3B8EE0"/><path d="M560 22 l18 0 l-9 22z" fill="#D8742B"/>
+        <path d="M660 19 l18 -1 l-8 23z" fill="#3C8783"/><path d="M760 13 l18 -2 l-7 24z" fill="#F1BF4A"/>
+        <path d="M840 7 l16 -2 l-6 23z" fill="#C88C86"/>
+      </g>
+    </svg>
+    <div class="post l" aria-hidden="true"></div><div class="post r" aria-hidden="true"></div>
+    <div class="beam" aria-hidden="true"></div>
+    <div class="knob l" aria-hidden="true"></div><div class="knob r" aria-hidden="true"></div>
+    <div class="board">
+      <svg class="wave" viewBox="0 0 120 22" aria-hidden="true"><path d="M2 11 Q17 -3 32 11 T62 11" fill="none" stroke="#D8742B" stroke-width="3"/><path d="M60 11 Q75 25 90 11 T118 11" fill="none" stroke="#3C8783" stroke-width="3"/></svg>
+      <h1>Владислав<small>AI-инженер · ассистенты · звук · наглядная наука</small></h1>
     </div>
-    <img class="portrait" src="/img/vlad.webp" alt="Владислав с кларнетом и флейтой" width="679" height="708">
   </div>
-</section>
 
-<section class="dir" id="personal"><div class="wrap">
-  <div><span class="mono tag">personal</span><h2>Персональные ассистенты</h2></div>
-  <div>
-    <p class="lead">Один инструмент закрывает широкий круг задач: заметки и дела, календарь, расшифровка голосовых, поиск по личному архиву файлов, сборка документов и отчётов, переписка от имени владельца по его разрешению. Собирается под конкретного человека и обучается в процессе работы: новые правила задаются обычной речью, без программирования.</p>
-    <p class="mono sub">реализованные кейсы</p>
-    <ul>
-      <li><b>Приёмщик автосервиса.</b> Голосовая сводка по машине превращается в готовый отчёт по работам.</li>
-      <li><b>Гид.</b> Составление программ туров, сборка авторских материалов в PDF.</li>
-      <li><b>Организатор мероприятий.</b> Подбор площадок, рассылка коммерческих предложений, учёт по каждому событию, нарезка и публикация промо-материалов.</li>
-      <li><b>Звукорежиссёр.</b> Поиск и нарезка звука по заданным критериям внутри аудиоредактора.</li>
-    </ul>
+  <div class="hello">
+    <img src="/img/vlad.webp" alt="Владислав с кларнетом и флейтой" width="679" height="708">
+    <div>
+      <p>Проектирую и внедряю автоматизации на нейросетях: системы, которые берут на себя рутинную работу целиком и работают без участия разработчика.</p>
+      <div class="go"><a class="pill sun" href="#personal">к станции 1 →</a><a class="pill" href="https://vk.com/pogodinalexeev">написать</a></div>
+    </div>
   </div>
-</div></section>
+  <div style="height:7vh"></div>
+</header>
 
-<section class="dir" id="business"><div class="wrap">
-  <div><span class="mono tag">business</span><h2>Ассистенты для бизнеса</h2></div>
-  <div>
-    <p class="lead">Действующий инженер по внедрению ИИ в компании, торгующей на маркетплейсах.</p>
-    <ul>
-      <li>Персональные ассистенты для руководителей (интеграция с Битрикс24, 1С, CRM, CMS).</li>
-      <li>Ассистенты для отделов: коммерческие предложения, приведение данных поставщиков к единому формату, отчётность.</li>
-    </ul>
-  </div>
-</div></section>
+<main>
+  <div class="path" aria-hidden="true"></div>
 
-<section class="dir" id="creative"><div class="wrap">
-  <div><span class="mono tag">creative</span><h2>Звук и железо</h2></div>
-  <div>
-    <p class="lead">Генерация и нарезка звука, автоматизация аудиоредакторов, Max for Live, собственные плагины, программное управление синтезаторами и студийным оборудованием.</p>
-    <img class="stage" src="/img/sax.webp" alt="Владислав с саксофоном на сцене" width="1214" height="708" loading="lazy">
-  </div>
-</div></section>
+  <section class="station" id="personal"><div class="wrap"><div class="card c1">
+    <div><span class="badge"><b>1</b>станция · personal</span><h2>Персональные ассистенты</h2></div>
+    <div>
+      <p class="lead">Один инструмент закрывает широкий круг задач: заметки и дела, календарь, расшифровка голосовых, поиск по личному архиву файлов, сборка документов и отчётов, переписка от имени владельца по его разрешению. Собирается под конкретного человека и обучается в процессе работы: новые правила задаются обычной речью, без программирования.</p>
+      <p class="sub">Реализованные кейсы</p>
+      <ul>
+        <li><b>Приёмщик автосервиса.</b> Голосовая сводка по машине превращается в готовый отчёт по работам.</li>
+        <li><b>Гид.</b> Составление программ туров, сборка авторских материалов в PDF.</li>
+        <li><b>Организатор мероприятий.</b> Подбор площадок, рассылка коммерческих предложений, учёт по каждому событию, нарезка и публикация промо-материалов.</li>
+        <li><b>Звукорежиссёр.</b> Поиск и нарезка звука по заданным критериям внутри аудиоредактора.</li>
+      </ul>
+    </div>
+  </div></div></section>
 
-<section class="dir" id="science"><div class="wrap">
-  <div><span class="mono tag">science</span><h2>Наглядная наука</h2></div>
-  <div>
-    <p class="lead">Учебные сцены в браузере: математику и теорию музыки можно потрогать руками. Открываются на компьютере и телефоне, ничего ставить не надо.</p>
+  <section class="station" id="business"><div class="wrap"><div class="card c2">
+    <div><span class="badge"><b>2</b>станция · business</span><h2>Ассистенты для бизнеса</h2></div>
+    <div>
+      <p class="lead">Действующий инженер по внедрению ИИ в компании, торгующей на маркетплейсах.</p>
+      <ul>
+        <li>Персональные ассистенты для руководителей (интеграция с Битрикс24, 1С, CRM, CMS).</li>
+        <li>Ассистенты для отделов: коммерческие предложения, приведение данных поставщиков к единому формату, отчётность.</li>
+      </ul>
+    </div>
+  </div></div></section>
+
+  <section class="station" id="creative"><div class="wrap"><div class="card c3">
+    <div><span class="badge"><b>3</b>станция · creative</span><h2>Звук и железо</h2></div>
+    <div>
+      <p class="lead">Генерация и нарезка звука, автоматизация аудиоредакторов, Max for Live, собственные плагины, программное управление синтезаторами и студийным оборудованием.</p>
+      <img class="photo" src="/img/sax.webp" alt="Владислав с саксофоном на сцене" width="1214" height="708" loading="lazy">
+    </div>
+  </div></div></section>
+
+  <section class="station" id="science"><div class="wrap"><div class="card c4">
+    <div><span class="badge"><b>4</b>станция · science</span><h2>Наглядная наука</h2>
+      <p class="sub" style="margin-top:14px">Учебные сцены в браузере: математику и теорию музыки можно потрогать руками. Открываются на компьютере и телефоне, ничего ставить не надо.</p></div>
     <div class="demos">
       <a class="demo" href="/integral/">
-        <div>
-          <svg width="64" height="36" viewBox="0 0 64 36" aria-hidden="true"><path d="M2 18 Q10 2 18 18 T34 18 T50 18 T66 18" fill="none" stroke="#2B4FDB" stroke-width="2.5"/><path d="M2 18 Q10 2 18 18 Z" fill="#EFA21B" opacity=".6"/></svg>
-          <h3>Сад интеграла</h3>
-          <p>Трёхмерная прогулка про синус, косинус и площадь под графиком.</p>
-        </div>
-        <span class="mono go">открыть →</span>
+        <svg viewBox="0 0 240 120" aria-hidden="true"><rect width="240" height="120" fill="#B47C9A"/><rect y="62" width="240" height="58" fill="#EFE3C9"/><circle cx="178" cy="46" r="16" fill="#F1BF4A" stroke="#2A1C13" stroke-width="2"/><path d="M0 62 C60 50 120 56 240 60" fill="none" stroke="#2A1C13" stroke-width="2"/><path d="M20 96 Q50 62 80 96 Z" fill="#D8742B" opacity=".55"/><path d="M20 96 Q50 62 80 96 T140 96 T200 96 L222 96" fill="none" stroke="#2A1C13" stroke-width="2.5"/></svg>
+        <h3>Сад интеграла</h3>
+        <p>Трёхмерная прогулка про синус, косинус и площадь под графиком.</p>
+        <span class="pill sun">войти →</span>
       </a>
       <a class="demo" href="/box/">
-        <div>
-          <svg width="64" height="36" viewBox="0 0 64 36" aria-hidden="true"><g stroke="#15201C" stroke-width="1"><path d="M0 6H64M0 14H64M0 22H64M0 30H64"/><path d="M16 2V34M32 2V34M48 2V34" opacity=".4"/></g><g fill="#2B4FDB"><circle cx="8" cy="14" r="4"/><circle cx="24" cy="14" r="4"/><circle cx="40" cy="14" r="4"/></g><g fill="#EFA21B"><circle cx="8" cy="22" r="4"/><circle cx="24" cy="22" r="4"/><circle cx="32" cy="22" r="4"/></g></svg>
-          <h3>Бесконечный бокс</h3>
-          <p>Тренажёр грифа гитары. На грифе горит кусок гаммы, нужно достроить соседний, как в тетрисе.</p>
-        </div>
-        <span class="mono go">открыть →</span>
+        <svg viewBox="0 0 240 120" aria-hidden="true"><rect width="240" height="120" fill="#E2D1B0"/><g stroke="#2A1C13" stroke-width="1.6"><path d="M0 22H240M0 42H240M0 62H240M0 82H240M0 102H240"/><path d="M40 12V112M80 12V112M120 12V112M160 12V112M200 12V112" opacity=".35"/></g><g stroke="#2A1C13" stroke-width="2"><circle cx="20" cy="42" r="8" fill="#F1BF4A"/><circle cx="60" cy="42" r="8" fill="#F1BF4A"/><circle cx="100" cy="42" r="8" fill="#F1BF4A"/><circle cx="20" cy="62" r="8" fill="#3C8783"/><circle cx="60" cy="62" r="8" fill="#3C8783"/><circle cx="80" cy="62" r="8" fill="#3C8783"/><circle cx="140" cy="82" r="8" fill="#D8742B"/><circle cx="160" cy="82" r="8" fill="#D8742B"/><circle cx="200" cy="82" r="8" fill="#D8742B"/></g></svg>
+        <h3>Бесконечный бокс</h3>
+        <p>Тренажёр грифа гитары. На грифе горит кусок гаммы, нужно достроить соседний, как в тетрисе.</p>
+        <span class="pill sun">играть →</span>
       </a>
     </div>
-  </div>
-</div></section>
+  </div></div></section>
 
-<section class="dir contact" id="contact"><div class="wrap">
-  <div><span class="mono tag">связь</span><h2>Обсудить задачу</h2></div>
-  <div>
+  <section class="final" id="contact"><div class="wrap"><div class="card">
+    <h2>Обсудить задачу</h2>
     <p class="lead">Опишите задачу парой фраз, отвечу сам.</p>
-    <a class="btn" href="https://vk.com/pogodinalexeev">Написать ВКонтакте</a>
-  </div>
-</div></section>
+    <a class="pill sun" href="https://vk.com/pogodinalexeev">Написать ВКонтакте →</a>
+  </div></div></section>
+</main>
 
-<footer><div class="wrap mono"><span>владислав · ai-инженер · <a href="/blog/">блог</a></span><span>© 2026</span></div></footer>
-
-<script>
-// График синуса на миллиметровке: площадь под кривой копится до курсора (или сама бежит по кругу).
-(function(){
-  var c=document.getElementById('g'), x=c.getContext('2d'), ro=document.querySelector('#ro b');
-  var still=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var W,H,dpr,target=null,pos=0,t0=performance.now();
-  function size(){dpr=Math.min(devicePixelRatio||1,2);W=c.clientWidth;H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0)}
-  var PER=4*Math.PI; // по ширине экрана два периода
-  function fy(u){return Math.sin(u)}
-  function draw(){
-    x.clearRect(0,0,W,H);
-    var step=W<700?24:32; x.strokeStyle='#D3DCD8'; x.lineWidth=1; x.beginPath();
-    for(var i=0;i<=W;i+=step){x.moveTo(i+.5,0);x.lineTo(i+.5,H)}
-    for(var j=0;j<=H;j+=step){x.moveTo(0,j+.5);x.lineTo(W,j+.5)}
-    x.stroke();
-    var mid=H*.36, amp=H*.16, k=PER/W;
-    x.strokeStyle='#15201C'; x.globalAlpha=.35; x.beginPath(); x.moveTo(0,mid+.5); x.lineTo(W,mid+.5); x.stroke(); x.globalAlpha=1;
-    // площадь до pos
-    x.beginPath(); x.moveTo(0,mid);
-    for(var px=0;px<=pos;px+=2){x.lineTo(px,mid-amp*fy(px*k))}
-    x.lineTo(pos,mid); x.closePath();
-    x.fillStyle='rgba(239,162,27,.45)'; x.fill();
-    // кривая
-    x.beginPath(); for(var p=0;p<=W;p+=2){var yy=mid-amp*fy(p*k); p?x.lineTo(p,yy):x.moveTo(p,yy)}
-    x.strokeStyle='#2B4FDB'; x.lineWidth=2.5; x.stroke();
-    // бегунок
-    x.beginPath(); x.moveTo(pos,mid-amp*1.25); x.lineTo(pos,mid+amp*1.25); x.strokeStyle='#15201C'; x.lineWidth=1; x.stroke();
-    ro.textContent=(1-Math.cos(pos*k)).toFixed(2);
-  }
-  function loop(now){
-    var goal = target!==null ? target : ((now-t0)/9000%1)*W;
-    pos += (goal-pos)*(target!==null?.18:1);
-    draw(); requestAnimationFrame(loop);
-  }
-  addEventListener('resize',function(){size();draw()});
-  c.parentElement.addEventListener('pointermove',function(e){var r=c.getBoundingClientRect();target=Math.max(0,Math.min(W,e.clientX-r.left))});
-  c.parentElement.addEventListener('pointerleave',function(){target=null;t0=performance.now()-pos/W*9000});
-  size();
-  if(still){pos=W*.25;draw()} else requestAnimationFrame(loop);
-})();
-
-
-</script>
+<footer>Владислав · AI-инженер · <a href="/blog/">блог</a> · © 2026</footer>
 </body>
 </html>
