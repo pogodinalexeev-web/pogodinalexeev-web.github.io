@@ -1,0 +1,1890 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2F2748">
+<link rel="icon" href="data:,">
+<title>Сад интеграла — прогулка про синус, косинус и площадь</title>
+<style>
+  :root{
+    --paper:#EFE3C9; --paperShade:#E2D1B0; --ink:#2A1C13; --inkSoft:#5B4331; --inkFaint:#8A735C;
+    --warm:#D8742B; --cold:#3B8EE0; --teal:#3C8783; --sun:#F1BF4A; --rose:#C88C86;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"DejaVu Serif",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  html,body{margin:0;height:100%;overflow:hidden;background:#2F2748;color:var(--ink);
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+    font-family:var(--sans);overscroll-behavior:none}
+  canvas#gl{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none}
+  #grain{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:.11;mix-blend-mode:multiply;background-size:256px 256px}
+  #vig{position:fixed;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 55%,rgba(47,39,72,.30) 100%)}
+  .paper{background-color:var(--paper);background-size:256px 256px;border:2px solid var(--ink);border-radius:14px 16px 13px 15px;
+    box-shadow:4px 5px 0 rgba(42,28,19,.32)}
+  #card{position:fixed;z-index:5;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));
+    width:min(430px,calc(100vw - 24px));box-sizing:border-box;padding:12px 16px 12px 16px;transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .4s}
+  #card .row{display:flex;gap:12px;align-items:flex-start}
+  #card .num{flex:0 0 auto;width:38px;height:38px;border:2px solid var(--ink);border-radius:50%;display:grid;place-items:center;
+    font:700 20px/1 var(--serif);background:var(--sun);transform:rotate(-4deg)}
+  #card h2{margin:1px 22px 4px 0;font:700 20px/1.15 var(--serif);letter-spacing:.01em}
+  #card p{margin:0;font:15px/1.35 var(--sans);color:var(--inkSoft)}
+  #card .ctrls{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+  #card .ctrls label{font:600 13px/1 var(--sans);color:var(--inkSoft);display:flex;align-items:center;gap:8px;flex:1 1 100%}
+  #card .ctrls label b{font:700 18px/1 var(--serif);color:var(--ink);min-width:44px;text-align:right}
+  #card .formula{margin-top:8px;font:italic 12px/1.2 var(--serif);color:var(--inkFaint)}
+  #card.min .body{display:none}
+  #card .tog{position:absolute;right:8px;top:6px;border:0;background:none;font:700 18px var(--sans);color:var(--inkFaint);padding:6px}
+  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:30px;background:transparent;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--paperShade);border:1.5px solid var(--ink)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--warm);border:2px solid var(--ink);margin-top:-11px;box-shadow:2px 2px 0 rgba(42,28,19,.35)}
+  input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--paperShade);border:1.5px solid var(--ink)}
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--warm);border:2px solid var(--ink)}
+  .btn{font:600 14px/1 var(--sans);color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:20px;padding:9px 14px;
+    box-shadow:2px 3px 0 rgba(42,28,19,.35);cursor:pointer}
+  .btn.on{background:var(--sun)}
+  .btn:active{transform:translate(2px,2px);box-shadow:0 1px 0 rgba(42,28,19,.35)}
+  #nav{position:fixed;z-index:5;right:max(14px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center}
+  #nav .btn{font-size:15px;padding:12px 16px;background-color:var(--paper);background-size:256px}
+  #next{background:var(--sun)!important}
+  #joy{position:fixed;z-index:4;width:124px;height:124px;border-radius:50%;border:2px dashed rgba(251,246,234,.75);
+    background:rgba(42,28,19,.18);display:none;pointer-events:none;transform:translate(-50%,-50%)}
+  #knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:var(--paper);border:2px solid var(--ink);box-shadow:2px 3px 0 rgba(42,28,19,.35)}
+  #hint{position:fixed;z-index:4;left:50%;bottom:max(84px,calc(env(safe-area-inset-bottom) + 76px));transform:translateX(-50%);
+    font:600 14px/1.3 var(--sans);color:#FBF6EA;text-align:center;text-shadow:0 1px 3px rgba(20,14,30,.8);transition:opacity 1s;pointer-events:none;width:92vw}
+  #hint span{display:inline-block;margin:0 8px}
+  #joyzone{position:fixed;z-index:3;left:14px;bottom:max(18px,env(safe-area-inset-bottom));width:120px;height:120px;border-radius:50%;
+    border:2px dashed rgba(251,246,234,.45);pointer-events:none;display:none}
+  body.touch #joyzone{display:block}
+  #fps{position:fixed;right:6px;top:4px;z-index:9;font:11px monospace;color:#fff;opacity:.5;display:none}
+  @media (max-width:560px){
+    #card{padding:9px 11px 8px 11px;border-radius:12px}
+    #card h2{font-size:16px}
+    #card p{font-size:13px;line-height:1.3}
+    #card .ctrls{margin-top:6px;gap:6px 8px}
+    #card .ctrls .btn{padding:7px 11px;font-size:13px}
+    #card .formula{margin-top:4px;font-size:11px}
+    #card .num{width:32px;height:32px;font-size:17px}
+    #nav .btn{font-size:14px;padding:11px 13px}
+  }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="vig"></div>
+<div id="grain"></div>
+<div id="card" class="paper">
+  <button class="tog" id="tog" aria-label="свернуть">–</button>
+  <div class="row"><div class="num" id="cnum">∫</div><div><h2 id="ctitle">Сад интеграла</h2><div class="body"><p id="ctext"></p></div></div></div>
+  <div class="body"><div class="ctrls" id="cctrls"></div><div class="formula" id="cformula"></div></div>
+</div>
+<div id="nav"><button class="btn" id="snd">♪ звук</button><button class="btn" id="next">к станции 1 →</button></div>
+<div id="joyzone"></div>
+<div id="joy"><div id="knob"></div></div>
+<div id="hint"></div>
+<div id="fps"></div>
+<script type="module">
+import * as THREE from './lib/three.module.js';
+THREE.ColorManagement.enabled = false;
+
+// ---------------------------------------------------------------------------
+// palette (procedural-film house palette + subject tints)
+// ---------------------------------------------------------------------------
+const PAL = {
+  paper: '#EFE3C9', paperShade: '#E2D1B0', paperDeep: '#CDB58C',
+  stripeCream: '#F2E7CF', stripeYellow: '#EFDCA3', stripeApricot: '#F0D9B5', stripeSage: '#DCE3CC', stripeSky: '#C9D3D2',
+  ink: '#2A1C13', inkSoft: '#5B4331', inkFaint: '#8A735C',
+  tan: '#C8A47A', ochre: '#C38F2E', rose: '#C88C86', duskRose: '#E3B1A1', sage: '#94A47F',
+  teal: '#3C8783', tealDeep: '#285F5D', sun: '#F1BF4A', nightSky: '#4E3F6E', night: '#2F2748', white: '#FBF6EA',
+  orange: '#D8742B', leaf: '#6E8F4F', wood: '#A8784C', red: '#BF3F2C', dusk: '#5A4878',
+  navy: '#0B1230', navyLight: '#18234D', grid: '#3A4A86', lavender: '#C8C1EF', lineWhite: '#EEF0FF', paleBlue: '#9CC2EA', glow: '#FFF3DC',
+  annBlue: '#3B8EE0', annMagenta: '#E43D8C', annYellow: '#EAB530',
+  warm: '#E0782E', warmLight: '#F1BF4A', cold: '#3E8FC4', coldLight: '#9CC2EA', water: '#3C8783', waterLight: '#8CC3BB',
+};
+const col = (h) => new THREE.Color(h);
+const TAU = Math.PI * 2;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+function mulberry(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function hash1(i, s) { let h = Math.imul((i | 0) ^ Math.imul(s | 0, 0x9E3779B1), 0x85EBCA6B); h ^= h >>> 13; h = Math.imul(h, 0xC2B2AE35); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function noise1(x, s = 0) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return lerp(hash1(i, s), hash1(i + 1, s), u) * 2 - 1; }
+const fmt = (v, d = 2) => v.toFixed(d).replace('.', ',').replace('-', '−');
+
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
+if (IS_TOUCH) document.body.classList.add('touch');
+const Q = new URLSearchParams(location.search);
+
+// ---------------------------------------------------------------------------
+// renderer
+// ---------------------------------------------------------------------------
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: Q.has('shot') });
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+renderer.setPixelRatio(DPR);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, 1, 0.08, 400);
+camera.rotation.order = 'YXZ';
+
+// shared uniforms (same objects referenced from every material)
+const SH = {
+  uTime: { value: 0 },
+  uFogColor: { value: col('#EDCFAE') },
+  uFogDensity: { value: 0.0095 },
+  uLightDir: { value: new THREE.Vector3(0.25, 0.9, 0.38).normalize() },
+  uInk: { value: col(PAL.ink) },
+  uRes: { value: new THREE.Vector2(1, 1) },
+  uDpr: { value: DPR },
+};
+
+const GLSL_COMMON = /* glsl */`
+  uniform float uTime; uniform vec3 uFogColor; uniform float uFogDensity; uniform vec3 uLightDir; uniform vec3 uInk; uniform vec2 uRes; uniform float uDpr;
+  float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+  float fogAmt(vec3 w){ float d = length(w - cameraPosition); return 1.0 - exp(-pow(d*uFogDensity, 1.5)); }
+`;
+
+// ---------------------------------------------------------------------------
+// ink material: flat paper colour, cool shadow, screen-space hatching,
+// optional uv border (pixel-constant ink edge), grain, fog
+// ---------------------------------------------------------------------------
+const INK_VS = /* glsl */`
+  varying vec3 vN; varying vec3 vW; varying vec2 vUv; varying vec3 vCol;
+  void main(){
+    mat4 m = modelMatrix;
+    #ifdef USE_INSTANCING
+      m = m * instanceMatrix;
+    #endif
+    vCol = vec3(1.0);
+    #ifdef USE_INSTANCING_COLOR
+      vCol = instanceColor;
+    #endif
+    vec4 w = m * vec4(position, 1.0);
+    vW = w.xyz; vN = normalize(mat3(m) * normal); vUv = uv;
+    gl_Position = projectionMatrix * viewMatrix * w;
+  }`;
+const INK_FS = /* glsl */`
+  ${GLSL_COMMON}
+  uniform vec3 uColor; uniform sampler2D uMap; uniform float uUseMap; uniform vec2 uRepeat;
+  uniform float uHatch, uBorder, uFlat, uOpacity, uAlphaTest, uFog, uEmit;
+  varying vec3 vN; varying vec3 vW; varying vec2 vUv; varying vec3 vCol;
+  void main(){
+    vec3 base = uColor * vCol; float a = uOpacity;
+    if (uUseMap > 0.5) { vec4 t = texture2D(uMap, vUv * uRepeat); base *= t.rgb; a *= t.a; }
+    if (a < uAlphaTest) discard;
+    vec3 N = normalize(vN); if (!gl_FrontFacing) N = -N;
+    float l = dot(N, uLightDir) * 0.5 + 0.5;
+    vec3 V = normalize(cameraPosition - vW);
+    vec3 shade = base * vec3(0.70, 0.66, 0.80);
+    float lit = mix(smoothstep(0.24, 0.52, l), 1.0, uFlat);
+    vec3 c = mix(shade, base, lit);
+    float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+    c += vec3(0.22, 0.13, 0.05) * rim * (1.0 - uFlat) * 0.5;
+    float px = 1.0 / uDpr;
+    float s1 = (gl_FragCoord.x + gl_FragCoord.y) * px / 4.5;
+    float line1 = 1.0 - smoothstep(0.2, 0.5, abs(fract(s1) - 0.5) * 2.0);
+    float s2 = (gl_FragCoord.x - gl_FragCoord.y) * px / 4.5;
+    float line2 = 1.0 - smoothstep(0.2, 0.5, abs(fract(s2) - 0.5) * 2.0);
+    float amt1 = (1.0 - smoothstep(0.26, 0.46, l)) * (1.0 - uFlat);
+    float amt2 = (1.0 - smoothstep(0.06, 0.24, l)) * (1.0 - uFlat);
+    c = mix(c, uInk, uHatch * (line1 * amt1 * 0.30 + line2 * amt2 * 0.25));
+    if (uBorder > 0.0) {
+      vec2 fw = max(fwidth(vUv), vec2(1e-5)); vec2 d = min(vUv, 1.0 - vUv) / fw;
+      vec2 bw = min(vec2(uBorder * uDpr), 0.2 / fw);
+      float ex = smoothstep(bw.x - 0.6, bw.x + 0.6, d.x), ey = smoothstep(bw.y - 0.6, bw.y + 0.6, d.y);
+      c = mix(uInk, c, min(ex, ey));
+    }
+    c = mix(c, base, uEmit);
+    c += (hash21(floor(gl_FragCoord.xy * px)) - 0.5) * 0.05;
+    c = mix(c, uFogColor, fogAmt(vW) * uFog);
+    gl_FragColor = vec4(c, a);
+  }`;
+function inkMat(o = {}) {
+  const m = new THREE.ShaderMaterial({
+    uniforms: Object.assign({
+      uColor: { value: col(o.color || '#ffffff') },
+      uMap: { value: o.map || null }, uUseMap: { value: o.map ? 1 : 0 },
+      uRepeat: { value: new THREE.Vector2(...(o.repeat || [1, 1])) },
+      uHatch: { value: o.hatch ?? 1 }, uBorder: { value: o.border || 0 }, uFlat: { value: o.flat || 0 },
+      uOpacity: { value: o.opacity ?? 1 }, uAlphaTest: { value: o.alphaTest || 0 }, uFog: { value: o.fog ?? 1 }, uEmit: { value: o.emit || 0 },
+    }, SH),
+    vertexShader: INK_VS, fragmentShader: INK_FS,
+    transparent: !!o.transparent, side: o.side ?? THREE.FrontSide, depthWrite: o.depthWrite ?? true,
+  });
+  m.extensions = { derivatives: true };
+  return m;
+}
+
+// inverted-hull ink outline
+const OUT_VS = /* glsl */`
+  uniform float uOut; varying vec3 vW;
+  void main(){
+    mat4 m = modelMatrix;
+    #ifdef USE_INSTANCING
+      m = m * instanceMatrix;
+    #endif
+    vec4 w = m * vec4(position, 1.0);
+    vec3 n = normalize(mat3(m) * normal);
+    float d = length(cameraPosition - w.xyz);
+    w.xyz += n * uOut * (0.7 + d * 0.035);
+    vW = w.xyz;
+    gl_Position = projectionMatrix * viewMatrix * w;
+  }`;
+const OUT_FS = /* glsl */`${GLSL_COMMON} uniform vec3 uColor; varying vec3 vW;
+  void main(){ gl_FragColor = vec4(mix(uColor, uFogColor, fogAmt(vW)), 1.0); }`;
+const outlineMats = {};
+function outlineMat(w = 0.018, c = PAL.ink) {
+  const k = w + c;
+  if (!outlineMats[k]) outlineMats[k] = new THREE.ShaderMaterial({ uniforms: Object.assign({ uOut: { value: w }, uColor: { value: col(c) } }, SH), vertexShader: OUT_VS, fragmentShader: OUT_FS, side: THREE.BackSide });
+  return outlineMats[k];
+}
+function outline(mesh, w, c) { const o = new THREE.Mesh(mesh.geometry, outlineMat(w, c)); o.raycast = () => {}; mesh.add(o); return mesh; }
+function mesh(geo, mat, parent, pos, rot, out) {
+  const m = new THREE.Mesh(geo, mat);
+  if (pos) m.position.set(...pos);
+  if (rot) m.rotation.set(...rot);
+  if (out) outline(m, out === true ? 0.018 : out);
+  if (parent) parent.add(m);
+  return m;
+}
+
+// ---------------------------------------------------------------------------
+// fat hand-drawn lines: screen-facing ribbons, world-space width, pressure
+// variation, boil (the hand-drawn shimmer), dashes, draw-on progress, glow
+// ---------------------------------------------------------------------------
+const LINE_VS = /* glsl */`
+  ${GLSL_COMMON}
+  attribute vec3 prev; attribute vec3 next; attribute float side; attribute float lu; attribute float wv;
+  uniform float uWidth, uMinPx, uBoil;
+  varying float vU; varying float vSide; varying vec3 vW;
+  void main(){
+    mat4 mvp = projectionMatrix * viewMatrix * modelMatrix;
+    vec4 c = mvp * vec4(position, 1.0); vec4 cp = mvp * vec4(prev, 1.0); vec4 cn = mvp * vec4(next, 1.0);
+    float asp = uRes.x / uRes.y;
+    vec2 s = c.xy / max(abs(c.w), 1e-4), sp = cp.xy / max(abs(cp.w), 1e-4), sn = cn.xy / max(abs(cn.w), 1e-4);
+    s.x *= asp; sp.x *= asp; sn.x *= asp;
+    vec2 d1 = s - sp, d2 = sn - s;
+    vec2 t = vec2(0.0);
+    if (dot(d1, d1) > 1e-12) t += normalize(d1);
+    if (dot(d2, d2) > 1e-12) t += normalize(d2);
+    if (dot(t, t) < 1e-12) t = vec2(1.0, 0.0);
+    t = normalize(t);
+    vec2 nr = vec2(-t.y, t.x);
+    float boil = 1.0 + uBoil * 0.22 * sin(lu * 61.0 + floor(uTime * 8.0) * 2.37);
+    float hw = max(uWidth * 0.5 * projectionMatrix[1][1] * wv * boil, uMinPx * uDpr / uRes.y * c.w);
+    vec2 off = nr * hw * side; off.x /= asp;
+    c.xy += off;
+    gl_Position = c; vU = lu; vSide = side; vW = (modelMatrix * vec4(position, 1.0)).xyz;
+  }`;
+const LINE_FS = /* glsl */`
+  ${GLSL_COMMON}
+  uniform vec3 uColor; uniform float uOpacity, uDash, uDashRatio, uProgress, uGlow, uFog, uDashShift;
+  varying float vU; varying float vSide; varying vec3 vW;
+  void main(){
+    if (vU > uProgress) discard;
+    if (uDash > 0.0 && fract(vU * uDash - uDashShift) > uDashRatio) discard;
+    float e = abs(vSide);
+    float a = uOpacity;
+    float f = fogAmt(vW) * uFog;
+    if (uGlow > 0.5) { a *= pow(max(1.0 - e, 0.0), 1.8) * (1.0 - f); gl_FragColor = vec4(uColor, a); return; }
+    gl_FragColor = vec4(mix(uColor, uFogColor, f), a);
+  }`;
+class Line {
+  constructor(max, o = {}) {
+    this.max = max;
+    const g = new THREE.BufferGeometry();
+    const n = max * 2;
+    this.pos = new Float32Array(n * 3); this.prev = new Float32Array(n * 3); this.next = new Float32Array(n * 3);
+    const side = new Float32Array(n), wv = new Float32Array(n);
+    this.lu = new Float32Array(n);
+    const seed = o.seed ?? Math.floor(Math.random() * 1000);
+    for (let i = 0; i < max; i++) {
+      side[i * 2] = -1; side[i * 2 + 1] = 1;
+      const w = o.pressure === 0 ? 1 : 0.8 + 0.4 * (noise1(i * 0.09, seed) * 0.5 + 0.5);
+      wv[i * 2] = wv[i * 2 + 1] = w;
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('prev', new THREE.BufferAttribute(this.prev, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('next', new THREE.BufferAttribute(this.next, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('side', new THREE.BufferAttribute(side, 1));
+    g.setAttribute('wv', new THREE.BufferAttribute(wv, 1));
+    g.setAttribute('lu', new THREE.BufferAttribute(this.lu, 1).setUsage(THREE.DynamicDrawUsage));
+    this.index = new Uint32Array((max - 1) * 6);
+    g.setIndex(new THREE.BufferAttribute(this.index, 1).setUsage(THREE.DynamicDrawUsage));
+    this.geo = g;
+    const glow = !!o.glow;
+    this.mat = new THREE.ShaderMaterial({
+      uniforms: Object.assign({
+        uColor: { value: col(o.color || PAL.ink) }, uWidth: { value: o.width ?? 0.03 }, uMinPx: { value: o.minPx ?? 1.0 },
+        uOpacity: { value: o.opacity ?? 1 }, uDash: { value: 0 }, uDashRatio: { value: o.dashRatio ?? 0.55 }, uDashShift: { value: 0 },
+        uProgress: { value: 1.01 }, uGlow: { value: glow ? 1 : 0 }, uBoil: { value: o.boil ?? 1 }, uFog: { value: o.fog ?? 1 },
+      }, SH),
+      vertexShader: LINE_VS, fragmentShader: LINE_FS,
+      transparent: glow || (o.opacity ?? 1) < 1, depthWrite: !glow && (o.opacity ?? 1) >= 1,
+      blending: glow ? THREE.AdditiveBlending : THREE.NormalBlending, side: THREE.DoubleSide,
+    });
+    this.dashLen = o.dash || 0;
+    this.mesh = new THREE.Mesh(g, this.mat);
+    this.mesh.frustumCulled = false;
+    this.mesh.raycast = () => {};
+    if (o.order) this.mesh.renderOrder = o.order;
+    if (o.parent) o.parent.add(this.mesh);
+    if (o.pts) this.set(o.pts);
+    if (o.strips) this.setStrips(o.strips);
+  }
+  set(pts) { return this.setStrips([pts]); }
+  setStrips(strips) {
+    let v = 0, idx = 0, total = 0;
+    const P = this.pos, Pr = this.prev, Nx = this.next, U = this.lu, I = this.index;
+    for (const pts of strips) {
+      const n = pts.length; if (n < 2 || v + n > this.max) continue;
+      let L = 0;
+      for (let i = 1; i < n; i++) L += pts[i].distanceTo(pts[i - 1]);
+      total += L;
+      let acc = 0;
+      for (let i = 0; i < n; i++) {
+        const p = pts[i];
+        if (i > 0) acc += p.distanceTo(pts[i - 1]);
+        const a = i > 0 ? pts[i - 1] : null, b = i < n - 1 ? pts[i + 1] : null;
+        const px = a ? a.x : 2 * p.x - b.x, py = a ? a.y : 2 * p.y - b.y, pz = a ? a.z : 2 * p.z - b.z;
+        const nx = b ? b.x : 2 * p.x - a.x, ny = b ? b.y : 2 * p.y - a.y, nz = b ? b.z : 2 * p.z - a.z;
+        for (let s = 0; s < 2; s++) {
+          const k = (v + i) * 2 + s;
+          P[k * 3] = p.x; P[k * 3 + 1] = p.y; P[k * 3 + 2] = p.z;
+          Pr[k * 3] = px; Pr[k * 3 + 1] = py; Pr[k * 3 + 2] = pz;
+          Nx[k * 3] = nx; Nx[k * 3 + 1] = ny; Nx[k * 3 + 2] = nz;
+          U[k] = strips.length === 1 ? acc / (L || 1) : acc / (L || 1);
+        }
+        if (i < n - 1) {
+          const a0 = (v + i) * 2;
+          I[idx++] = a0; I[idx++] = a0 + 1; I[idx++] = a0 + 2;
+          I[idx++] = a0 + 1; I[idx++] = a0 + 3; I[idx++] = a0 + 2;
+        }
+      }
+      v += n;
+    }
+    this.length = total;
+    if (this.dashLen) this.mat.uniforms.uDash.value = (strips.length === 1 ? total : total / strips.length) / this.dashLen;
+    const g = this.geo;
+    g.setDrawRange(0, idx);
+    for (const k of ['position', 'prev', 'next', 'lu']) g.attributes[k].needsUpdate = true;
+    g.index.needsUpdate = true;
+    return this;
+  }
+}
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+function circlePts(cx, cy, cz, r, n = 64, plane = 'xy', a0 = 0, a1 = TAU) {
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * i / n, c = Math.cos(a) * r, s = Math.sin(a) * r;
+    out.push(plane === 'xy' ? V3(cx + c, cy + s, cz) : plane === 'xz' ? V3(cx + c, cy, cz - s) : V3(cx, cy + s, cz + c));
+  }
+  return out;
+}
+// hand wobble for static 3D polylines
+function wobble(pts, amp = 0.012, seed = 1) {
+  return pts.map((p, i) => V3(p.x + noise1(i * 0.21, seed) * amp, p.y + noise1(i * 0.21, seed + 7) * amp, p.z + noise1(i * 0.21, seed + 13) * amp));
+}
+
+// ---------------------------------------------------------------------------
+// 2D painting: paper, stripes, ink strokes, text — the procedural-film look
+// ---------------------------------------------------------------------------
+const SERIF = '"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"DejaVu Serif",serif';
+const SANS = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
+function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function rgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function rgba(h, a) { const [r, g, b] = rgb(h); return `rgba(${r},${g},${b},${a})`; }
+
+// grain + mottle + vignette over whatever is already painted
+function grainPass(c, { seed = 3, grain = 1, mottle = 1, vignette = 0.3, warmDark = true } = {}) {
+  const w = c.width, h = c.height, g = c.getContext('2d');
+  const img = g.getImageData(0, 0, w, h), d = img.data;
+  const R = mulberry(seed);
+  const cell = 40, mw = Math.ceil(w / cell) + 2, mh = Math.ceil(h / cell) + 2;
+  const mf = new Float32Array(mw * mh); for (let i = 0; i < mf.length; i++) mf[i] = R() * 2 - 1;
+  const cx = w / 2, cy = h / 2, vr = Math.hypot(cx, cy);
+  for (let y = 0; y < h; y++) {
+    const my = y / cell, jy = Math.floor(my), ty = my - jy, sy = ty * ty * (3 - 2 * ty);
+    for (let x = 0; x < w; x++) {
+      const mx = x / cell, ix = Math.floor(mx), tx = mx - ix, sx = tx * tx * (3 - 2 * tx);
+      const m = lerp(lerp(mf[jy * mw + ix], mf[jy * mw + ix + 1], sx), lerp(mf[(jy + 1) * mw + ix], mf[(jy + 1) * mw + ix + 1], sx), sy);
+      const dx = (x - cx) / vr, dy = (y - cy) / vr;
+      const vig = vignette * Math.max(0, dx * dx + dy * dy - 0.3) * 0.2;
+      const k = 1 + m * 0.035 * mottle + (R() - 0.5) * 0.075 * grain - vig;
+      const i = (y * w + x) * 4;
+      d[i] = d[i] * k;
+      d[i + 1] = d[i + 1] * (warmDark ? k - (1 - k) * 0.12 : k);
+      d[i + 2] = d[i + 2] * (warmDark ? k - (1 - k) * 0.35 : k);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  // fibres and specks
+  const n = Math.round(w * h / 1400 * grain);
+  g.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const x = R() * w, y = R() * h, L = 4 + R() * 18, a = R() * TAU, b = (R() - 0.5) * L;
+    const ex = x + Math.cos(a) * L, ey = y + Math.sin(a) * L;
+    g.strokeStyle = R() < 0.55 ? 'rgba(91,67,49,0.07)' : 'rgba(255,252,242,0.2)';
+    g.lineWidth = R() < 0.5 ? 0.7 : 1.1;
+    g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo((x + ex) / 2 - Math.sin(a) * b, (y + ey) / 2 + Math.cos(a) * b, ex, ey); g.stroke();
+  }
+  g.fillStyle = 'rgba(91,67,49,0.2)';
+  for (let i = 0; i < n * 0.07; i++) { g.beginPath(); g.arc(R() * w, R() * h, 0.3 + R() * 0.9, 0, TAU); g.fill(); }
+  return c;
+}
+function paperCanvas(w, h, base = PAL.paper, opt = {}) {
+  const c = mkCanvas(w, h), g = c.getContext('2d');
+  if (typeof base === 'function') base(g, w, h); else { g.fillStyle = base; g.fillRect(0, 0, w, h); }
+  return grainPass(c, opt);
+}
+// diagonal bands with wobbly edges (the butterfly-frame stripes)
+function stripes(g, w, h, a, b, band = 90, angle = -0.52, seed = 21) {
+  g.fillStyle = a; g.fillRect(0, 0, w, h);
+  const dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy, ny = dx;
+  const cx = w / 2, cy = h / 2, half = Math.hypot(w, h) / 2 + band * 2;
+  g.fillStyle = b;
+  const period = band * 2;
+  for (let k = Math.floor(-half / period) - 1; k <= Math.ceil(half / period) + 1; k++) {
+    const v0 = k * period + band;
+    const edge = (v, kk) => { const pts = []; for (let u = -half; u <= half; u += 30) { const vv = v + 2.2 * noise1(u * 0.012 + kk * 3.7, seed) + 0.8 * noise1(u * 0.05, seed + kk); pts.push([cx + dx * u + nx * vv, cy + dy * u + ny * vv]); } return pts; };
+    const e1 = edge(v0, k * 2), e2 = edge(v0 + band, k * 2 + 1).reverse();
+    g.beginPath(); e1.concat(e2).forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.fill();
+  }
+}
+// pressure-varied, jittered ink stroke; optional faint doubled line
+function inkStroke(g, pts, w, color = PAL.ink, { seed = 1, jitter = 0.8, double = true, alpha = 1, taper = true, step = 3 } = {}) {
+  // resample
+  const rs = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+    const L = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.ceil(L / step));
+    for (let j = 0; j < n; j++) rs.push([x0 + (x1 - x0) * j / n, y0 + (y1 - y0) * j / n]);
+  }
+  rs.push(pts[pts.length - 1]);
+  const N = rs.length;
+  const jp = rs.map((p, i) => [p[0] + noise1(i * 0.05, seed) * jitter, p[1] + noise1(i * 0.05, seed + 5) * jitter]);
+  g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = color; g.globalAlpha = alpha;
+  for (let i = 0; i < N - 1; i++) {
+    const k = i / (N - 1);
+    const tp = taper ? 0.55 + 0.45 * Math.min(1, k * 10, (1 - k) * 10) : 1;
+    g.lineWidth = w * (0.78 + 0.44 * (noise1(i * 0.06, seed + 11) * 0.5 + 0.5)) * tp;
+    g.beginPath(); g.moveTo(jp[i][0], jp[i][1]); g.lineTo(jp[i + 1][0], jp[i + 1][1]); g.stroke();
+  }
+  if (double && N > 3) {
+    g.globalAlpha = alpha * 0.35; g.lineWidth = Math.max(0.8, w * 0.3);
+    g.beginPath(); jp.forEach((p, i) => { const q = [p[0] + 2.2 + noise1(i * 0.03, seed + 21) * 1.5, p[1] + 1.6]; i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.stroke();
+  }
+  g.restore();
+}
+// fast single-path stroke for per-frame graphs
+function quickStroke(g, pts, w, color, alpha = 1, dash = null) {
+  g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = color; g.lineWidth = w; g.globalAlpha = alpha;
+  if (dash) g.setLineDash(dash);
+  g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.stroke(); g.restore();
+}
+function inkRect(g, x, y, w, h, lw = 4, color = PAL.ink, seed = 3) {
+  const o = 7;
+  inkStroke(g, [[x - o, y], [x + w + o * 0.6, y]], lw, color, { seed });
+  inkStroke(g, [[x + w, y - o * 0.5], [x + w, y + h + o]], lw, color, { seed: seed + 1 });
+  inkStroke(g, [[x + w + o * 0.4, y + h], [x - o, y + h]], lw, color, { seed: seed + 2 });
+  inkStroke(g, [[x, y + h + o * 0.5], [x, y - o]], lw, color, { seed: seed + 3 });
+}
+function inkCircle(g, cx, cy, r, lw, color = PAL.ink, seed = 1) {
+  const pts = []; const a0 = noise1(seed, 3) * 2;
+  for (let i = 0; i <= 64; i++) { const a = a0 + i / 64 * (TAU + 0.25); pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+  inkStroke(g, pts, lw, color, { seed });
+}
+function hatchRegion(g, clipFn, spacing = 9, lw = 1.4, color = PAL.ink, alpha = 0.5, angle = -0.8, seed = 4, bounds = null) {
+  const W = g.canvas.width, H = g.canvas.height;
+  g.save(); g.beginPath(); clipFn(g); g.clip();
+  g.strokeStyle = color; g.globalAlpha = alpha; g.lineWidth = lw; g.lineCap = 'round';
+  const dx = Math.cos(angle), dy = Math.sin(angle), L = Math.hypot(W, H);
+  const R = mulberry(seed);
+  g.beginPath();
+  for (let s = -L; s < L; s += spacing) {
+    const ox = W / 2 - dy * s, oy = H / 2 + dx * s, j = (R() - 0.5) * 2;
+    g.moveTo(ox - dx * L + j, oy - dy * L); g.lineTo(ox + dx * L + j, oy + dy * L);
+  }
+  g.stroke(); g.restore();
+}
+// ruler arc with ticks (the blue protractor from the reference frame)
+function rulerArc(g, cx, cy, r, a0, a1, n, color, lw = 2, long = 5) {
+  const pts = []; for (let i = 0; i <= 80; i++) { const a = a0 + (a1 - a0) * i / 80; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+  quickStroke(g, pts, lw, color, 0.9);
+  g.save(); g.strokeStyle = color; g.lineWidth = lw * 0.8; g.globalAlpha = 0.9;
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * i / n, L = i % long === 0 ? r * 0.08 : r * 0.04;
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); g.lineTo(cx + Math.cos(a) * (r - L), cy + Math.sin(a) * (r - L)); g.stroke();
+  }
+  g.restore();
+}
+function wrapText(g, text, maxW) {
+  const words = text.split(' '), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur); return lines;
+}
+function tex(c, o = {}) {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.NoColorSpace;
+  t.anisotropy = o.aniso ?? 4;
+  if (o.repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
+  if (o.nomip) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; }
+  return t;
+}
+function radialSprite(inner, outer, size = 128) {
+  const c = mkCanvas(size, size), g = c.getContext('2d');
+  const gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gr.addColorStop(0, inner); gr.addColorStop(0.25, inner.replace(/[\d.]+\)$/, m => (parseFloat(m) * 0.45) + ')')); gr.addColorStop(1, outer);
+  g.fillStyle = gr; g.fillRect(0, 0, size, size);
+  return tex(c);
+}
+
+// ---------------------------------------------------------------------------
+// WORLD: dusk sky, paper ground with protractor plaza, paper-cut hills,
+// drawn trees, clouds, lanterns, motes, armillary sphere
+// ---------------------------------------------------------------------------
+const CENTER = V3(0, 0, -20);
+const RING = 15;
+const SUN_DIR = V3(0.18, 0.085, -1).normalize();
+
+// sky dome ------------------------------------------------------------------
+const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 48, 24), new THREE.ShaderMaterial({
+  uniforms: Object.assign({ uSun: { value: SUN_DIR } }, SH),
+  vertexShader: `varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position = p.xyww; }`,
+  fragmentShader: /* glsl */`
+    ${GLSL_COMMON}
+    uniform vec3 uSun; varying vec3 vDir;
+    float h3(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+    void main(){
+      vec3 d = normalize(vDir); float y = d.y;
+      vec3 hor = vec3(0.957,0.835,0.655), low = vec3(0.910,0.690,0.600), mid = vec3(0.640,0.490,0.600), high = vec3(0.330,0.270,0.450), top = vec3(0.180,0.150,0.270);
+      vec3 c = mix(hor, low, smoothstep(0.0, 0.09, y));
+      c = mix(c, mid, smoothstep(0.07, 0.28, y));
+      c = mix(c, high, smoothstep(0.25, 0.58, y));
+      c = mix(c, top, smoothstep(0.55, 1.0, y));
+      // diagonal paper bands, like the stripe plate
+      float az = atan(d.x, d.z);
+      float band = fract(az * 3.0 + y * 7.0 + 0.04 * sin(az * 23.0));
+      c *= 1.0 + 0.035 * smoothstep(0.45, 0.5, band) * (1.0 - smoothstep(0.95, 1.0, band)) * (1.0 - smoothstep(0.1, 0.6, y));
+      // sun: flat disc, ink ring, warm bloom
+      float ang = acos(clamp(dot(d, uSun), -1.0, 1.0));
+      c += vec3(0.95, 0.62, 0.25) * 0.28 * exp(-ang * 5.0);
+      c = mix(c, vec3(0.972, 0.800, 0.380), 1.0 - smoothstep(0.052, 0.055, ang));
+      c = mix(c, vec3(0.99, 0.90, 0.62), (1.0 - smoothstep(0.030, 0.040, ang)) * 0.6);
+      c = mix(c, vec3(0.45, 0.25, 0.18), (1.0 - smoothstep(0.0, 0.0022, abs(ang - 0.055))) * 0.55);
+      // protractor around the sun
+      vec3 t1 = normalize(cross(uSun, vec3(0.0,1.0,0.0))); vec3 t2 = cross(t1, uSun);
+      float a2 = atan(dot(d, t2), dot(d, t1));
+      float ring = 1.0 - smoothstep(0.0, 0.0016, abs(ang - 0.15));
+      float tick = step(fract(a2 / 6.2831853 * 72.0 + 0.5), 0.1) * step(0.15, ang) * step(ang, 0.162);
+      float tickL = step(fract(a2 / 6.2831853 * 12.0 + 0.5), 0.02) * step(0.15, ang) * step(ang, 0.178);
+      float arcMask = smoothstep(-0.2, 0.3, dot(d - uSun, vec3(0.0,1.0,0.0)) + 0.2);
+      c = mix(c, vec3(0.30, 0.43, 0.78), (ring + max(tick, tickL)) * 0.55 * arcMask);
+      float ring2 = 1.0 - smoothstep(0.0, 0.0012, abs(ang - 0.26));
+      c = mix(c, vec3(0.93, 0.93, 1.0), ring2 * 0.18);
+      // stars
+      vec3 q = d * 160.0; vec3 id = floor(q); float hs = h3(id);
+      if (hs > 0.975) { vec3 f = fract(q) - 0.5; float s = length(f); float tw = 0.6 + 0.4 * sin(uTime * (1.0 + hs * 3.0) + hs * 40.0);
+        c = mix(c, vec3(1.0, 0.96, 0.86), (1.0 - smoothstep(0.04, 0.12, s)) * smoothstep(0.22, 0.55, y) * tw); }
+      if (y < 0.0) c = mix(hor, vec3(0.91, 0.82, 0.66), smoothstep(0.0, -0.08, y));
+      c += (hash21(floor(gl_FragCoord.xy / uDpr)) - 0.5) * 0.035;
+      gl_FragColor = vec4(c, 1.0);
+    }`,
+  side: THREE.BackSide, depthWrite: false,
+}));
+sky.renderOrder = -10;
+scene.add(sky);
+
+// ground -----------------------------------------------------------------------
+const groundTex = tex(paperCanvas(1024, 1024, (g, w, h) => {
+  g.fillStyle = PAL.paper; g.fillRect(0, 0, w, h);
+  // faint graph paper: 10 m tile, 1 m minor, 5 m major
+  for (let i = 0; i <= 10; i++) {
+    const p = i / 10 * w;
+    g.strokeStyle = rgba(PAL.inkFaint, i % 5 === 0 ? 0.16 : 0.07); g.lineWidth = i % 5 === 0 ? 2 : 1.2;
+    g.beginPath(); g.moveTo(p, 0); g.lineTo(p, h); g.moveTo(0, p); g.lineTo(w, p); g.stroke();
+  }
+  // grass flecks
+  const R = mulberry(9);
+  for (let i = 0; i < 900; i++) { g.strokeStyle = rgba(R() < 0.5 ? PAL.sage : PAL.tan, 0.18 + R() * 0.2); g.lineWidth = 1 + R(); const x = R() * w, y = R() * h, a = -1.2 - R() * 0.8; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 7, y + Math.sin(a) * 7); g.stroke(); }
+}, { seed: 11, vignette: 0 }), { repeat: true, aniso: 8 });
+const ground = mesh(new THREE.CircleGeometry(160, 64), inkMat({ map: groundTex, repeat: [32, 32], flat: 1, hatch: 0 }), scene, [0, 0, 0], [-Math.PI / 2, 0, 0]);
+
+// protractor plaza decal (drawn once on a big canvas) ---------------------------
+{
+  const S = 2048, RAD = 25, k = S / 2 / RAD; // px per m
+  const c = mkCanvas(S, S), g = c.getContext('2d');
+  const cx = S / 2, cy = S / 2;
+  const P = (r, a) => [cx + Math.cos(a) * r * k, cy + Math.sin(a) * r * k];
+  // soft worn circle under the plaza
+  const gr = g.createRadialGradient(cx, cy, 0, cx, cy, S / 2);
+  gr.addColorStop(0, rgba(PAL.paperShade, 0.0)); gr.addColorStop(0.55, rgba(PAL.paperShade, 0.35)); gr.addColorStop(0.72, rgba(PAL.stripeApricot, 0.5)); gr.addColorStop(1, rgba(PAL.paperShade, 0));
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  const circ = (r, lw, color, seed, a0 = 0, a1 = TAU) => { const pts = []; for (let i = 0; i <= 180; i++) { const a = a0 + (a1 - a0) * i / 180; pts.push(P(r, a)); } inkStroke(g, pts, lw, color, { seed, step: 6 }); };
+  circ(RING - 1.6, 5, PAL.inkSoft, 1); circ(RING + 1.6, 5, PAL.inkSoft, 2);
+  circ(RING, 2.5, rgba(PAL.inkFaint, 0.8), 3);
+  circ(5.5, 4, PAL.inkSoft, 4); circ(3.2, 2, PAL.inkFaint, 5); circ(22, 2.5, rgba(PAL.inkFaint, 0.7), 6);
+  // ticks every 5°, long every 30°, numbers
+  g.fillStyle = PAL.inkSoft; g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let d = 0; d < 360; d += 5) {
+    const a = d / 180 * Math.PI, L = d % 30 === 0 ? 1.4 : d % 15 === 0 ? 0.9 : 0.5;
+    inkStroke(g, [P(RING + 1.6, a), P(RING + 1.6 + L, a)], d % 30 === 0 ? 4 : 2.5, PAL.inkSoft, { seed: d, double: false });
+    inkStroke(g, [P(5.5, a), P(5.5 + L * 0.5, a)], 2, PAL.inkFaint, { seed: d + 400, double: false });
+    if (d % 30 === 0) {
+      const [x, y] = P(RING + 3.6, a);
+      g.save(); g.translate(x, y); g.rotate(a - Math.PI / 2); g.font = `italic 600 ${Math.round(k * 0.9)}px ${SERIF}`; g.fillText(d + '°', 0, 0); g.restore();
+    }
+  }
+  // cross hairs
+  inkStroke(g, [P(22, 0), P(22, Math.PI)], 2, rgba(PAL.inkFaint, 0.5), { seed: 31 });
+  inkStroke(g, [P(22, Math.PI / 2), P(22, -Math.PI / 2)], 2, rgba(PAL.inkFaint, 0.5), { seed: 32 });
+  // a big sine drawn around the ring, like a wreath
+  const sp = []; for (let i = 0; i <= 720; i++) { const a = i / 720 * TAU; sp.push(P(RING + 0.9 * Math.sin(a * 8), a)); }
+  quickStroke(g, sp, 2.5, rgba(PAL.orange, 0.45));
+  const cp = []; for (let i = 0; i <= 720; i++) { const a = i / 720 * TAU; cp.push(P(RING + 0.9 * Math.cos(a * 8), a)); }
+  quickStroke(g, cp, 2.5, rgba(PAL.teal, 0.45));
+  const t = tex(c, { aniso: 8 });
+  const decal = mesh(new THREE.PlaneGeometry(RAD * 2, RAD * 2), inkMat({ map: t, flat: 1, hatch: 0, transparent: true, depthWrite: false }), scene, [CENTER.x, 0.02, CENTER.z], [-Math.PI / 2, 0, 0]);
+  decal.renderOrder = 1;
+}
+
+// paper-cut hills: three rings of silhouettes with ink edges ---------------------
+function hillRing(R, base, amp, color, seed, edge) {
+  const n = 160, pos = [], idx = [], top = [];
+  for (let i = 0; i <= n; i++) {
+    const a = i / n * TAU;
+    const hgt = base + amp * (0.55 * (noise1(a * 3.2, seed) * 0.5 + 0.5) + 0.35 * (noise1(a * 9.0, seed + 1) * 0.5 + 0.5) + 0.1 * noise1(a * 30, seed + 2));
+    const x = Math.sin(a) * R, z = Math.cos(a) * R;
+    pos.push(x, -2, z, x, hgt, z); top.push(V3(x, hgt, z));
+    if (i < n) { const k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((n + 1) * 4).fill(0), 2));
+  g.setIndex(idx);
+  const m = new THREE.Mesh(g, inkMat({ color, flat: 1, hatch: 0, side: THREE.DoubleSide }));
+  m.position.copy(CENTER); scene.add(m);
+  const l = new Line(n + 2, { width: edge, color: PAL.ink, minPx: 1.2, boil: 0.5, seed });
+  l.set(top); l.mesh.position.copy(CENTER); scene.add(l.mesh);
+}
+hillRing(150, 10, 26, '#6A5A86', 3, 0.35);
+hillRing(118, 4, 16, '#4F7C74', 7, 0.28);
+hillRing(90, 1, 9, '#86A077', 12, 0.22);
+
+// drawn trees & tufts: billboard atlas ------------------------------------------------
+const atlas = (() => {
+  const CW = 256, CH = 512, c = mkCanvas(CW * 4, CH), g = c.getContext('2d');
+  // 0: round tree
+  {
+    const ox = 0, R = mulberry(4);
+    inkStroke(g, [[ox + 128, 500], [ox + 126, 300]], 16, PAL.wood, { seed: 2, double: false });
+    inkStroke(g, [[ox + 120, 500], [ox + 119, 300]], 3, PAL.ink, { seed: 3 }); inkStroke(g, [[ox + 136, 500], [ox + 133, 300]], 3, PAL.ink, { seed: 4 });
+    const blobs = [[128, 200, 92], [80, 250, 58], [176, 250, 60], [128, 130, 62], [96, 170, 55], [165, 175, 55]];
+    g.fillStyle = PAL.sage; for (const [x, y, r] of blobs) { g.beginPath(); g.arc(ox + x, y, r, 0, TAU); g.fill(); }
+    g.save(); g.beginPath(); for (const [x, y, r] of blobs) { g.moveTo(ox + x + r, y); g.arc(ox + x, y, r, 0, TAU); } g.clip();
+    g.fillStyle = PAL.leaf; g.globalAlpha = 0.55; g.beginPath(); g.arc(ox + 175, 285, 120, 0, TAU); g.fill(); g.globalAlpha = 1;
+    hatchRegion(g, (gg) => { gg.arc(ox + 180, 300, 110, 0, TAU); }, 7, 1.6, PAL.ink, 0.35, -0.9, 5);
+    g.fillStyle = rgba(PAL.stripeSpring || '#E4EDD0', 0.5); for (let i = 0; i < 14; i++) { g.beginPath(); g.ellipse(ox + 70 + R() * 90, 100 + R() * 150, 10, 5, -0.6, 0, TAU); g.fill(); }
+    g.restore();
+    for (const [x, y, r] of blobs) { const pts = []; for (let i = 0; i <= 40; i++) { const a = i / 40 * TAU; pts.push([ox + x + Math.cos(a) * r, y + Math.sin(a) * r]); } }
+    // outline: trace the union boundary roughly by sampling angles from the centre
+    const pts = [];
+    for (let i = 0; i <= 120; i++) { const a = i / 120 * TAU; let best = 0; for (const [x, y, r] of blobs) { // ray-circle
+        const dx = x - 128, dy = y - 195, b = dx * Math.cos(a) + dy * Math.sin(a), cc = dx * dx + dy * dy - r * r, disc = b * b - cc; if (disc >= 0) best = Math.max(best, b + Math.sqrt(disc)); }
+      pts.push([ox + 128 + Math.cos(a) * best, 195 + Math.sin(a) * best]); }
+    inkStroke(g, pts, 4.5, PAL.ink, { seed: 7 });
+  }
+  // 1: cypress
+  {
+    const ox = CW, pts = [];
+    for (let i = 0; i <= 60; i++) { const t = i / 60, a = t * TAU; const y = 250 - 235 * Math.cos(a / 2) * 1; }
+    const shape = []; for (let i = 0; i <= 50; i++) { const t = i / 50; shape.push([ox + 128 + 62 * Math.sin(Math.PI * Math.pow(t, 0.8)) * (1 + 0.05 * noise1(i, 3)), 20 + t * 460]); }
+    const left = shape.map(([x, y]) => [2 * (ox + 128) - x, y]).reverse();
+    const all = shape.concat(left);
+    g.fillStyle = '#4E7358'; g.beginPath(); all.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.fill();
+    hatchRegion(g, (gg) => { all.forEach((p, i) => (i ? gg.lineTo(p[0], p[1]) : gg.moveTo(p[0], p[1]))); gg.closePath(); gg.rect(ox + 128, 0, 200, 512); }, 6, 1.5, PAL.ink, 0.35, -1.3, 8);
+    for (let i = 0; i < 22; i++) { const y = 60 + i * 19; inkStroke(g, [[ox + 110 + (i % 2) * 8, y], [ox + 128, y + 16], [ox + 146 - (i % 2) * 8, y]], 1.6, rgba(PAL.ink, 0.5), { seed: i, double: false }); }
+    inkStroke(g, all.concat([all[0]]), 4.5, PAL.ink, { seed: 9 });
+    inkStroke(g, [[ox + 128, 480], [ox + 128, 505]], 10, PAL.wood, { seed: 2, double: false });
+  }
+  // 2: pine
+  {
+    const ox = CW * 2;
+    inkStroke(g, [[ox + 128, 505], [ox + 128, 400]], 14, PAL.wood, { seed: 5, double: false });
+    for (let k = 0; k < 4; k++) {
+      const y0 = 60 + k * 95, w = 50 + k * 26, y1 = y0 + 150;
+      const tri = [[ox + 128, y0], [ox + 128 + w, y1], [ox + 128 - w, y1], [ox + 128, y0]];
+      g.fillStyle = k % 2 ? '#3F6E66' : '#4F7C74'; g.beginPath(); tri.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.fill();
+      hatchRegion(g, (gg) => { gg.moveTo(ox + 128, y0); gg.lineTo(ox + 128 + w, y1); gg.lineTo(ox + 128, y1); }, 6, 1.4, PAL.ink, 0.35, -0.6, 3 + k);
+      inkStroke(g, tri, 4, PAL.ink, { seed: 20 + k });
+    }
+  }
+  // 3: tuft of grass with flowers
+  {
+    const ox = CW * 3, R = mulberry(12);
+    for (let i = 0; i < 26; i++) { const x = ox + 60 + R() * 136, h = 60 + R() * 110, bend = (R() - 0.5) * 60; inkStroke(g, [[x, 505], [x + bend * 0.4, 505 - h * 0.6], [x + bend, 505 - h]], 3 + R() * 2, R() < 0.5 ? PAL.leaf : PAL.sage, { seed: i, double: false }); }
+    for (let i = 0; i < 5; i++) { const x = ox + 80 + R() * 100, y = 360 + R() * 70; inkStroke(g, [[x, 505], [x, y]], 2, PAL.inkSoft, { seed: 50 + i, double: false });
+      g.fillStyle = [PAL.rose, PAL.sun, PAL.white, PAL.duskRose][i % 4]; for (let p = 0; p < 5; p++) { const a = p / 5 * TAU; g.beginPath(); g.ellipse(x + Math.cos(a) * 9, y + Math.sin(a) * 9, 8, 5, a, 0, TAU); g.fill(); }
+      g.fillStyle = PAL.ochre; g.beginPath(); g.arc(x, y, 5, 0, TAU); g.fill(); inkCircle(g, x, y, 15, 1.8, PAL.ink, 60 + i); }
+  }
+  return tex(c);
+})();
+const BB_VS = /* glsl */`
+  uniform float uCell; varying vec2 vUv; varying vec3 vW;
+  void main(){
+    vec3 ip = (modelMatrix * instanceMatrix * vec4(0.0,0.0,0.0,1.0)).xyz;
+    float sc = length(instanceMatrix[0].xyz);
+    vec3 cd = cameraPosition - ip; cd.y = 0.0; cd = normalize(cd);
+    vec3 right = vec3(cd.z, 0.0, -cd.x);
+    vec3 w = ip + right * position.x * sc + vec3(0.0,1.0,0.0) * position.y * sc;
+    vW = w; vUv = vec2((uv.x + uCell) / 4.0, uv.y);
+    gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
+  }`;
+const BB_FS = /* glsl */`${GLSL_COMMON} uniform sampler2D uMap; varying vec2 vUv; varying vec3 vW;
+  void main(){ vec4 t = texture2D(uMap, vUv); if (t.a < 0.5) discard; vec3 c = t.rgb + (hash21(floor(gl_FragCoord.xy/uDpr)) - 0.5) * 0.04; gl_FragColor = vec4(mix(c, uFogColor, fogAmt(vW)), 1.0); }`;
+function billboards(cell, list, w, h) {
+  const geo = new THREE.PlaneGeometry(w, h); geo.translate(0, h / 2, 0);
+  const m = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({ uniforms: Object.assign({ uMap: { value: atlas }, uCell: { value: cell } }, SH), vertexShader: BB_VS, fragmentShader: BB_FS, side: THREE.DoubleSide }), list.length);
+  const M = new THREE.Matrix4();
+  list.forEach(([x, z, s], i) => { M.makeScale(s, s, s); M.setPosition(x, 0, z); m.setMatrixAt(i, M); });
+  m.frustumCulled = false; m.raycast = () => {};
+  scene.add(m); return m;
+}
+const STATION_ANG = [-50, -130, 130, 50].map((d) => d / 180 * Math.PI);
+function freeSpot(x, z, pad) {
+  const dc = Math.hypot(x - CENTER.x, z - CENTER.z);
+  if (dc < 7) return false;
+  for (const a of STATION_ANG) { const sx = CENTER.x + Math.sin(a) * RING, sz = CENTER.z + Math.cos(a) * RING; const dx = x - sx, dz = z - sz; if (dx * dx + dz * dz < pad * pad) return false; }
+  if (Math.abs(x) < 1.6 && z > -6 && z < 12) return false;
+  return true;
+}
+{
+  const R = mulberry(77), lists = [[], [], [], []];
+  for (let i = 0; i < 120; i++) {
+    const a = R() * TAU, r = 30 + Math.pow(R(), 0.8) * 42, x = CENTER.x + Math.sin(a) * r, z = CENTER.z + Math.cos(a) * r;
+    if (!freeSpot(x, z, 12)) continue;
+    const k = R() < 0.4 ? 0 : R() < 0.55 ? 1 : 2; lists[k].push([x, z, 0.9 + R() * 0.8]);
+  }
+  for (let i = 0; i < 420; i++) {
+    const a = R() * TAU, r = 4 + R() * 34, x = CENTER.x + Math.sin(a) * r, z = CENTER.z + Math.cos(a) * r;
+    if (!freeSpot(x, z, 8.5)) continue;
+    if (Math.abs(Math.hypot(x - CENTER.x, z - CENTER.z) - RING) < 2.2) continue;
+    lists[3].push([x, z, 0.7 + R() * 0.6]);
+  }
+  billboards(0, lists[0], 4.2, 8.4); billboards(1, lists[1], 2.6, 5.2); billboards(2, lists[2], 3.6, 7.2); billboards(3, lists[3], 0.9, 1.8);
+}
+
+// clouds: paper cut-outs far away -----------------------------------------------------
+{
+  const c = mkCanvas(512, 256), g = c.getContext('2d');
+  const blobs = [[150, 170, 70], [230, 140, 90], [330, 160, 75], [400, 185, 50], [90, 195, 42]];
+  const path = (gg) => { for (const [x, y, r] of blobs) { gg.moveTo(x + r, y); gg.arc(x, y, r, 0, TAU); } gg.rect(60, 180, 380, 50); };
+  g.fillStyle = PAL.stripeCream; g.beginPath(); path(g); g.fill();
+  g.save(); g.beginPath(); path(g); g.clip(); g.fillStyle = rgba(PAL.duskRose, 0.9); g.fillRect(0, 175, 512, 100);
+  hatchRegion(g, (gg) => gg.rect(0, 190, 512, 60), 7, 1.5, PAL.dusk, 0.45, -0.3, 2); g.restore();
+  const pts = []; for (let i = 0; i <= 160; i++) { const a = Math.PI + i / 160 * Math.PI; let best = 0; for (const [x, y, r] of blobs) { const dx = x - 250, dy = y - 230, b = dx * Math.cos(a) + dy * Math.sin(a), cc = dx * dx + dy * dy - r * r, disc = b * b - cc; if (disc >= 0) best = Math.max(best, b + Math.sqrt(disc)); } pts.push([250 + Math.cos(a) * best, 230 + Math.sin(a) * best]); }
+  pts.push([60, 230]); pts.unshift([440, 230]);
+  inkStroke(g, pts, 3.5, PAL.dusk, { seed: 4 });
+  const t = tex(c), R = mulberry(5);
+  for (let i = 0; i < 9; i++) {
+    const a = -1.9 + i / 8 * 3.8 + (R() - 0.5) * 0.3, r = 180 + R() * 40;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false }));
+    s.position.set(Math.sin(a) * r + CENTER.x, 30 + R() * 45, -Math.cos(a) * r + CENTER.z);
+    const k = 36 + R() * 30; s.scale.set(k, k / 2, 1); s.renderOrder = -5;
+    scene.add(s);
+  }
+  // a few behind the player too
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI + (i - 1.5) * 0.7, r = 200;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false, opacity: 0.85 }));
+    s.position.set(Math.sin(a) * r, 50 + i * 9, -Math.cos(a) * r + CENTER.z); s.scale.set(50, 25, 1); s.renderOrder = -5; scene.add(s);
+  }
+}
+
+// lanterns: paper globes on posts, warm glow ----------------------------------------------
+const haloTex = radialSprite('rgba(255,214,140,0.95)', 'rgba(255,190,120,0)');
+const lanternMat = inkMat({ color: '#FFD98A', emit: 0.9, flat: 1, hatch: 0 });
+const postMat = inkMat({ color: PAL.inkSoft });
+function lantern(x, z, h = 2.6, parent = scene) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); parent.add(g);
+  mesh(new THREE.CylinderGeometry(0.045, 0.06, h, 8), postMat, g, [0, h / 2, 0], null, 0.012);
+  mesh(new THREE.BoxGeometry(0.5, 0.04, 0.04), postMat, g, [0.2, h - 0.02, 0]);
+  const L = mesh(new THREE.SphereGeometry(0.15, 16, 12), lanternMat, g, [0.42, h - 0.3, 0], null, 0.012); L.scale.y = 1.3;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 }));
+  s.position.set(0.42, h - 0.3, 0); s.scale.set(2.2, 2.2, 1); g.add(s);
+  return g;
+}
+for (const d of [90, 180, 270]) { const a = d / 180 * Math.PI; lantern(CENTER.x + Math.sin(a) * (RING + 2.6), CENTER.z + Math.cos(a) * (RING + 2.6)); }
+lantern(-3.2, 4); lantern(3.2, 4);
+
+// drifting motes ---------------------------------------------------------------------------
+{
+  const n = 420, p = new Float32Array(n * 3), s = new Float32Array(n), R = mulberry(3);
+  for (let i = 0; i < n; i++) { const a = R() * TAU, r = Math.sqrt(R()) * 30; p[i * 3] = CENTER.x + Math.sin(a) * r; p[i * 3 + 1] = 0.3 + R() * 6; p[i * 3 + 2] = CENTER.z + Math.cos(a) * r; s[i] = R(); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('seed', new THREE.BufferAttribute(s, 1));
+  const m = new THREE.Points(g, new THREE.ShaderMaterial({
+    uniforms: Object.assign({}, SH),
+    vertexShader: `${GLSL_COMMON} attribute float seed; varying float vA;
+      void main(){ vec3 q = position; float t = uTime * (0.15 + seed * 0.2) + seed * 50.0;
+        q += vec3(sin(t) * 0.8, sin(t * 0.7 + seed * 9.0) * 0.5, cos(t * 0.8) * 0.8);
+        vec4 mv = viewMatrix * modelMatrix * vec4(q, 1.0); gl_Position = projectionMatrix * mv;
+        gl_PointSize = (2.0 + seed * 3.0) * uDpr * (8.0 / max(1.0, -mv.z));
+        vA = (0.4 + 0.6 * sin(uTime * (1.0 + seed) + seed * 20.0)) * (1.0 - fogAmt((modelMatrix * vec4(q,1.0)).xyz)); }`,
+    fragmentShader: `varying float vA; void main(){ float d = length(gl_PointCoord - 0.5); float a = (1.0 - smoothstep(0.1, 0.5, d)) * vA; gl_FragColor = vec4(1.0, 0.86, 0.55, a); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  m.frustumCulled = false; scene.add(m);
+}
+
+// armillary sphere at the plaza centre ----------------------------------------------------------
+const armillary = new THREE.Group();
+{
+  const g = new THREE.Group(); g.position.copy(CENTER); scene.add(g);
+  const stone = inkMat({ color: PAL.paperShade });
+  mesh(new THREE.CylinderGeometry(1.5, 1.7, 0.3, 40), stone, g, [0, 0.15, 0], null, 0.02);
+  mesh(new THREE.CylinderGeometry(0.55, 0.75, 1.1, 24), stone, g, [0, 0.85, 0], null, 0.02);
+  mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 8), postMat, g, [0, 1.9, 0]);
+  armillary.position.set(0, 3.2, 0); g.add(armillary);
+  const gold = inkMat({ color: PAL.ochre });
+  const ringGeo = new THREE.TorusGeometry(1.6, 0.05, 8, 96);
+  const r1 = mesh(ringGeo, gold, armillary, [0, 0, 0], null, 0.016);
+  const r2 = mesh(ringGeo, gold, armillary, [0, 0, 0], [0, Math.PI / 2, 0], 0.016);
+  const r3 = mesh(ringGeo, inkMat({ color: PAL.orange }), armillary, [0, 0, 0], [Math.PI / 2, 0, 0], 0.016);
+  const r4 = mesh(new THREE.TorusGeometry(1.6, 0.035, 8, 96), inkMat({ color: PAL.teal }), armillary, [0, 0, 0], [Math.PI / 2 - 0.41, 0, 0], 0.014);
+  // tick marks on the equator
+  const ticks = []; for (let i = 0; i < 36; i++) { const a = i / 36 * TAU, r0 = 1.6, r1_ = i % 3 === 0 ? 1.85 : 1.74; ticks.push([V3(Math.cos(a) * r0, 0, Math.sin(a) * r0), V3(Math.cos(a) * r1_, 0, Math.sin(a) * r1_)]); }
+  new Line(80, { strips: ticks, width: 0.03, parent: armillary });
+  const core = mesh(new THREE.SphereGeometry(0.28, 20, 14), inkMat({ color: PAL.sun, emit: 0.7, flat: 0.4 }), armillary, [0, 0, 0], null, 0.012);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 }));
+  halo.scale.set(3, 3, 1); armillary.add(halo);
+  const orb = mesh(new THREE.SphereGeometry(0.1, 12, 10), inkMat({ color: '#FFF3DC', emit: 1 }), armillary, [1.6, 0, 0]);
+  const orbHalo = new THREE.Sprite(halo.material); orbHalo.scale.set(1, 1, 1); orb.add(orbHalo);
+  armillary.userData = { orb, r4 };
+}
+
+// entrance gate with a painted banner ---------------------------------------------------------
+{
+  const g = new THREE.Group(); g.position.set(0, 0, 2.2); scene.add(g);
+  const woodG = inkMat({ color: PAL.wood, border: 1.1 });
+  for (const x of [-2.7, 2.7]) {
+    mesh(new THREE.BoxGeometry(0.2, 3.9, 0.2), woodG, g, [x, 1.95, 0], null, 0.014);
+    mesh(new THREE.SphereGeometry(0.17, 12, 10), inkMat({ color: PAL.ochre }), g, [x, 4.0, 0], null, 0.012);
+  }
+  const W = 1400, H = 300, c = paperCanvas(W, H, (gg, w, h) => stripes(gg, w, h, PAL.stripeCream, PAL.stripeYellow, 46, -0.52, 2), { seed: 61, vignette: 0.4 });
+  const gg = c.getContext('2d');
+  inkRect(gg, 18, 18, W - 36, H - 36, 5, PAL.ink, 5);
+  gg.fillStyle = PAL.ink; gg.textAlign = 'center'; gg.font = `700 118px ${SERIF}`; gg.fillText('Сад интеграла', W / 2, 168);
+  gg.font = `italic 44px ${SERIF}`; gg.fillStyle = PAL.inkSoft; gg.fillText('синус · косинус · площадь · накопление', W / 2, 240);
+  const sp = []; for (let i = 0; i <= 100; i++) sp.push([90 + i * 1.4, 150 - 40 * Math.sin(i / 100 * TAU)]); inkStroke(gg, sp, 5, PAL.orange, { seed: 3 });
+  const cp = []; for (let i = 0; i <= 100; i++) cp.push([W - 230 + i * 1.4, 150 - 40 * Math.cos(i / 100 * TAU)]); inkStroke(gg, cp, 5, PAL.teal, { seed: 4 });
+  const banner = mesh(new THREE.PlaneGeometry(5.0, 5.0 * H / W), inkMat({ map: tex(c, { aniso: 8 }), flat: 0.85, hatch: 0, side: THREE.DoubleSide }), g, [0, 3.35, 0.12]);
+  mesh(new THREE.BoxGeometry(5.8, 0.14, 0.14), woodG, g, [0, 4.0, 0], null, 0.012);
+  new Line(4, { strips: [[V3(-2.3, 4.0, 0.1), V3(-2.3, 3.35 + 2.5 * H / W, 0.12)], [V3(2.3, 4.0, 0.1), V3(2.3, 3.35 + 2.5 * H / W, 0.12)]], width: 0.02, parent: g });
+  // pennant bunting
+  const pts = []; for (let i = 0; i <= 20; i++) { const x = -2.7 + i * 0.27; pts.push(V3(x, 4.6 - 0.25 * Math.sin(i / 20 * Math.PI), 0)); }
+  new Line(24, { pts, width: 0.015, parent: g });
+  const fl = [PAL.orange, PAL.teal, PAL.sun, PAL.rose, PAL.annBlue];
+  for (let i = 1; i < 20; i += 2) { const p = pts[i]; const tri = new THREE.BufferGeometry().setFromPoints([V3(-0.11, 0, 0), V3(0.11, 0, 0), V3(0, -0.28, 0)]); tri.computeVertexNormals(); tri.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 0.5, 0], 2));
+    mesh(tri, inkMat({ color: fl[(i >> 1) % 5], flat: 1, hatch: 0, side: THREE.DoubleSide, border: 1 }), g, [p.x, p.y, 0]); }
+}
+
+// ---------------------------------------------------------------------------
+// SOUND: everything synthesised on Web Audio. Off until the user taps ♪.
+// ---------------------------------------------------------------------------
+const AUDIO = (() => {
+  let ctx = null, master, bus, tone, tone2, toneGain, waterGain, waterF, padGain, on = false, lastPluck = 0;
+  const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+  function impulse(sec = 2.8) {
+    const n = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(2, n, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < n; i++) { const t = i / n; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3.2) * (i < 200 ? i / 200 : 1); } }
+    return b;
+  }
+  function init() {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3;
+    master.connect(comp); comp.connect(ctx.destination);
+    bus = ctx.createGain(); bus.gain.value = 1; bus.connect(master);
+    const verb = ctx.createConvolver(); verb.buffer = impulse(); const wet = ctx.createGain(); wet.gain.value = 0.32;
+    bus.connect(verb); verb.connect(wet); wet.connect(master);
+    // breathing sine tone (station 1)
+    toneGain = ctx.createGain(); toneGain.gain.value = 0;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1600;
+    tone = ctx.createOscillator(); tone.type = 'sine'; tone.frequency.value = hz(62);
+    tone2 = ctx.createOscillator(); tone2.type = 'triangle'; tone2.frequency.value = hz(74);
+    const t2g = ctx.createGain(); t2g.gain.value = 0.18;
+    tone.connect(lp); tone2.connect(t2g); t2g.connect(lp); lp.connect(toneGain); toneGain.connect(bus);
+    tone.start(); tone2.start();
+    // quiet pad: an open fifth chord with a slow filter sweep
+    padGain = ctx.createGain(); padGain.gain.value = 0.0;
+    const pf = ctx.createBiquadFilter(); pf.type = 'lowpass'; pf.frequency.value = 700; pf.Q.value = 0.5;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.05; const lg = ctx.createGain(); lg.gain.value = 350; lfo.connect(lg); lg.connect(pf.frequency); lfo.start();
+    [45, 52, 57, 61, 64].forEach((m, i) => { for (const det of [-4, 4]) { const o = ctx.createOscillator(); o.type = i < 2 ? 'sine' : 'triangle'; o.frequency.value = hz(m); o.detune.value = det; const g = ctx.createGain(); g.gain.value = i < 2 ? 0.5 : 0.22; o.connect(g); g.connect(pf); o.start(); } });
+    pf.connect(padGain); padGain.connect(bus);
+    // water: looping noise through a moving bandpass
+    const nb = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate); const nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+    const ns = ctx.createBufferSource(); ns.buffer = nb; ns.loop = true;
+    waterF = ctx.createBiquadFilter(); waterF.type = 'bandpass'; waterF.frequency.value = 900; waterF.Q.value = 0.9;
+    const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 300;
+    waterGain = ctx.createGain(); waterGain.gain.value = 0;
+    ns.connect(hp); hp.connect(waterF); waterF.connect(waterGain); waterGain.connect(bus); ns.start();
+  }
+  function note(freq, t, dur, vol, type = 'sine', partials = [1]) {
+    partials.forEach((p, k) => {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq * p;
+      const g = ctx.createGain(); const v = vol / (k + 1) / (k ? 1.6 : 1);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur / (1 + k * 0.6));
+      o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05);
+    });
+  }
+  const PENTA = [0, 2, 4, 7, 9];
+  return {
+    get on() { return on; },
+    toggle() {
+      if (!ctx) init();
+      on = !on;
+      if (on) ctx.resume();
+      const t = ctx.currentTime;
+      master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(on ? 0.9 : 0, t + 0.6);
+      padGain.gain.setTargetAtTime(on ? 0.035 : 0, t, 1.2);
+      if (!on) setTimeout(() => { if (!on) ctx.suspend(); }, 800);
+      return on;
+    },
+    update(dt) {
+      if (!ctx || !on) return;
+      const t = ctx.currentTime;
+      tone.frequency.setTargetAtTime(hz(62) * Math.pow(2, SND.sin * 0.28), t, 0.03);
+      tone2.frequency.setTargetAtTime(hz(74) * Math.pow(2, SND.sin * 0.28), t, 0.03);
+      toneGain.gain.setTargetAtTime(0.012 + 0.11 * SND.prox[0], t, 0.15);
+      waterGain.gain.setTargetAtTime(0.16 * SND.prox[2] * Math.min(1, SND.rate * 1.3), t, 0.12);
+      waterF.frequency.setTargetAtTime(700 + 900 * SND.rate + 200 * Math.sin(t * 7), t, 0.05);
+    },
+    pluck(n) {
+      if (!ctx || !on) return;
+      const now = ctx.currentTime; if (now - lastPluck < 0.05) return; lastPluck = now;
+      const k = Math.round(Math.log(n / 4) / Math.log(100) * 12);
+      const m = 60 + PENTA[k % 5] + 12 * Math.floor(k / 5);
+      note(hz(m), now, 0.9, 0.09 * (0.3 + 0.7 * SND.prox[1]), 'triangle', [1, 2, 3]);
+    },
+    chime(kind) {
+      if (!ctx || !on) return;
+      const now = ctx.currentTime, v = 0.08 * (0.2 + 0.8 * SND.prox[3]);
+      if (kind === 'cold') note(hz(76), now, 2.2, v, 'sine', [1, 2.76, 5.4]);
+      else [57, 64, 69, 73].forEach((m, i) => note(hz(m), now + i * 0.09, 3.2, v * 0.8, 'sine', [1, 2, 3.01]));
+    },
+  };
+})();
+
+// ---------------------------------------------------------------------------
+// STATIONS
+// ---------------------------------------------------------------------------
+const stations = [];
+const woodMat = inkMat({ color: PAL.wood, border: 1.2 });
+const inkSolid = inkMat({ color: PAL.ink, flat: 1, hatch: 0 });
+const SND = { sin: 0, prox: [0, 0, 0, 0], rate: 0, speed: 1 };
+
+function makeStation(i, def) {
+  const a = STATION_ANG[i];
+  const P = V3(CENTER.x + Math.sin(a) * RING, 0, CENTER.z + Math.cos(a) * RING);
+  const yaw = Math.atan2(CENTER.x - P.x, CENTER.z - P.z);
+  const g = new THREE.Group(); g.position.copy(P); g.rotation.y = yaw; scene.add(g);
+  const st = Object.assign({ i, g, P, yaw, rects: [], dist: 99, reveal: 0 }, def);
+  st.build(st);
+  stations.push(st);
+  return st;
+}
+function platform(st, r, colA, colB, cz = 1.2) {
+  const c = paperCanvas(512, 512, (g, w, h) => stripes(g, w, h, colA, colB, 34, -0.52, st.i * 7 + 3), { seed: st.i + 20, vignette: 0.15 });
+  const m = mesh(new THREE.CircleGeometry(r, 64), inkMat({ map: tex(c), flat: 1, hatch: 0 }), st.g, [0, 0.03, cz], [-Math.PI / 2, 0, 0]);
+  m.renderOrder = 2;
+  const sh = mesh(new THREE.RingGeometry(r, r + 0.12, 64), inkMat({ color: PAL.paperDeep, flat: 1, hatch: 0 }), st.g, [0.06, 0.025, cz + 0.06], [-Math.PI / 2, 0, 0]);
+  sh.renderOrder = 2;
+  new Line(130, { pts: wobble(circlePts(0, 0.045, cz, r, 128, 'xz'), 0.02, st.i), width: 0.045, parent: st.g, seed: st.i });
+  new Line(130, { pts: wobble(circlePts(0, 0.045, cz, r - 0.28, 128, 'xz'), 0.02, st.i + 3), width: 0.018, color: PAL.inkSoft, parent: st.g, seed: st.i + 9 });
+}
+function sign(st, pos, rotY, lines) {
+  const W = 1024, H = 620;
+  const c = paperCanvas(W, H, PAL.paper, { seed: 40 + st.i, vignette: 0.35 });
+  const g = c.getContext('2d');
+  inkRect(g, 26, 26, W - 52, H - 52, 5, PAL.ink, st.i * 4);
+  rulerArc(g, W / 2, H * 2.35, H * 2.1, -Math.PI / 2 - 0.22, -Math.PI / 2 + 0.22, 40, PAL.annBlue, 2.5, 5);
+  // number badge
+  g.fillStyle = [PAL.sun, PAL.stripeYellow, PAL.waterLight, PAL.duskRose][st.i];
+  g.beginPath(); g.arc(110, 150, 52, 0, TAU); g.fill(); inkCircle(g, 110, 150, 52, 4.5, PAL.ink, st.i + 5);
+  g.fillStyle = PAL.ink; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `700 60px ${SERIF}`; g.fillText(String(st.i + 1), 110, 154);
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.font = `700 56px ${SERIF}`;
+  const tl = wrapText(g, lines.title, W - 250);
+  tl.forEach((l, k) => g.fillText(l, 190, 140 + k * 60));
+  let y = 140 + tl.length * 60 + 36;
+  g.font = `400 38px ${SANS}`; g.fillStyle = PAL.inkSoft;
+  for (const para of lines.body) { for (const l of wrapText(g, para, W - 150)) { g.fillText(l, 76, y); y += 48; } y += 8; }
+  g.font = `italic 30px ${SERIF}`; g.fillStyle = PAL.inkFaint; g.fillText(lines.formula, 76, H - 64);
+  const grp = new THREE.Group(); grp.position.set(...pos); grp.rotation.y = rotY; st.g.add(grp);
+  const board = mesh(new THREE.PlaneGeometry(2.1, 2.1 * H / W), inkMat({ map: tex(c, { aniso: 8 }), flat: 0.9, hatch: 0 }), grp, [0, 1.05, 0.035], [-0.42, 0, 0]);
+  mesh(new THREE.BoxGeometry(2.24, 2.24 * H / W, 0.06), woodMat, grp, [0, 1.05, 0], [-0.42, 0, 0], 0.012);
+  mesh(new THREE.BoxGeometry(0.09, 1.0, 0.09), woodMat, grp, [-0.7, 0.45, -0.18], null, 0.01);
+  mesh(new THREE.BoxGeometry(0.09, 1.0, 0.09), woodMat, grp, [0.7, 0.45, -0.18], null, 0.01);
+  const lp = V3(...pos); st.rects.push([lp.x - 1.2, lp.x + 1.2, lp.z - 0.6, lp.z + 0.6]);
+  return board;
+}
+function hitBox(st, w, h, d, pos) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ visible: false }));
+  m.position.set(...pos); m.userData.station = st.i; st.g.add(m); st.hit = m;
+}
+function faceTo(from, to) { return Math.atan2(to[0] - from[0], to[2] - from[2]); }
+
+// ===========================================================================
+// 1. SINE & COSINE — shadows of a running point
+// ===========================================================================
+makeStation(0, {
+  title: 'Синус и косинус — две тени одной точки',
+  text: 'Точка бежит по кольцу. Лампа сбоку бросает её тень на стену — это синус: насколько точка высоко. Лампа сверху бросает тень на пол — это косинус: насколько точка сдвинута вбок. Время уносит тени назад, и они рисуют волны.',
+  formula: 'высота = sin(угол) · сдвиг = cos(угол)',
+  view: { pos: [-6.2, 1.7, 5.4], look: [-0.9, 1.25, -3.2] },
+  short: 'Точка бежит по кольцу. Её тень на стене — синус (насколько высоко), тень на полу — косинус (насколько вбок). Время уносит тени назад — выходят волны.',
+  build(st) {
+    const G = st.g, O = V3(-1.9, 2.0, 0), r = 1.3, WX = 1.3, LAM = 4.6, ZF = -9.3, ZN = 0.9, WH = 3.7;
+    Object.assign(st, { O, r, WX, LAM, theta: 0.6, omega: 1.1 });
+    // wall: navy blueprint plate
+    {
+      const k = 200, cw = Math.round((ZN - ZF) * k), ch = Math.round(WH * k);
+      const pz = (z) => (z - ZF) * k, py = (y) => (WH - y) * k;
+      const c = paperCanvas(cw, ch, (g, w, h) => {
+        g.fillStyle = PAL.navy; g.fillRect(0, 0, w, h);
+        const gr = g.createRadialGradient(pz(0), py(O.y), 0, pz(0), py(O.y), w * 0.8); gr.addColorStop(0, 'rgba(40,52,110,0.55)'); gr.addColorStop(1, 'rgba(11,18,48,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+        for (let x = 0; x <= w; x += 50) { g.strokeStyle = rgba(PAL.grid, x % 200 === 0 ? 0.55 : 0.25); g.lineWidth = x % 200 === 0 ? 1.6 : 1; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+        for (let y = h; y >= 0; y -= 50) { g.strokeStyle = rgba(PAL.grid, (h - y) % 200 === 0 ? 0.55 : 0.25); g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+        for (const R of [300, 520, 800]) { g.strokeStyle = rgba(PAL.lavender, 0.1); g.lineWidth = 1.5; g.beginPath(); g.arc(pz(0), py(O.y), R, 0, TAU); g.stroke(); }
+        quickStroke(g, [[0, py(O.y)], [w, py(O.y)]], 2.5, rgba(PAL.lavender, 0.7));
+        quickStroke(g, [[0, py(O.y + r)], [w, py(O.y + r)]], 1.5, rgba(PAL.lavender, 0.4), 1, [14, 10]);
+        quickStroke(g, [[0, py(O.y - r)], [w, py(O.y - r)]], 1.5, rgba(PAL.lavender, 0.4), 1, [14, 10]);
+        g.fillStyle = PAL.lineWhite; g.font = `600 44px ${SANS}`; g.textAlign = 'right';
+        g.fillText('СИНУС  —  насколько точка высоко', pz(0) - 30, py(O.y + r) - 34);
+        g.font = `italic 30px ${SERIF}`; g.fillStyle = rgba(PAL.lavender, 0.85); g.textAlign = 'left';
+        g.fillText('выше середины', pz(0) - 290, py(O.y + r * 0.5));
+        g.fillText('ниже середины', pz(0) - 290, py(O.y - r * 0.5) + 10);
+        // turn marks
+        g.textAlign = 'center';
+        const marks = [[0.25, '¼ круга'], [0.5, '½ круга'], [0.75, '¾'], [1, '1 круг'], [1.5, '1½'], [2, '2 круга']];
+        for (const [f, s] of marks) { const x = pz(-f * LAM); if (x < 10) continue; quickStroke(g, [[x, py(0.25)], [x, py(WH - 0.25)]], f % 1 === 0 ? 2 : 1.2, rgba(PAL.lavender, f % 1 === 0 ? 0.45 : 0.22), 1, [6, 8]); g.fillStyle = rgba(PAL.lineWhite, 0.85); g.font = `${f % 1 === 0 ? 600 : 400} 30px ${SANS}`; g.fillText(s, x, py(0.12)); }
+        // corner marks
+        for (const [x, y] of [[20, 20], [w - 20, 20], [20, h - 20], [w - 20, h - 20]]) { quickStroke(g, [[x - 12, y], [x + 12, y]], 2, PAL.lavender); quickStroke(g, [[x, y - 12], [x, y + 12]], 2, PAL.lavender); }
+      }, { seed: 5, grain: 0.8, mottle: 1.2, vignette: 0.2, warmDark: false });
+      const wall = mesh(new THREE.PlaneGeometry(ZN - ZF, WH), inkMat({ map: tex(c, { aniso: 8 }), flat: 1, hatch: 0 }), G, [WX, WH / 2, (ZN + ZF) / 2], [0, -Math.PI / 2, 0]);
+      mesh(new THREE.BoxGeometry(0.14, WH + 0.16, ZN - ZF + 0.16), woodMat, G, [WX + 0.08, WH / 2, (ZN + ZF) / 2], null, 0.014);
+    }
+    // floor: paper plate with graph lines
+    {
+      const X0 = -4.2, X1 = WX, k = 200, cw = Math.round((X1 - X0) * k), ch = Math.round((ZN - ZF) * k);
+      const px = (x) => (x - X0) * k, pzf = (z) => (z - ZF) * k;
+      const c = paperCanvas(cw, ch, (g, w, h) => {
+        stripes(g, w, h, PAL.stripeCream, PAL.stripeApricot, 70, -0.52, 8);
+        for (let x = 0; x <= w; x += 50) { g.strokeStyle = rgba(PAL.inkFaint, 0.16); g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+        for (let y = h; y >= 0; y -= 50) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+        inkStroke(g, [[px(O.x), 10], [px(O.x), h - 10]], 3, PAL.inkSoft, { seed: 3, step: 8 });
+        quickStroke(g, [[px(O.x - r), 0], [px(O.x - r), h]], 2, rgba(PAL.inkSoft, 0.5), 1, [14, 10]);
+        quickStroke(g, [[px(O.x + r), 0], [px(O.x + r), h]], 2, rgba(PAL.inkSoft, 0.5), 1, [14, 10]);
+        g.fillStyle = PAL.ink; g.textAlign = 'left';
+        const marks = [[0.25, '¼'], [0.5, '½ круга'], [0.75, '¾'], [1, '1 круг'], [1.5, '1½'], [2, '2 круга']];
+        for (const [f, s] of marks) { const y = pzf(-f * LAM); if (y < 20) continue; quickStroke(g, [[20, y], [w - 20, y]], f % 1 === 0 ? 2.5 : 1.2, rgba(PAL.inkSoft, f % 1 === 0 ? 0.5 : 0.25), 1, [8, 10]); g.font = `${f % 1 === 0 ? 700 : 400} 34px ${SANS}`; g.fillStyle = PAL.inkSoft; g.fillText(s, px(O.x + r) + 30, y - 12); }
+        g.save(); g.translate(px(O.x - r) - 28, pzf(-0.6 * LAM)); g.rotate(-Math.PI / 2); g.textAlign = 'center';
+        g.font = `700 46px ${SANS}`; g.fillStyle = PAL.teal; g.fillText('КОСИНУС — насколько точка вбок', 0, 0); g.restore();
+        g.font = `italic 30px ${SERIF}`; g.fillStyle = PAL.inkSoft; g.textAlign = 'center';
+        g.fillText('← влево', px(O.x - r * 0.5), pzf(0.55)); g.fillText('вправо →', px(O.x + r * 0.5), pzf(0.55));
+      }, { seed: 6, vignette: 0.25 });
+      mesh(new THREE.PlaneGeometry(X1 - X0, ZN - ZF), inkMat({ map: tex(c, { aniso: 8 }), flat: 1, hatch: 0 }), G, [(X0 + X1) / 2, 0.121, (ZN + ZF) / 2], [-Math.PI / 2, 0, 0]);
+      mesh(new THREE.BoxGeometry(X1 - X0 + 0.12, 0.12, ZN - ZF + 0.12), woodMat, G, [(X0 + X1) / 2, 0.06, (ZN + ZF) / 2]);
+    }
+    // ring on a stand
+    const gold = inkMat({ color: PAL.ochre });
+    mesh(new THREE.TorusGeometry(r, 0.045, 10, 120), gold, G, [O.x, O.y, O.z], null, 0.016);
+    mesh(new THREE.CylinderGeometry(0.05, 0.07, O.y - r - 0.12, 8), postMat, G, [O.x, 0.12 + (O.y - r - 0.12) / 2, 0], null, 0.012);
+    mesh(new THREE.CylinderGeometry(0.35, 0.42, 0.1, 24), inkMat({ color: PAL.inkSoft }), G, [O.x, 0.17, 0], null, 0.012);
+    const tk = []; for (let i = 0; i < 24; i++) { const a = i / 24 * TAU, L = i % 6 === 0 ? 0.22 : 0.1; tk.push([V3(O.x + Math.cos(a) * (r + 0.05), O.y + Math.sin(a) * (r + 0.05), 0), V3(O.x + Math.cos(a) * (r + 0.05 + L), O.y + Math.sin(a) * (r + 0.05 + L), 0)]); }
+    new Line(60, { strips: tk, width: 0.022, parent: G });
+    new Line(60, { strips: [[V3(O.x - r, O.y, 0), V3(O.x + r, O.y, 0)], [V3(O.x, O.y - r, 0), V3(O.x, O.y + r, 0)]], width: 0.012, color: PAL.inkSoft, parent: G, opacity: 0.8 });
+    // gantry with two lamps
+    const LX = -4.5, TOPY = 4.7;
+    mesh(new THREE.BoxGeometry(0.14, TOPY, 0.14), woodMat, G, [LX, TOPY / 2, 0], null, 0.012);
+    mesh(new THREE.BoxGeometry(WX - LX + 0.2, 0.14, 0.14), woodMat, G, [(LX + WX) / 2, TOPY, 0], null, 0.012);
+    mesh(new THREE.BoxGeometry(0.1, TOPY - WH, 0.1), woodMat, G, [WX + 0.08, WH + (TOPY - WH) / 2, 0]);
+    const shade = new THREE.CylinderGeometry(0.08, 0.3, 0.32, 20, 1, true);
+    const shadeMat = inkMat({ color: PAL.red, side: THREE.DoubleSide });
+    const topLamp = mesh(shade, shadeMat, G, [O.x, TOPY - 0.45, 0], null, 0.012);
+    new Line(3, { pts: [V3(O.x, TOPY, 0), V3(O.x, TOPY - 0.3, 0)], width: 0.015, parent: G });
+    const sideLamp = mesh(shade, shadeMat, G, [LX + 0.3, O.y, 0], [0, 0, -Math.PI / 2], 0.012);
+    for (const p of [[O.x, TOPY - 0.6, 0], [LX + 0.45, O.y, 0]]) {
+      mesh(new THREE.SphereGeometry(0.1, 12, 10), lanternMat, G, p);
+      const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 })); s.position.set(...p); s.scale.set(1.6, 1.6, 1); G.add(s);
+    }
+    // running point
+    st.pt = mesh(new THREE.SphereGeometry(0.11, 16, 12), inkMat({ color: '#FFF3DC', emit: 1 }), G, [0, 0, 0], null, 0.014);
+    const ph = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); ph.scale.set(1.3, 1.3, 1); st.pt.add(ph);
+    st.wallDot = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); st.wallDot.scale.set(0.9, 0.9, 1); G.add(st.wallDot);
+    st.floorDot = mesh(new THREE.CircleGeometry(0.12, 20), inkMat({ color: PAL.teal, flat: 1, hatch: 0 }), G, [0, 0.13, 0], [-Math.PI / 2, 0, 0]);
+    // dynamic lines
+    const N = 180;
+    st.N = N;
+    st.arm = new Line(2, { width: 0.03, parent: G });
+    st.rayW = new Line(2, { width: 0.02, color: PAL.sun, dash: 0.12, parent: G, pressure: 0 });
+    st.rayF = new Line(2, { width: 0.02, color: PAL.teal, dash: 0.12, parent: G, pressure: 0 });
+    st.sinGlow = new Line(N, { width: 0.22, color: '#F6B04A', glow: true, parent: G, boil: 0, order: 5 });
+    st.sinCore = new Line(N, { width: 0.05, color: '#FFE7B0', parent: G, boil: 0.6 });
+    st.cosCore = new Line(N, { width: 0.06, color: PAL.teal, parent: G });
+    st.cosInk = new Line(N, { width: 0.018, color: PAL.ink, parent: G, opacity: 0.9 });
+    st.helix = new Line(N, { width: 0.018, color: PAL.inkSoft, dash: 0.1, parent: G, opacity: 0.75 });
+    st.rungs = new Line(64, { width: 0.008, color: PAL.inkFaint, parent: G, opacity: 0.55, pressure: 0 });
+    // light curtains between the helix and its two shadows
+    const mkSheet = (c) => {
+      const geo = new THREE.BufferGeometry(); const pos = new Float32Array((N) * 2 * 3); geo.setAttribute('position', new THREE.BufferAttribute(pos, 3).setUsage(THREE.DynamicDrawUsage));
+      const idx = []; for (let i = 0; i < N - 1; i++) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); } geo.setIndex(idx);
+      const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col(c), transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+      m.frustumCulled = false; G.add(m); return m;
+    };
+    st.sheetW = mkSheet('#F6B04A'); st.sheetF = mkSheet('#57B3A6');
+    st.pts = { s: [], c: [], h: [] }; for (let i = 0; i < N; i++) { st.pts.s.push(V3()); st.pts.c.push(V3()); st.pts.h.push(V3()); }
+    // labels floating near the shadows
+    sign(st, [-9.6, 0, -1.2], faceTo([-9.6, 0, -1.2], [-6.2, 0, 5.4]), { title: 'Синус и косинус — тени бегущей точки', body: ['Лампа сбоку → тень на стене: синус, насколько точка высоко.', 'Лампа сверху → тень на полу: косинус, насколько вбок.'], formula: 'высота = sin(угол),  сдвиг вбок = cos(угол)' });
+    st.rects.push([WX - 0.1, WX + 0.3, ZF, ZN], [O.x - 0.5, O.x + 0.5, -0.5, 0.5], [LX - 0.3, LX + 0.3, -0.3, 0.3]);
+    hitBox(st, 7, 5, 11, [-1.5, 2.5, -4]);
+  },
+  update(st, dt) {
+    st.theta += st.omega * dt;
+    const { O, r, WX, LAM, N } = st, th = st.theta;
+    const P = V3(O.x + r * Math.cos(th), O.y + r * Math.sin(th), 0);
+    SND.sin = Math.sin(th);
+    st.pt.position.copy(P);
+    st.wallDot.position.set(WX - 0.04, P.y, 0);
+    st.floorDot.position.set(P.x, 0.13, 0);
+    st.arm.set([V3(O.x, O.y, 0), P]);
+    st.rayW.set([P, V3(WX - 0.02, P.y, 0)]); st.rayW.mat.uniforms.uDashShift.value = SH.uTime.value * 1.5;
+    st.rayF.set([P, V3(P.x, 0.13, 0)]); st.rayF.mat.uniforms.uDashShift.value = SH.uTime.value * 1.5;
+    if (st.dist > 45) return;
+    const PH = 9.2 / LAM * TAU;
+    const S = st.pts.s, C = st.pts.c, H = st.pts.h;
+    const pw = st.sheetW.geometry.attributes.position.array, pf = st.sheetF.geometry.attributes.position.array;
+    const rungs = [];
+    for (let i = 0; i < N; i++) {
+      const phi = i / (N - 1) * PH, a = th - phi, z = -phi / TAU * LAM;
+      const cx = O.x + r * Math.cos(a), sy = O.y + r * Math.sin(a);
+      S[i].set(WX - 0.03, sy, z); C[i].set(cx, 0.135, z); H[i].set(cx, sy, z);
+      pw.set([cx, sy, z, WX - 0.03, sy, z], i * 6);
+      pf.set([cx, sy, z, cx, 0.135, z], i * 6);
+      if (i % 9 === 4 && rungs.length < 30) { rungs.push([H[i].clone(), S[i].clone()]); rungs.push([H[i].clone(), C[i].clone()]); }
+    }
+    st.sheetW.geometry.attributes.position.needsUpdate = true; st.sheetF.geometry.attributes.position.needsUpdate = true;
+    st.sinGlow.set(S); st.sinCore.set(S); st.cosCore.set(C); st.cosInk.set(C.map((p) => V3(p.x, p.y + 0.003, p.z)));
+    st.helix.set(H); st.rungs.setStrips(rungs);
+  },
+  controls(box) {
+    const st = this;
+    box.innerHTML = `<label>скорость <input type="range" min="0" max="300" value="110"><b>1,1</b></label>`;
+    const inp = box.querySelector('input'), b = box.querySelector('b');
+    const sync = () => { st.omega = inp.value / 100; b.textContent = fmt(st.omega, 1); };
+    inp.addEventListener('input', sync);
+    st.setSpeed = (d) => { inp.value = clamp(+inp.value + d, 0, 300); sync(); };
+  },
+});
+
+// ===========================================================================
+// 2. AREA UNDER A HILL — Riemann bars melting into a smooth fill
+// ===========================================================================
+makeStation(1, {
+  title: 'Интеграл — это площадь под холмом',
+  text: 'Площадь кривого холма сразу не посчитать. Режем его на столбики: их площадь посчитать легко. Чем тоньше столбики, тем точнее — они сливаются в гладкий холм. Это и есть интеграл.',
+  formula: 'площадь = ∫ f(x) dx ≈ сумма столбиков',
+  view: { pos: [0, 1.75, 7.8], look: [0, 1.6, 0] },
+  short: 'Режем холм на столбики и складываем их площади. Чем тоньше столбики, тем точнее — в пределе это и есть интеграл.',
+  build(st) {
+    const G = st.g, X0 = -3.4, W = 6.8, Y0 = 0.37, MAX = 400;
+    const f = (u) => 0.28 + 2.3 * Math.exp(-(((u - 0.34) / 0.19) ** 2)) + 0.95 * Math.exp(-(((u - 0.78) / 0.1) ** 2));
+    let ex = 0; for (let i = 0; i < 4000; i++) ex += f((i + 0.5) / 4000); ex = ex / 4000 * W / 0.25;
+    Object.assign(st, { X0, W, Y0, f, exact: ex, n: 8, shown: 0, target: 0, hc: new Float32Array(MAX), ht: new Float32Array(MAX), MAX });
+    platform(st, 5.6, PAL.stripeCream, PAL.stripeYellow, 1.4);
+    mesh(new THREE.BoxGeometry(7.8, Y0, 1.8), woodMat, G, [0, Y0 / 2, 0], null, 0.014);
+    // backdrop with grid "cells"
+    {
+      const BW = 8.8, BH = 4.7, k = 200, cw = BW * k, ch = BH * k;
+      const px = (x) => (x + BW / 2) * k, py = (y) => (BH - y) * k;
+      const c = paperCanvas(cw, ch, (g, w, h) => {
+        stripes(g, w, h, PAL.stripeCream, PAL.stripeYellow, 90, -0.52, 3);
+        for (let x = X0; x <= X0 + W + 1e-6; x += 0.5) { g.strokeStyle = rgba(PAL.inkFaint, 0.35); g.lineWidth = 1.6; g.beginPath(); g.moveTo(px(x), py(Y0)); g.lineTo(px(x), py(4.2)); g.stroke(); }
+        for (let y = Y0; y <= 4.2; y += 0.5) { g.beginPath(); g.moveTo(px(X0), py(y)); g.lineTo(px(X0 + W), py(y)); g.stroke(); }
+        // one highlighted cell: the unit
+        g.fillStyle = rgba(PAL.annBlue, 0.25); g.fillRect(px(X0 + W - 0.5), py(Y0 + 3.5), 0.5 * k, 0.5 * k);
+        inkRect(g, px(X0 + W - 0.5), py(Y0 + 3.5), 0.5 * k, 0.5 * k, 3, PAL.annBlue, 9);
+        g.fillStyle = PAL.annBlue; g.font = `600 34px ${SANS}`; g.textAlign = 'right'; g.fillText('1 клетка', px(X0 + W - 0.6), py(Y0 + 3.2));
+        rulerArc(g, px(0), py(-8), 12.4 * k, -Math.PI / 2 - 0.36, -Math.PI / 2 + 0.36, 60, rgba(PAL.annBlue, 0.8), 3, 5);
+        inkRect(g, 30, 30, w - 60, h - 60, 5, PAL.ink, 17);
+      }, { seed: 12, vignette: 0.3 });
+      mesh(new THREE.PlaneGeometry(BW, BH), inkMat({ map: tex(c, { aniso: 8 }), flat: 0.9, hatch: 0 }), G, [0, BH / 2, -1.05]);
+      mesh(new THREE.BoxGeometry(BW + 0.16, BH + 0.16, 0.1), woodMat, G, [0, BH / 2, -1.13], null, 0.014);
+    }
+    // exact area ghost (hatched), sitting right behind the bars
+    {
+      const sh = new THREE.Shape(); sh.moveTo(X0, Y0);
+      for (let i = 0; i <= 200; i++) { const u = i / 200; sh.lineTo(X0 + u * W, Y0 + f(u)); }
+      sh.lineTo(X0 + W, Y0); sh.closePath();
+      const c = mkCanvas(256, 256), g = c.getContext('2d'); g.fillStyle = PAL.stripeApricot; g.fillRect(0, 0, 256, 256);
+      g.strokeStyle = rgba(PAL.orange, 0.8); g.lineWidth = 5; for (let s = -256; s < 512; s += 32) { g.beginPath(); g.moveTo(s, 256); g.lineTo(s + 256, 0); g.stroke(); }
+      const t = tex(c, { repeat: true });
+      mesh(new THREE.ShapeGeometry(sh), inkMat({ map: t, repeat: [3, 3], flat: 1, hatch: 0 }), G, [0, 0, -0.38]);
+    }
+    const curve = []; for (let i = 0; i <= 160; i++) { const u = i / 160; curve.push(V3(X0 + u * W, Y0 + f(u), 0.4)); }
+    st.curve = new Line(170, { pts: curve, width: 0.065, parent: G, seed: 4 });
+    new Line(170, { pts: curve.map((p) => V3(p.x, p.y, -0.4)), width: 0.03, parent: G, seed: 5, color: PAL.inkSoft });
+    new Line(4, { pts: [V3(X0 - 0.2, Y0 + 0.005, 0.42), V3(X0 + W + 0.2, Y0 + 0.005, 0.42)], width: 0.04, parent: G });
+    // bars
+    const bg = new THREE.BoxGeometry(1, 1, 1); bg.translate(0, 0.5, 0);
+    st.barMat = inkMat({ color: '#ffffff', border: 1.2 });
+    st.bars = new THREE.InstancedMesh(bg, st.barMat, MAX);
+    st.bars.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    st.bars.frustumCulled = false; st.bars.raycast = () => {};
+    const cA = col('#F2B544'), cB = col('#E58A33');
+    for (let i = 0; i < MAX; i++) st.bars.setColorAt(i, cA);
+    G.add(st.bars);
+    st.cA = cA; st.cB = cB; st.cM = col('#EDA23C');
+    // counter card
+    st.cc = mkCanvas(640, 380); st.ccBase = paperCanvas(640, 380, PAL.paper, { seed: 77, vignette: 0.3 });
+    { const g = st.ccBase.getContext('2d'); inkRect(g, 18, 18, 604, 344, 4.5, PAL.ink, 21); }
+    st.ccTex = tex(st.cc, { nomip: true });
+    mesh(new THREE.PlaneGeometry(2.3, 2.3 * 380 / 640), inkMat({ map: st.ccTex, flat: 1, hatch: 0 }), G, [2.3, 3.55, -0.98], [0, 0, 0.03]);
+    st.setN = (n) => {
+      n = clamp(Math.round(n), 4, 400);
+      const old = st.n, oldHt = st.ht.slice(0, old);
+      st.n = n; const w = W / n;
+      let sum = 0;
+      for (let i = 0; i < n; i++) {
+        const u = i / n; st.ht[i] = f(u); sum += st.ht[i] * w;
+        const xc = (i + 0.5) / n, oi = Math.min(old - 1, Math.floor(xc * old));
+        st.hc[i] = st.shown > 0 ? oldHt[oi] ?? 0 : 0;
+      }
+      st.target = sum / 0.25;
+      st.barMat.uniforms.uBorder.value = n <= 50 ? 1.3 : n <= 120 ? 0.7 : 0;
+      for (let i = 0; i < n; i++) st.bars.setColorAt(i, n > 90 ? st.cM : i % 2 ? st.cB : st.cA);
+      st.bars.instanceColor.needsUpdate = true;
+      st.bars.count = n;
+      st.dirty = true;
+      if (old !== n) AUDIO.pluck(n);
+    };
+    st.bars.count = 0;
+    st.n = 8; st.setN(8);
+    st.disp = 0;
+    sign(st, [-4.9, 0, 2.1], faceTo([-4.9, 0, 2.1], [0, 0, 7.8]), { title: 'Площадь под холмом', body: ['Режем холм на столбики и складываем их площади.', 'Чем тоньше столбики, тем точнее. В пределе — интеграл.'], formula: 'площадь = ∫ f(x) dx  ≈  Σ высота × ширина' });
+    st.rects.push([-4.5, 4.5, -1.25, 1.0]);
+    hitBox(st, 9, 5, 3, [0, 2.4, 0]);
+  },
+  update(st, dt) {
+    const grow = st.reveal;
+    if (st.dist > 45) return;
+    const n = st.n, w = st.W / n, M = new THREE.Matrix4();
+    let moving = false;
+    for (let i = 0; i < n; i++) {
+      const delay = i / n * 0.6;
+      const tgt = st.ht[i] * smooth(delay, delay + 0.4, grow);
+      const d = tgt - st.hc[i];
+      if (Math.abs(d) > 1e-4) { st.hc[i] += d * (1 - Math.exp(-dt * 9)); moving = true; }
+      M.makeScale(w * (n > 150 ? 1.0 : 0.985), Math.max(0.001, st.hc[i]), 0.74);
+      M.setPosition(st.X0 + (i + 0.5) * w, st.Y0, 0);
+      st.bars.setMatrixAt(i, M);
+    }
+    st.shown = grow;
+    if (moving || st.dirty) st.bars.instanceMatrix.needsUpdate = true;
+    st.dirty = false;
+    // counter
+    let cur = 0; for (let i = 0; i < n; i++) cur += st.hc[i] * w; cur /= 0.25;
+    if (Math.abs(cur - st.disp) > 0.005 || st.ccDirty !== n) {
+      st.disp = cur; st.ccDirty = n;
+      const g = st.cc.getContext('2d'); g.drawImage(st.ccBase, 0, 0);
+      g.fillStyle = PAL.inkSoft; g.font = `700 30px ${SANS}`; g.textAlign = 'left'; g.fillText('ПЛОЩАДЬ СТОЛБИКОВ', 52, 78);
+      g.fillStyle = PAL.ink; g.font = `700 150px ${SERIF}`; g.fillText(fmt(cur, 1), 46, 222);
+      const tw = g.measureText(fmt(cur, 1)).width;
+      g.font = `italic 34px ${SERIF}`; g.fillStyle = PAL.inkSoft; g.fillText('клеток', 60 + tw, 222);
+      g.font = `600 28px ${SANS}`; g.fillStyle = PAL.inkSoft; g.fillText(`столбиков: ${n}`, 52, 290);
+      g.fillStyle = PAL.orange; g.fillText(`гладкий холм: ${fmt(st.exact, 1)}`, 52, 330);
+      const err = Math.abs(cur - st.exact) / st.exact * 100;
+      g.textAlign = 'right'; g.fillStyle = err < 1 ? PAL.teal : PAL.red; g.fillText(`промах ${fmt(err, err < 1 ? 1 : 0)}%`, 590, 330);
+      st.ccTex.needsUpdate = true;
+    }
+  },
+  controls(box) {
+    const st = this;
+    box.innerHTML = `<label>столбиков <input type="range" min="0" max="1000" value="${Math.round(Math.log(st.n / 4) / Math.log(100) * 1000)}"><b>${st.n}</b></label>
+      <button class="btn" data-n="4">4</button><button class="btn" data-n="12">12</button><button class="btn" data-n="40">40</button><button class="btn" data-n="400">400</button>`;
+    const inp = box.querySelector('input'), b = box.querySelector('b');
+    const setFromSlider = () => { const n = Math.round(4 * Math.pow(100, inp.value / 1000)); st.setN(n); b.textContent = st.n; };
+    inp.addEventListener('input', setFromSlider);
+    box.querySelectorAll('button').forEach((bt) => bt.addEventListener('click', () => { const n = +bt.dataset.n; inp.value = Math.round(Math.log(n / 4) / Math.log(100) * 1000); st.setN(n); b.textContent = st.n; }));
+  },
+});
+
+// ===========================================================================
+// 3. ACCUMULATION — a tap fills a tank; the area so far is the water
+// ===========================================================================
+const PROFILES = {
+  'ровно': (u) => 1,
+  'волной': (u) => 1 + 0.85 * Math.sin(u * TAU * 2 - 0.6),
+  'ливень': (u) => 0.12 + 3.2 * Math.exp(-(((u - 0.28) / 0.07) ** 2)) + 1.6 * Math.exp(-(((u - 0.7) / 0.05) ** 2)),
+};
+makeStation(2, {
+  title: 'Интеграл — это сколько накопилось',
+  text: 'Кран льёт то сильнее, то слабее — это левый график. Закрашенная под ним площадь ровно равна воде в баке — это правый график. Интеграл отвечает на вопрос «сколько уже набралось».',
+  formula: 'в баке = ∫ напор dt',
+  view: { pos: [0, 1.75, 8.3], look: [0, 1.65, -0.3] },
+  short: 'Слева — как сильно льёт кран. Закрашенная площадь под линией — ровно вода в баке. Интеграл — это сколько накопилось.',
+  build(st) {
+    const G = st.g, TZ = -0.3, R = 0.85, TH = 2.5, TY = 0.32, FILL = 0.92, T = 12;
+    Object.assign(st, { TZ, R, TH, TY, FILL, T, t: 0, phase: 'fill', hold: 0, level: 0, prof: 'волной', tspeed: 1 });
+    platform(st, 5.8, PAL.stripeCream, PAL.stripeSky, 1.3);
+    mesh(new THREE.BoxGeometry(2.3, TY, 2.3), woodMat, G, [0, TY / 2, TZ], null, 0.014);
+    // water
+    const wg = new THREE.CylinderGeometry(R - 0.04, R - 0.04, 1, 48, 1, false); wg.translate(0, 0.5, 0);
+    st.water = mesh(wg, inkMat({ color: PAL.water, hatch: 0.6 }), G, [0, TY + 0.01, TZ]);
+    st.surface = mesh(new THREE.CircleGeometry(R - 0.04, 48), inkMat({ color: PAL.waterLight, flat: 1, hatch: 0 }), G, [0, TY, TZ], [-Math.PI / 2, 0, 0]);
+    st.ripples = [0, 1, 2].map((k) => { const m = mesh(new THREE.RingGeometry(0.9, 1, 40), new THREE.MeshBasicMaterial({ color: col('#EAF6F2'), transparent: true, opacity: 0.6, depthWrite: false }), G, [0, 0, TZ], [-Math.PI / 2, 0, 0]); m.userData.k = k; return m; });
+    // glass
+    const glass = mesh(new THREE.CylinderGeometry(R, R, TH, 48, 1, true), new THREE.MeshBasicMaterial({ color: col('#E4F2F0'), transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide }), G, [0, TY + TH / 2, TZ]);
+    glass.renderOrder = 6;
+    new Line(100, { pts: wobble(circlePts(0, TY + TH, TZ, R, 96, 'xz'), 0.008, 3), width: 0.035, parent: G });
+    new Line(100, { pts: wobble(circlePts(0, TY + 0.02, TZ, R, 96, 'xz'), 0.008, 4), width: 0.035, parent: G });
+    const ticks = []; for (let i = 1; i <= 10; i++) { const y = TY + TH * FILL * i / 10; const a0 = Math.PI / 2 - (i % 5 === 0 ? 0.28 : 0.14), a1 = Math.PI / 2 + (i % 5 === 0 ? 0.28 : 0.14); const p = []; for (let j = 0; j <= 6; j++) { const a = a0 + (a1 - a0) * j / 6; p.push(V3(Math.cos(a) * (R + 0.01), y, TZ + Math.sin(a) * (R + 0.01))); } ticks.push(p); }
+    new Line(80, { strips: ticks, width: 0.018, parent: G, color: PAL.inkSoft });
+    st.sil = new Line(4, { width: 0.03, parent: G });
+    // pipe, elbow, spout and valve
+    const copper = inkMat({ color: PAL.ochre });
+    const PX = -1.7, PY = 3.75;
+    mesh(new THREE.CylinderGeometry(0.085, 0.085, PY, 12), copper, G, [PX, PY / 2, TZ], null, 0.014);
+    mesh(new THREE.SphereGeometry(0.12, 14, 10), copper, G, [PX, PY, TZ], null, 0.014);
+    mesh(new THREE.CylinderGeometry(0.085, 0.085, -PX, 12), copper, G, [PX / 2, PY, TZ], [0, 0, Math.PI / 2], 0.014);
+    mesh(new THREE.SphereGeometry(0.12, 14, 10), copper, G, [0, PY, TZ], null, 0.014);
+    mesh(new THREE.CylinderGeometry(0.1, 0.075, 0.3, 12), copper, G, [0, PY - 0.2, TZ], null, 0.014);
+    st.spoutY = PY - 0.35;
+    st.valve = new THREE.Group(); st.valve.position.set(PX, 2.35, TZ + 0.14); G.add(st.valve);
+    const red = inkMat({ color: PAL.red });
+    mesh(new THREE.TorusGeometry(0.28, 0.035, 8, 32), red, st.valve, null, null, 0.012);
+    for (let k = 0; k < 3; k++) mesh(new THREE.BoxGeometry(0.56, 0.04, 0.04), red, st.valve, null, [0, 0, k * Math.PI / 3]);
+    // stream
+    const sg = new THREE.CylinderGeometry(1, 1, 1, 14, 1, true); sg.translate(0, -0.5, 0);
+    st.stream = new THREE.Mesh(sg, new THREE.ShaderMaterial({
+      uniforms: Object.assign({ uA: { value: col(PAL.water) }, uB: { value: col('#DDF1EC') } }, SH),
+      vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv = uv; vW = (modelMatrix*vec4(position,1.0)).xyz; gl_Position = projectionMatrix*viewMatrix*vec4(vW,1.0); }`,
+      fragmentShader: `${GLSL_COMMON} uniform vec3 uA, uB; varying vec2 vUv; varying vec3 vW;
+        void main(){ float s = fract(vUv.y * 5.0 + uTime * 2.6 + sin(vUv.x * 18.0) * 0.08); vec3 c = mix(uA, uB, smoothstep(0.55, 0.6, s) * (1.0 - smoothstep(0.8, 0.85, s)));
+        gl_FragColor = vec4(mix(c, uFogColor, fogAmt(vW)), 0.92); }`,
+      transparent: true, side: THREE.DoubleSide,
+    }));
+    st.stream.position.set(0, st.spoutY, TZ); G.add(st.stream);
+    // graph panels
+    const panel = (x, rot) => {
+      const grp = new THREE.Group(); grp.position.set(x, 0, -0.2); grp.rotation.y = rot; G.add(grp);
+      const c = mkCanvas(580, 560); const t = tex(c, { nomip: true });
+      mesh(new THREE.PlaneGeometry(2.9, 2.8), inkMat({ map: t, flat: 0.92, hatch: 0 }), grp, [0, 1.6, 0.06]);
+      mesh(new THREE.BoxGeometry(3.04, 2.94, 0.08), woodMat, grp, [0, 1.6, 0], null, 0.014);
+      mesh(new THREE.BoxGeometry(0.1, 0.25, 0.1), woodMat, grp, [-1.1, 0.12, 0]); mesh(new THREE.BoxGeometry(0.1, 0.25, 0.1), woodMat, grp, [1.1, 0.12, 0]);
+      return { grp, c, t };
+    };
+    st.L = panel(-3.75, 0.38); st.Rp = panel(3.75, -0.38);
+    st.rects.push([-1.25, 1.25, TZ - 1.25, TZ + 1.25], [PX - 0.3, PX + 0.3, TZ - 0.3, TZ + 0.3], [-5.3, -2.2, -1.0, 0.7], [2.2, 5.3, -1.0, 0.7]);
+    st.link = new Line(2, { width: 0.018, color: PAL.inkSoft, dash: 0.09, parent: G, pressure: 0 });
+    st.linkL = new Line(2, { width: 0.018, color: PAL.water, dash: 0.09, parent: G, pressure: 0 });
+    st.setProfile = (name) => {
+      st.prof = name; const fn = PROFILES[name];
+      let s = 0, mx = 0; const M = 600; for (let i = 0; i < M; i++) { const v = fn((i + 0.5) / M); s += v / M; mx = Math.max(mx, v); }
+      st.norm = 1 / s; st.rmax = mx * st.norm; // r normalised: integral over u∈[0,1] = 1 tank
+      st.cum = new Float32Array(M + 1); for (let i = 0; i < M; i++) st.cum[i + 1] = st.cum[i] + fn((i + 0.5) / M) * st.norm / M;
+      st.M = M; st.t = 0; st.phase = 'fill';
+      st.baseL = st.drawBase(true); st.baseR = st.drawBase(false);
+    };
+    const gx = (u) => 64 + u * 480, gyL = (r) => 532 - r / st.rmax * 400, gyR = (v) => 532 - v * 460;
+    Object.assign(st, { gx, gyL, gyR });
+    st.drawBase = (left) => {
+      const c = paperCanvas(580, 560, left ? PAL.stripeCream : PAL.paper, { seed: left ? 31 : 32, vignette: 0.3 });
+      const g = c.getContext('2d');
+      for (let i = 0; i <= 10; i++) { g.strokeStyle = rgba(PAL.inkFaint, 0.18); g.lineWidth = 1; g.beginPath(); g.moveTo(gx(i / 10), 72); g.lineTo(gx(i / 10), 532); g.stroke(); }
+      for (let i = 0; i <= 10; i++) { const y = 532 - i * 46; g.beginPath(); g.moveTo(64, y); g.lineTo(544, y); g.stroke(); }
+      inkStroke(g, [[64, 60], [64, 534]], 3.5, PAL.ink, { seed: 1 }); inkStroke(g, [[60, 532], [556, 532]], 3.5, PAL.ink, { seed: 2 });
+      g.fillStyle = PAL.ink; g.font = `700 34px ${SANS}`; g.textAlign = 'left';
+      g.fillText(left ? 'СКОЛЬКО ЛЬЁТСЯ' : 'СКОЛЬКО В БАКЕ', 78, 46);
+      g.font = `italic 24px ${SERIF}`; g.fillStyle = PAL.inkSoft; g.textAlign = 'right'; g.fillText('время →', 548, 556);
+      if (left) {
+        const fn = PROFILES[st.prof]; const pts = []; for (let i = 0; i <= 120; i++) { const u = i / 120; pts.push([gx(u), gyL(fn(u) * st.norm)]); }
+        quickStroke(g, pts, 2.5, rgba(PAL.inkSoft, 0.55), 1, [8, 8]);
+        g.font = `italic 22px ${SERIF}`; g.textAlign = 'left'; g.fillStyle = PAL.teal; g.fillText('закрашено = вода в баке', 80, 76);
+      } else {
+        g.font = `italic 22px ${SERIF}`; g.textAlign = 'left'; g.fillStyle = PAL.inkSoft; g.fillText('полный бак', 72, 64);
+        quickStroke(g, [[64, gyR(1)], [544, gyR(1)]], 2, rgba(PAL.inkSoft, 0.5), 1, [10, 8]);
+      }
+      return c;
+    };
+    st.setProfile('волной');
+    if (Q.get('st') === '3') st.t = 7.4;
+    sign(st, [-5.9, 0, 2.2], faceTo([-5.9, 0, 2.2], [0, 0, 8.3]), { title: 'Сколько накопилось', body: ['Кран льёт то сильнее, то слабее.', 'Закрашенная площадь под левым графиком — это вода в баке.'], formula: 'в баке = ∫ напор dt' });
+    hitBox(st, 11, 4.5, 3, [0, 2.2, -0.2]);
+  },
+  update(st, dt) {
+    const T = st.T;
+    let u = st.t / T, rate = 0;
+    if (st.phase === 'fill') {
+      st.t += dt * st.tspeed; u = Math.min(1, st.t / T);
+      rate = PROFILES[st.prof](u) * st.norm;
+      if (st.t >= T) { st.phase = 'hold'; st.hold = 0; }
+    } else if (st.phase === 'hold') { st.hold += dt; u = 1; if (st.hold > 2.6) { st.phase = 'drain'; st.hold = 0; } }
+    else { st.hold += dt; u = 1; if (st.hold > 1.6) { st.phase = 'fill'; st.t = 0; u = 0; } }
+    const V = st.cum[Math.min(st.M, Math.floor(u * st.M))] * (st.phase === 'drain' ? 1 - ease(Math.min(1, st.hold / 1.5)) : 1);
+    st.level = V;
+    SND.rate = st.phase === 'fill' ? rate / st.rmax : 0;
+    const y = st.TY + 0.01 + V * st.TH * st.FILL;
+    st.water.scale.y = Math.max(0.002, V * st.TH * st.FILL);
+    st.surface.position.y = y + 0.002;
+    st.valve.rotation.z -= rate * dt * 2.2;
+    const flowing = st.phase === 'fill' && rate > 0.02;
+    st.stream.visible = flowing;
+    if (flowing) { const w = 0.025 + 0.07 * Math.sqrt(rate / st.rmax); st.stream.scale.set(w, st.spoutY - y, w); }
+    for (const m of st.ripples) { const k = ((SH.uTime.value * 0.9 + m.userData.k / 3) % 1); m.visible = flowing; m.position.y = y + 0.01; m.scale.setScalar(0.08 + k * 0.62); m.material.opacity = 0.7 * (1 - k); }
+    if (st.dist > 40) return;
+    // glass silhouettes toward camera
+    const cl = st.g.worldToLocal(camera.position.clone());
+    const dx = cl.x, dz = cl.z - st.TZ, L = Math.hypot(dx, dz) || 1, px = -dz / L * st.R, pz = dx / L * st.R;
+    st.sil.setStrips([[V3(px, st.TY, st.TZ + pz), V3(px, st.TY + st.TH, st.TZ + pz)], [V3(-px, st.TY, st.TZ - pz), V3(-px, st.TY + st.TH, st.TZ - pz)]]);
+    // graphs
+    const { gx, gyL, gyR } = st, fn = PROFILES[st.prof];
+    const drainK = st.phase === 'drain' ? 1 - Math.min(1, st.hold / 1.2) : 1;
+    {
+      const g = st.L.c.getContext('2d'); g.drawImage(st.baseL, 0, 0);
+      const pts = []; const n = Math.max(2, Math.round(u * 120));
+      for (let i = 0; i <= n; i++) { const uu = u * i / n; pts.push([gx(uu), gyL(fn(uu) * st.norm)]); }
+      g.save(); g.globalAlpha = 0.75 * drainK; g.fillStyle = PAL.water; g.beginPath(); g.moveTo(gx(0), 532); pts.forEach((p) => g.lineTo(p[0], p[1])); g.lineTo(gx(u), 532); g.closePath(); g.fill();
+      g.clip(); g.strokeStyle = rgba('#DDF1EC', 0.5); g.lineWidth = 2; for (let s = -600; s < 600; s += 16) { g.beginPath(); g.moveTo(s, 560); g.lineTo(s + 560, 0); g.stroke(); } g.restore();
+      quickStroke(g, pts, 5, PAL.ink, drainK);
+      const cx = gx(u), cy = gyL(fn(u) * st.norm);
+      quickStroke(g, [[cx, 532], [cx, cy]], 2.5, PAL.red, drainK, [6, 6]);
+      g.globalAlpha = drainK; g.fillStyle = PAL.red; g.beginPath(); g.arc(cx, cy, 9, 0, TAU); g.fill(); g.globalAlpha = 1;
+      st.L.t.needsUpdate = true;
+    }
+    {
+      const g = st.Rp.c.getContext('2d'); g.drawImage(st.baseR, 0, 0);
+      const n = Math.max(2, Math.round(u * 120)); const pts = [];
+      for (let i = 0; i <= n; i++) { const uu = u * i / n; pts.push([gx(uu), gyR(st.cum[Math.floor(uu * st.M)] * (st.phase === 'drain' ? drainK : 1))]); }
+      g.save(); g.globalAlpha = 0.18 * drainK; g.fillStyle = PAL.water; g.beginPath(); g.moveTo(gx(0), 532); pts.forEach((p) => g.lineTo(p[0], p[1])); g.lineTo(gx(u), 532); g.fill(); g.restore();
+      quickStroke(g, pts, 7, PAL.water, 1); quickStroke(g, pts, 2, PAL.ink, 0.8);
+      const cx = gx(u), cy = gyR(V);
+      quickStroke(g, [[0, cy], [cx, cy]], 2, PAL.inkSoft, 0.8, [8, 7]);
+      g.fillStyle = PAL.water; g.beginPath(); g.arc(cx, cy, 11, 0, TAU); g.fill(); g.strokeStyle = PAL.ink; g.lineWidth = 3; g.stroke();
+      g.fillStyle = PAL.ink; g.font = `700 30px ${SANS}`; g.textAlign = 'right'; g.fillText(Math.round(V * 100) + '%', 548, 46);
+      st.Rp.t.needsUpdate = true;
+      // dashed link: water surface → graph dot (same height)
+      const wp = st.Rp.grp.localToWorld(V3((cx / 580 - 0.5) * 2.9, 3.0 - cy / 560 * 2.8, 0.07));
+      const lp = st.g.worldToLocal(wp);
+      st.link.set([V3(st.R * 0.95, y, st.TZ + 0.2), lp]);
+      const lcx = gx(u), lcy = gyL(fn(u) * st.norm);
+      const wl = st.g.worldToLocal(st.L.grp.localToWorld(V3((lcx / 580 - 0.5) * 2.9, 3.0 - lcy / 560 * 2.8, 0.07)));
+      st.linkL.set([wl, V3(-1.7, 2.35, st.TZ + 0.2)]);
+      st.linkL.mesh.visible = st.phase === 'fill';
+    }
+  },
+  controls(box) {
+    const st = this;
+    box.innerHTML = Object.keys(PROFILES).map((k) => `<button class="btn${k === st.prof ? ' on' : ''}" data-p="${k}">${k}</button>`).join('') +
+      `<label>скорость времени <input type="range" min="30" max="300" value="100"><b>1×</b></label>`;
+    box.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { st.setProfile(b.dataset.p); box.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); }));
+    const inp = box.querySelector('input'), b = box.querySelector('b');
+    inp.addEventListener('input', () => { st.tspeed = inp.value / 100; b.textContent = fmt(st.tspeed, 1) + '×'; });
+  },
+});
+
+// ===========================================================================
+// 4. BRIDGE — the area under one full sine wave is zero
+// ===========================================================================
+makeStation(3, {
+  title: 'Синус за полный круг даёт ноль',
+  text: 'Складываем площадь под синусом. Горб вверх — тёплый, он прибавляет. Горб вниз — холодный, он отнимает ровно столько же. Весы качнутся и встанут ровно: за полный круг итог — ноль.',
+  formula: '∫ sin x dx от 0 до 2π = 0',
+  view: { pos: [0.1, 1.8, 8.9], look: [-0.3, 1.95, 0] },
+  short: 'Тёплый горб вверх прибавляет, холодный горб вниз отнимает столько же. Весы встают ровно: за полный круг — ноль.',
+  build(st) {
+    const G = st.g, A0 = 1.95, AMP = 1.25, SX0 = -2.4, SW = 4.2, CX = -4.0, NS = 56;
+    Object.assign(st, { A0, AMP, SX0, SW, CX, NS, s: 0, auto: true, hold: 0, tilt: 0, tv: 0, gs: new Float32Array(NS) });
+    platform(st, 6.2, PAL.stripeCream, PAL.stripeSage, 1.4);
+    mesh(new THREE.BoxGeometry(10.2, 0.36, 1.8), woodMat, G, [-0.3, 0.18, 0], null, 0.014);
+    {
+      const BW = 10.8, BH = 5.2, k = 180, cw = Math.round(BW * k), ch = Math.round(BH * k), ox = -0.3;
+      const px = (x) => (x - ox + BW / 2) * k, py = (y) => (BH - y) * k;
+      const c = paperCanvas(cw, ch, (g, w, h) => {
+        stripes(g, w, h, PAL.stripeCream, PAL.stripeSage, 90, -0.52, 5);
+        g.fillStyle = rgba(PAL.orange, 0.08); g.fillRect(px(SX0), py(A0 + AMP + 0.2), px(SX0 + SW) - px(SX0), py(A0) - py(A0 + AMP + 0.2));
+        g.fillStyle = rgba(PAL.annBlue, 0.08); g.fillRect(px(SX0), py(A0), px(SX0 + SW) - px(SX0), py(A0 - AMP - 0.2) - py(A0));
+        for (let x = -5.5; x <= 5; x += 0.5) { g.strokeStyle = rgba(PAL.inkFaint, 0.18); g.lineWidth = 1.2; g.beginPath(); g.moveTo(px(x), py(0.4)); g.lineTo(px(x), py(4.3)); g.stroke(); }
+        for (let y = 0.45; y <= 4.3; y += 0.5) { g.beginPath(); g.moveTo(px(-5.5), py(y)); g.lineTo(px(5.0), py(y)); g.stroke(); }
+        g.font = `700 36px ${SANS}`; g.textAlign = 'left';
+        g.fillStyle = PAL.orange; g.fillText('+ выше нуля: прибавляем', px(SX0 + 0.05), py(A0 + AMP + 0.32));
+        g.fillStyle = PAL.annBlue; g.fillText('− ниже нуля: отнимаем', px(SX0 + SW * 0.5 + 0.05), py(A0 - AMP - 0.5));
+        g.font = `italic 30px ${SERIF}`; g.fillStyle = PAL.inkSoft; g.fillText('ноль', px(SX0 + SW + 0.1), py(A0) + 10);
+        g.fillText('полный круг', px(SX0 + SW - 1.0), py(A0 - 0.25) + 50);
+        g.fillText('точка на кольце', px(CX - 0.9), py(A0 - AMP - 0.35));
+        rulerArc(g, px(3.4), py(3.3), 1.55 * k, Math.PI + 0.35, TAU - 0.35, 40, rgba(PAL.annBlue, 0.7), 2.5, 5);
+        inkRect(g, 30, 30, w - 60, h - 60, 5, PAL.ink, 27);
+      }, { seed: 13, vignette: 0.3 });
+      mesh(new THREE.PlaneGeometry(BW, BH), inkMat({ map: tex(c, { aniso: 8 }), flat: 0.9, hatch: 0 }), G, [ox, BH / 2, -1.05]);
+      mesh(new THREE.BoxGeometry(BW + 0.16, BH + 0.16, 0.1), woodMat, G, [ox, BH / 2, -1.13], null, 0.014);
+    }
+    // sine curve and axis
+    const sp = []; for (let i = 0; i <= 160; i++) { const u = i / 160; sp.push(V3(SX0 + u * SW, A0 + AMP * Math.sin(u * TAU), 0.3)); }
+    new Line(170, { pts: sp, width: 0.06, parent: G, seed: 8 });
+    new Line(4, { pts: [V3(CX, A0, 0.3), V3(SX0 + SW + 0.35, A0, 0.3)], width: 0.03, parent: G, color: PAL.inkSoft });
+    new Line(4, { pts: [V3(SX0, A0 - AMP - 0.2, 0.3), V3(SX0, A0 + AMP + 0.2, 0.3)], width: 0.02, parent: G, color: PAL.inkSoft });
+    new Line(4, { pts: [V3(SX0 + SW, A0 - AMP - 0.2, 0.3), V3(SX0 + SW, A0 + AMP + 0.2, 0.3)], width: 0.02, parent: G, color: PAL.inkSoft });
+    // slices
+    const bg = new THREE.BoxGeometry(1, 1, 1);
+    st.sl = new THREE.InstancedMesh(bg, inkMat({ color: '#ffffff', border: 1.1, hatch: 0.35 }), NS);
+    st.sl.frustumCulled = false; st.sl.raycast = () => {};
+    const w = col('#EE8C3A'), w2 = col('#F2B544'), c1 = col('#3E8FC4'), c2 = col('#79B4DC');
+    for (let i = 0; i < NS; i++) { const u = (i + 0.5) / NS; st.sl.setColorAt(i, u < 0.5 ? (i % 2 ? w : w2) : (i % 2 ? c1 : c2)); }
+    G.add(st.sl);
+    // small ring: the point from station 1
+    mesh(new THREE.TorusGeometry(AMP, 0.035, 8, 96), inkMat({ color: PAL.ochre }), G, [CX, A0, 0.3], null, 0.014);
+    st.pt = mesh(new THREE.SphereGeometry(0.09, 14, 10), inkMat({ color: '#FFF3DC', emit: 1 }), G, [0, 0, 0.3], null, 0.012);
+    const ph = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); ph.scale.set(1.1, 1.1, 1); st.pt.add(ph);
+    st.arm = new Line(2, { width: 0.025, parent: G });
+    st.link = new Line(2, { width: 0.02, color: PAL.orange, dash: 0.1, parent: G, pressure: 0 });
+    st.cursor = new Line(2, { width: 0.12, color: '#F6D28A', glow: true, parent: G, boil: 0 });
+    st.dot = mesh(new THREE.SphereGeometry(0.07, 12, 8), inkSolid, G, [0, 0, 0.32]);
+    // balance scale
+    const BX = 3.45, PY = 3.35;
+    mesh(new THREE.CylinderGeometry(0.06, 0.08, PY - 0.36, 10), postMat, G, [BX, 0.36 + (PY - 0.36) / 2, 0], null, 0.012);
+    mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.12, 24), inkMat({ color: PAL.inkSoft }), G, [BX, 0.42, 0], null, 0.012);
+    mesh(new THREE.ConeGeometry(0.12, 0.2, 3), inkMat({ color: PAL.ochre }), G, [BX, PY - 0.08, 0], null, 0.01);
+    st.beam = new THREE.Group(); st.beam.position.set(BX, PY, 0.12); G.add(st.beam);
+    mesh(new THREE.BoxGeometry(2.5, 0.08, 0.08), inkMat({ color: PAL.ochre }), st.beam, null, null, 0.012);
+    mesh(new THREE.SphereGeometry(0.08, 12, 8), inkMat({ color: PAL.ochre }), st.beam, null, null, 0.01);
+    const bn = new Line(30, { width: 0.02, parent: st.beam, color: PAL.ink });
+    { const tt = []; for (let i = -6; i <= 6; i++) tt.push([V3(i * 0.2, 0.04, 0.045), V3(i * 0.2, i === 0 ? 0.2 : 0.1, 0.045)]); bn.setStrips(tt); }
+    const panG = new THREE.CylinderGeometry(0.46, 0.36, 0.08, 28);
+    const coneG = new THREE.ConeGeometry(0.36, 1, 28); coneG.translate(0, 0.5, 0);
+    st.pans = [0, 1].map((k) => {
+      const g = new THREE.Group(); G.add(g);
+      mesh(panG, inkMat({ color: PAL.ochre }), g, null, null, 0.012);
+      const pile = mesh(coneG, inkMat({ color: k ? '#4F9AD0' : '#EE8C3A' }), g, [0, 0.04, 0], null, 0.012);
+      return { g, pile };
+    });
+    st.strings = new Line(12, { width: 0.012, parent: G, color: PAL.inkSoft, pressure: 0 });
+    st.BX = BX; st.PY = PY;
+    // counter card
+    st.cc = mkCanvas(1200, 230); st.ccBase = paperCanvas(1200, 230, PAL.paper, { seed: 88, vignette: 0.3 });
+    { const g = st.ccBase.getContext('2d'); inkRect(g, 16, 16, 1168, 198, 4.5, PAL.ink, 31); }
+    st.ccTex = tex(st.cc, { nomip: true });
+    mesh(new THREE.PlaneGeometry(4.3, 4.3 * 230 / 1200), inkMat({ map: st.ccTex, flat: 1, hatch: 0 }), G, [-0.9, 4.45, -0.98], [0, 0, -0.012]);
+    if (Q.get('st') === '4') st.s = 0.8;
+    sign(st, [-6.5, 0, 1.8], faceTo([-6.5, 0, 1.8], [0.1, 0, 8.9]), { title: 'Синус за полный круг — ноль', body: ['Горб вверх (тёплый) прибавляет, горб вниз (холодный) отнимает ровно столько же.', 'Весы встают ровно.'], formula: '∫ sin x dx  от 0 до 2π  =  0' });
+    st.rects.push([-5.6, 5.0, -1.25, 1.0]);
+    hitBox(st, 11, 5, 3, [-0.3, 2.4, 0]);
+  },
+  update(st, dt) {
+    const { A0, AMP, SX0, SW, CX, NS } = st;
+    if (st.auto) {
+      if (st.s < 1) st.s = Math.min(1, st.s + dt / 10);
+      else { st.hold += dt; if (st.hold > 3.2) { st.s = 0; st.hold = 0; } }
+    }
+    const s = st.s, a = s * TAU;
+    if (st.prevS !== undefined) { if (st.prevS < 0.5 && s >= 0.5) AUDIO.chime('cold'); if (st.prevS < 0.999 && s >= 0.999) AUDIO.chime('zero'); }
+    st.prevS = s;
+    const P = V3(CX + AMP * Math.cos(a), A0 + AMP * Math.sin(a), 0.3);
+    st.pt.position.copy(P);
+    st.arm.set([V3(CX, A0, 0.3), P]);
+    const x = SX0 + s * SW;
+    st.link.set([P, V3(x, P.y, 0.3)]); st.link.mat.uniforms.uDashShift.value = SH.uTime.value;
+    st.cursor.set([V3(x, A0 - AMP - 0.25, 0.32), V3(x, A0 + AMP + 0.25, 0.32)]);
+    st.dot.position.set(x, P.y, 0.32);
+    if (st.dist > 45) return;
+    const M = new THREE.Matrix4(), w = SW / NS;
+    for (let i = 0; i < NS; i++) {
+      const u = (i + 0.5) / NS, on = u <= s + 1e-6 ? 1 : 0;
+      st.gs[i] += (on - st.gs[i]) * (1 - Math.exp(-dt * 10));
+      const hgt = AMP * Math.sin(u * TAU) * st.gs[i];
+      M.makeScale(w * 0.9, Math.max(0.001, Math.abs(hgt)), 0.46);
+      M.setPosition(SX0 + u * SW, A0 + hgt / 2, 0);
+      st.sl.setMatrixAt(i, M);
+    }
+    st.sl.instanceMatrix.needsUpdate = true;
+    const pos = 1 - Math.cos(Math.min(s, 0.5) * TAU), neg = s > 0.5 ? 1 + Math.cos(s * TAU) : 0;
+    const posR = Math.round(pos * 100) / 100, negR = Math.round(neg * 100) / 100;
+    // beam physics: damped spring toward the difference
+    const target = clamp((pos - neg) * 0.16, -0.32, 0.32);
+    st.tv += ((target - st.tilt) * 30 - st.tv * 5) * dt; st.tilt += st.tv * dt;
+    st.beam.rotation.z = st.tilt;
+    const strips = [];
+    st.pans.forEach((p, k) => {
+      const ex = (k ? 1.15 : -1.15), cx = st.BX + ex * Math.cos(st.tilt), cy = st.PY + ex * Math.sin(st.tilt);
+      p.g.position.set(cx, cy - 1.25, 0.12);
+      p.pile.scale.y = Math.max(0.001, (k ? neg : pos) * 0.42);
+      p.pile.scale.x = p.pile.scale.z = 0.35 + 0.65 * Math.min(1, (k ? neg : pos) * 1.5);
+      strips.push([V3(cx, cy, 0.12), V3(cx - 0.44, cy - 1.22, 0.12)], [V3(cx, cy, 0.12), V3(cx + 0.44, cy - 1.22, 0.12)]);
+    });
+    st.strings.setStrips(strips);
+    const key = posR + ':' + negR + (s > 0.99);
+    if (key !== st.ccKey) {
+      st.ccKey = key;
+      const g = st.cc.getContext('2d'); g.drawImage(st.ccBase, 0, 0);
+      g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+      g.font = `700 26px ${SANS}`; g.fillStyle = PAL.inkSoft; g.fillText('ТЁПЛОЕ (ПЛЮС)', 50, 66); g.fillText('ХОЛОДНОЕ (МИНУС)', 420, 66); g.fillText('ИТОГ', 870, 66);
+      g.font = `700 88px ${SERIF}`;
+      g.fillStyle = '#D0672A'; g.fillText('+' + fmt(posR), 44, 168);
+      g.fillStyle = PAL.ink; g.fillText('−', 330, 168);
+      g.fillStyle = '#2F7FB5'; g.fillText(fmt(negR), 420, 168);
+      g.fillStyle = PAL.ink; g.fillText('=', 760, 168);
+      const tot = Math.round((posR - negR) * 100) / 100; g.fillStyle = tot === 0 && s > 0.99 ? PAL.teal : PAL.ink; g.fillText((tot > 0 ? '+' : '') + fmt(tot === 0 ? 0 : tot), 862, 168);
+      if (s > 0.99) { inkCircle(g, 975, 136, 96, 4, PAL.teal, 4); }
+      st.ccTex.needsUpdate = true;
+    }
+  },
+  controls(box) {
+    const st = this;
+    box.innerHTML = `<label>докуда посчитали <input type="range" min="0" max="1000" value="${Math.round(st.s * 1000)}"><b>${Math.round(st.s * 100)}%</b></label><button class="btn on">▶ само</button>`;
+    const inp = box.querySelector('input'), b = box.querySelector('b'), bt = box.querySelector('button');
+    inp.addEventListener('input', () => { st.auto = false; bt.classList.remove('on'); st.s = inp.value / 1000; b.textContent = Math.round(st.s * 100) + '%'; });
+    bt.addEventListener('click', () => { st.auto = !st.auto; bt.classList.toggle('on', st.auto); if (st.auto && st.s >= 1) { st.s = 0; st.hold = 0; } });
+    st.syncUI = () => { if (st.auto) { inp.value = Math.round(st.s * 1000); b.textContent = Math.round(st.s * 100) + '%'; } };
+  },
+});
+const $ = (id) => document.getElementById(id);
+
+// ---------------------------------------------------------------------------
+// CAMERA & INPUT
+// ---------------------------------------------------------------------------
+const cam = { pos: V3(0, 1.7, 8.5), yaw: 0, pitch: -0.04, tyaw: 0, tpitch: -0.04, vel: V3(), fly: null, walk: 0 };
+{ const d = V3(CENTER.x - 0, 2.6 - 1.7, CENTER.z - 8.5); cam.yaw = cam.tyaw = Math.atan2(-d.x, -d.z); }
+const input = { keys: {}, joy: { x: 0, y: 0 } };
+let PORTRAIT = false;
+
+function viewPose(i) {
+  const st = stations[i];
+  const p = st.g.localToWorld(V3(...st.view.pos)), l = st.g.localToWorld(V3(...st.view.look));
+  if (PORTRAIT) { p.sub(l).multiplyScalar(1.16).add(l); p.y = 1.7 + (st.view.pos[1] - 1.7); }
+  let d = l.clone().sub(p);
+  if (camera.aspect > 1.25 && !$('card').classList.contains('min')) {
+    // wide screens: slide sideways so the station sits right of the paper card
+    const r = V3(-d.z, 0, d.x).normalize().multiplyScalar(-1.25);
+    p.add(r); l.add(r); d = l.clone().sub(p);
+  }
+  return { pos: p, yaw: Math.atan2(-d.x, -d.z), pitch: Math.atan2(d.y, Math.hypot(d.x, d.z)) + (PORTRAIT ? 0.1 : 0) };
+}
+function angDiff(a, b) { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; }
+function flyTo(i) {
+  const v = viewPose(i);
+  const dist = cam.pos.distanceTo(v.pos);
+  cam.fly = { i, from: cam.pos.clone(), fy: cam.yaw, fp: cam.pitch, to: v.pos, ty: cam.yaw + angDiff(cam.yaw, v.yaw), tp: v.pitch, t: 0, dur: clamp(1.1 + dist * 0.06, 1.2, 3.2) };
+  setActive(i, true);
+}
+function nearestStation() { let b = -1, bd = 1e9; stations.forEach((s, i) => { if (s.dist < bd) { bd = s.dist; b = i; } }); return { i: b, d: bd }; }
+
+window.addEventListener('keydown', (e) => {
+  input.keys[e.code] = true;
+  if (e.code === 'KeyN' || e.code === 'Enter') nextStation();
+  if (e.code === 'KeyM') toggleSound();
+  if (e.code === 'BracketRight' || e.code === 'Equal') stations[0].setSpeed && stations[0].setSpeed(20);
+  if (e.code === 'BracketLeft' || e.code === 'Minus') stations[0].setSpeed && stations[0].setSpeed(-20);
+});
+window.addEventListener('keyup', (e) => { input.keys[e.code] = false; });
+window.addEventListener('blur', () => { input.keys = {}; });
+
+const joyEl = document.getElementById('joy'), knob = document.getElementById('knob');
+const ptrs = new Map();
+const ray = new THREE.Raycaster();
+function tapAt(x, y) {
+  const r = canvas.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2((x - r.left) / r.width * 2 - 1, -((y - r.top) / r.height) * 2 + 1), camera);
+  const hits = ray.intersectObjects(stations.map((s) => s.hit), false);
+  if (hits.length) { flyTo(hits[0].object.userData.station); hideHint(); }
+}
+canvas.addEventListener('pointerdown', (e) => {
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  const touch = e.pointerType !== 'mouse';
+  const isJoy = touch && e.clientX < innerWidth * 0.45 && e.clientY > innerHeight * 0.32 && ![...ptrs.values()].some((p) => p.joy);
+  ptrs.set(e.pointerId, { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t0: performance.now(), joy: isJoy, moved: 0 });
+  if (isJoy) { joyEl.style.display = 'block'; joyEl.style.left = e.clientX + 'px'; joyEl.style.top = e.clientY + 'px'; knob.style.transform = ''; }
+});
+canvas.addEventListener('pointermove', (e) => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  p.moved = Math.max(p.moved, Math.hypot(e.clientX - p.x0, e.clientY - p.y0));
+  if (p.joy) {
+    let jx = e.clientX - p.x0, jy = e.clientY - p.y0; const L = Math.hypot(jx, jy), M = 52;
+    if (L > M) { jx *= M / L; jy *= M / L; }
+    knob.style.transform = `translate(${jx}px,${jy}px)`;
+    input.joy.x = jx / M; input.joy.y = -jy / M;
+    if (L > 6) { cam.fly = null; hideHint(); }
+  } else if (p.moved > 4) {
+    const k = e.pointerType === 'mouse' ? 0.0042 : 0.0058;
+    cam.tyaw -= dx * k; cam.tpitch = clamp(cam.tpitch - dy * k * 0.8, -1.1, 1.0);
+    cam.fly = null; hideHint();
+  }
+});
+function endPtr(e) {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  ptrs.delete(e.pointerId);
+  if (p.joy) { joyEl.style.display = 'none'; input.joy.x = input.joy.y = 0; }
+  if (p.moved < 10 && performance.now() - p.t0 < 350) tapAt(p.x0, p.y0);
+}
+canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('touchmove', (e) => { if (e.target === canvas) e.preventDefault(); }, { passive: false });
+
+function collide(p) {
+  // world bound
+  const dx = p.x - CENTER.x, dz = p.z - CENTER.z, d = Math.hypot(dx, dz), MAXR = 42;
+  if (d > MAXR) { p.x = CENTER.x + dx / d * MAXR; p.z = CENTER.z + dz / d * MAXR; }
+  if (d < 2.2) { p.x = CENTER.x + dx / (d || 1) * 2.2; p.z = CENTER.z + dz / (d || 1) * 2.2; }
+  const pad = 0.3;
+  for (const st of stations) {
+    if (st.dist > 16) continue;
+    const l = st.g.worldToLocal(p.clone());
+    for (const [x0, x1, z0, z1] of st.rects) {
+      if (l.x > x0 - pad && l.x < x1 + pad && l.z > z0 - pad && l.z < z1 + pad) {
+        const opts = [[l.x - (x0 - pad), 'x', x0 - pad], [(x1 + pad) - l.x, 'x', x1 + pad], [l.z - (z0 - pad), 'z', z0 - pad], [(z1 + pad) - l.z, 'z', z1 + pad]];
+        opts.sort((a, b) => a[0] - b[0]); l[opts[0][1]] = opts[0][2];
+        const w = st.g.localToWorld(l); p.x = w.x; p.z = w.z;
+      }
+    }
+  }
+}
+function updateCamera(dt) {
+  if (cam.fly) {
+    const f = cam.fly; f.t += dt / f.dur; const k = ease(Math.min(1, f.t));
+    cam.pos.lerpVectors(f.from, f.to, k);
+    cam.pos.y += Math.sin(k * Math.PI) * Math.min(3, f.from.distanceTo(f.to) * 0.12);
+    cam.yaw = cam.tyaw = lerp(f.fy, f.ty, k); cam.pitch = cam.tpitch = lerp(f.fp, f.tp, k);
+    cam.vel.set(0, 0, 0);
+    if (f.t >= 1) cam.fly = null;
+  } else {
+    let mx = input.joy.x, mz = input.joy.y;
+    const K = input.keys;
+    if (K.KeyW || K.ArrowUp) mz += 1; if (K.KeyS || K.ArrowDown) mz -= 1;
+    if (K.KeyA) mx -= 1; if (K.KeyD) mx += 1;
+    if (K.ArrowLeft) cam.tyaw += dt * 1.8; if (K.ArrowRight) cam.tyaw -= dt * 1.8;
+    const L = Math.hypot(mx, mz); if (L > 1) { mx /= L; mz /= L; }
+    const speed = (K.ShiftLeft || K.ShiftRight) ? 7 : 3.6;
+    const fx = -Math.sin(cam.yaw), fz = -Math.cos(cam.yaw), rx = Math.cos(cam.yaw), rz = -Math.sin(cam.yaw);
+    const tv = V3((fx * mz + rx * mx) * speed, 0, (fz * mz + rz * mx) * speed);
+    cam.vel.lerp(tv, 1 - Math.exp(-dt * 7));
+    cam.pos.addScaledVector(cam.vel, dt);
+    const sp = cam.vel.length(); cam.walk += sp * dt * 2.2;
+    cam.pos.y = lerp(cam.pos.y, 1.7 + Math.sin(cam.walk) * 0.03 * Math.min(1, sp / 3), 1 - Math.exp(-dt * 8));
+    collide(cam.pos);
+    if (L > 0.05 && (Math.abs(K.KeyW || 0) || input.joy.y)) hideHint();
+    const kk = 1 - Math.exp(-dt * 16);
+    cam.yaw += (cam.tyaw - cam.yaw) * kk; cam.pitch += (cam.tpitch - cam.pitch) * kk;
+  }
+  camera.position.copy(cam.pos); camera.rotation.set(cam.pitch, cam.yaw, 0);
+}
+
+// ---------------------------------------------------------------------------
+// UI
+// ---------------------------------------------------------------------------
+function paperURL(color, seed, grain = 1) { return paperCanvas(256, 256, color, { seed, grain, vignette: 0 }).toDataURL(); }
+{
+  $('card').style.backgroundImage = `url(${paperURL(PAL.paper, 91)})`;
+  document.querySelectorAll('#nav .btn').forEach((b, i) => (b.style.backgroundImage = `url(${paperURL(i ? PAL.sun : PAL.paper, 92 + i)})`));
+  const c = mkCanvas(256, 256), g = c.getContext('2d'), im = g.createImageData(256, 256), R = mulberry(7);
+  for (let i = 0; i < im.data.length; i += 4) { const v = 128 + (R() - 0.5) * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+  g.putImageData(im, 0, 0);
+  $('grain').style.backgroundImage = `url(${c.toDataURL()})`;
+}
+let active = -2;
+const ctrlCache = {};
+function setActive(i, open) {
+  if (open) $('card').classList.remove('min');
+  if (i === active) return;
+  active = i;
+  const box = $('cctrls');
+  [...box.children].forEach((c) => c.remove());
+  if (i < 0) {
+    $('cnum').textContent = '∫';
+    $('ctitle').textContent = 'Сад интеграла';
+    $('ctext').textContent = 'Четыре станции про синус, косинус и интеграл — без формул, глазами. Иди к любой или жми «к станции».';
+    $('cformula').textContent = '';
+  } else {
+    const st = stations[i];
+    $('cnum').textContent = i + 1; $('cnum').style.background = [PAL.sun, PAL.stripeYellow, PAL.waterLight, PAL.duskRose][i];
+    $('ctitle').textContent = st.title; $('ctext').textContent = innerWidth < 600 ? st.short : st.text; $('cformula').textContent = 'для любопытных: ' + st.formula;
+    if (!ctrlCache[i]) { const d = document.createElement('div'); d.style.display = 'contents'; st.controls(d); ctrlCache[i] = d; }
+    box.appendChild(ctrlCache[i]);
+  }
+  updateNext();
+}
+function updateNext() {
+  const n = nextIndex();
+  $('next').textContent = `к станции ${n + 1} →`;
+}
+function nextIndex() {
+  const cur = cam.fly ? cam.fly.i : active;
+  return cur < 0 ? 0 : (cur + 1) % stations.length;
+}
+function nextStation() { flyTo(nextIndex()); hideHint(); }
+$('next').addEventListener('click', nextStation);
+$('tog').addEventListener('click', () => { $('card').classList.toggle('min'); $('tog').textContent = $('card').classList.contains('min') ? '+' : '–'; });
+function toggleSound() { const on = AUDIO.toggle(); $('snd').textContent = on ? '♪ звук вкл' : '♪ звук'; $('snd').classList.toggle('on', on); }
+$('snd').addEventListener('click', toggleSound);
+let hintShown = true;
+$('hint').innerHTML = IS_TOUCH
+  ? '<span>левый палец — идти</span><span>правый — осмотреться</span><span>тап по станции — перелёт</span>'
+  : '<span>WASD — идти</span><span>мышь с зажатой кнопкой — смотреть</span><span>клик по станции — перелёт</span><span>N — дальше</span>';
+function hideHint() { if (!hintShown) return; hintShown = false; $('hint').style.opacity = 0; }
+setTimeout(hideHint, 12000);
+if (Q.has('shot')) { $('hint').style.display = 'none'; }
+
+// ---------------------------------------------------------------------------
+// resize & loop
+// ---------------------------------------------------------------------------
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  PORTRAIT = w / h < 0.8;
+  const minH = 60 / 180 * Math.PI; // keep at least ~60° horizontally
+  let v = 2 * Math.atan(Math.tan(minH / 2) / camera.aspect) * 180 / Math.PI;
+  camera.fov = clamp(v, 58, 92);
+  camera.updateProjectionMatrix();
+  const b = renderer.getDrawingBufferSize(new THREE.Vector2()); SH.uRes.value.copy(b);
+}
+addEventListener('resize', resize); resize();
+
+// start pose (optionally at a station, for links and screenshots)
+{
+  const s = parseInt(Q.get('st') || '0', 10);
+  if (s >= 1 && s <= 4) { const v = viewPose(s - 1); cam.pos.copy(v.pos); cam.yaw = cam.tyaw = v.yaw; cam.pitch = cam.tpitch = v.pitch; }
+}
+let last = performance.now(), T = 0, frames = 0, fpsAcc = 0, fpsN = 0;
+const showFps = Q.has('fps'); if (showFps) $('fps').style.display = 'block';
+function loop(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.05); last = now; T += dt; frames++;
+  SH.uTime.value = T;
+  updateCamera(dt);
+  for (const st of stations) {
+    st.dist = Math.hypot(cam.pos.x - st.P.x, cam.pos.z - st.P.z);
+    st.reveal = Math.min(1, st.reveal + (st.dist < 26 ? dt * 0.55 : 0));
+    SND.prox[st.i] = smooth(22, 7, st.dist);
+    st.update(st, dt);
+  }
+  if (stations[3].syncUI && active === 3) stations[3].syncUI();
+  const n = nearestStation();
+  if (!cam.fly) setActive(n.d < 14 ? n.i : -1, false);
+  armillary.rotation.y += dt * 0.12;
+  armillary.userData.r4.rotation.z += dt * 0.3;
+  { const a = T * 0.9; armillary.userData.orb.position.set(Math.cos(a) * 1.6, Math.sin(a) * 1.6, 0); }
+  sky.position.copy(camera.position);
+  AUDIO.update(dt);
+  renderer.render(scene, camera);
+  if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = Math.round(fpsN / fpsAcc) + ' fps · ' + renderer.info.render.triangles + ' tri · ' + renderer.info.render.calls + ' calls'; fpsAcc = 0; fpsN = 0; } }
+  if (frames === 20) window.__ready = true;
+  requestAnimationFrame(loop);
+}
+setActive(-1);
+requestAnimationFrame(loop);
+window.__stats = () => ({ tri: renderer.info.render.triangles, calls: renderer.info.render.calls });
+window.__flyTo = flyTo; window.__st = stations; window.__cam = cam; window.__nan = () => { const out = []; scene.traverse((o) => { const p = o.geometry && o.geometry.attributes.position; if (p) { for (let i = 0; i < p.array.length; i++) if (isNaN(p.array[i])) { out.push(o.type + ':' + JSON.stringify(o.geometry.parameters) + (o.parent && o.parent.type) + ':' + p.array.length + ':' + i + ':' + JSON.stringify(o.position)); break; } } }); return out; };
+</script>
+</body></html>

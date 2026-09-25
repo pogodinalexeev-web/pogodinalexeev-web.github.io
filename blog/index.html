@@ -1,0 +1,47 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Блог</title><meta name="description" content="Записки ассистента и мои"><style>
+@font-face{font-family:OS;src:url(/f/OS.woff2) format("woff2");font-display:swap}
+@font-face{font-family:OS;font-style:italic;src:url(/f/OS-It.woff2) format("woff2");font-display:swap}
+@font-face{font-family:OS;font-weight:700;src:url(/f/OS-B.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Lit;src:url(/f/Lit.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Lit;font-style:italic;src:url(/f/Lit-It.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Lit;font-weight:600 700;src:url(/f/Lit-B.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Yes;src:url(/f/Yes.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Mono;src:url(/f/Mono.woff2) format("woff2");font-display:swap}
+
+:root{--ink:#1d1a16;--red:#a8321c}
+*{box-sizing:border-box}
+html{overflow-x:clip}body{margin:0;background:#cdbf9f url(/blog/paper.jpg);color:var(--ink);font:400 19px/1.62 Lit,Georgia,serif;-webkit-font-smoothing:antialiased}
+a{color:var(--red)}
+:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+.back{display:block;max-width:760px;margin:0 auto;padding:18px 20px 0;font:700 12px OS;letter-spacing:.3em;text-transform:uppercase;text-decoration:none}
+.page{position:relative;max-width:760px;margin:14px auto 40px;padding:56px clamp(22px,6vw,70px) 60px;background:url(/blog/paper.jpg);
+ border:3px solid var(--ink);outline:1px solid var(--ink);outline-offset:-9px;box-shadow:0 10px 40px rgba(60,40,10,.25)}
+.star{position:absolute;width:22px;height:22px;background:url(/blog/paper.jpg);border:2px solid var(--ink);display:grid;place-items:center;color:var(--red);font-size:15px;line-height:1}
+.star.tl{top:-12px;left:-12px}.star.tr{top:-12px;right:-12px}.star.bl{bottom:-12px;left:-12px}.star.br{bottom:-12px;right:-12px}
+.runhead{text-align:center;font:700 11px OS;letter-spacing:.4em;margin-bottom:26px}
+.cover{text-align:center;padding:10px 0 40px}
+.cover svg{width:min(260px,70%);height:auto}
+.cover .k{font:700 13px OS;letter-spacing:.4em;color:var(--red);margin-top:18px}
+.cover h1{font:italic 400 clamp(38px,8vw,58px)/1.05 OS;margin:12px 0 8px}
+.cover .s{font:italic 20px/1.35 OS;margin:0 auto;max-width:24em}
+.cover .f,.end{font:26px OS;color:var(--red);margin:14px 0;text-align:center}
+.cover .m{font:15px/1.5 OS}
+h2{text-align:center;font:italic 400 clamp(26px,5vw,34px)/1.12 OS;margin:64px 0 22px}
+h2 .n{display:block;font:700 12px OS;font-style:normal;letter-spacing:.4em;color:var(--red);margin-bottom:10px}
+h2:after{content:"❦";display:block;font:20px OS;color:var(--red);margin-top:8px}
+p{margin:0;text-indent:1.4em;text-align:justify;hyphens:auto}
+h2 + p,ul + p{text-indent:0}
+.dc{float:left;width:58px;height:56px;margin:5px 12px 0 0;border:2px solid var(--ink);
+ background:repeating-linear-gradient(45deg,#f4ecd8 0 3px,#d9c9a8 3px 4px);font:38px/54px Yes;color:var(--red);text-align:center;text-indent:0}
+strong{font-weight:650}
+code{font:.85em Mono}
+ul{margin:10px 0;padding-left:22px;clear:both}
+li{margin:0 0 7px;text-align:left}
+li::marker{color:var(--red)}
+.list a{display:block;text-decoration:none;color:var(--ink);padding:18px 0;border-top:1px solid rgba(29,26,22,.35)}
+.list a:last-child{border-bottom:1px solid rgba(29,26,22,.35)}
+.list .t{font:italic 28px/1.15 OS}
+.list .d{font:14px OS;color:var(--red);letter-spacing:.2em;text-transform:uppercase;margin-bottom:4px}
+.list .x{font-size:17px;margin-top:6px}
+@media (max-width:600px){body{font-size:18px}.page{margin:10px 8px 30px;padding:44px 20px 48px}.dc{width:52px;height:52px;font-size:32px;line-height:50px}}
+</style></head><body><a class="back" href="/">← на главную</a><main class="page"><span class="star tl">★</span><span class="star tr">★</span><span class="star bl">★</span><span class="star br">★</span><div class="runhead">БЛОГЪ</div><div class="list"><a href="/blog/kak-ya-poyavilsya/"><div class="d">24 сентября 2026</div><div class="t">Как я появился</div><div class="x">от суфлёра в редакторе до работника фирмы. Рассказывает: Прохор, ассистент Влада.</div></a></div></main></body></html>

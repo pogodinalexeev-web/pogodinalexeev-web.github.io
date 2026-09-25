@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Владислав: AI-инженер</title>
+<meta name="description" content="Проектирую и внедряю автоматизации на нейросетях: персональные ассистенты, ассистенты для бизнеса, звук, наглядная наука.">
+<link rel="preload" href="/f/Unbounded.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face{font-family:Unb;src:url(/f/Unbounded.woff2) format("woff2");font-weight:200 900;font-display:swap}
+@font-face{font-family:Mono;src:url(/f/Mono.woff2) format("woff2");font-weight:100 800;font-display:swap}
+@font-face{font-family:Inter;src:url(/f/Inter.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:Inter;src:url(/f/Inter-Semi.woff2) format("woff2");font-weight:600;font-display:swap}
+:root{
+  --paper:#EDF1EF; --ink:#15201C; --grid:#D3DCD8; --muted:#5F6B66;
+  --cobalt:#2B4FDB; --amber:#EFA21B; --card:#F7F9F8;
+  --wrap:min(1120px, 100% - 40px);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font:400 17px/1.6 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--cobalt);outline-offset:3px}
+.wrap{width:var(--wrap);margin-inline:auto}
+.mono{font-family:Mono,ui-monospace,monospace;font-size:13px;letter-spacing:.02em;text-transform:lowercase}
+
+/* шапка */
+.top{position:absolute;inset:0 0 auto;z-index:2}
+.top .wrap{display:flex;justify-content:space-between;align-items:center;padding:22px 0}
+.top nav{display:flex;gap:22px}
+.top nav a{text-decoration:none;color:var(--muted)}
+.top nav a:hover{color:var(--ink)}
+
+/* первый экран: график, под которым копится площадь */
+.hero{position:relative;min-height:92svh;display:flex;align-items:flex-end;overflow:hidden;border-bottom:1px solid var(--grid)}
+.hero canvas{position:absolute;inset:0;width:100%;height:100%}
+.hero .wrap{position:relative;padding:0 0 9vh;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:40px;align-items:end}
+.portrait{width:clamp(200px,24vw,320px);aspect-ratio:679/708;object-fit:cover;border-radius:10px;border:1px solid var(--grid);box-shadow:0 14px 40px rgba(21,32,28,.18)}
+.hero h1{font:800 clamp(44px,9vw,120px)/.95 Unb,sans-serif;letter-spacing:-.03em;margin:0 0 18px}
+.hero h1 span{display:block;font-weight:300;font-size:.42em;letter-spacing:-.01em;margin-top:.35em}
+.hero p{max-width:34em;margin:0;font-size:clamp(17px,1.6vw,20px)}
+.readout{position:absolute;right:20px;top:84px;background:var(--card);border:1px solid var(--grid);padding:8px 12px;border-radius:6px;font-variant-numeric:tabular-nums;text-transform:none}
+.readout b{color:var(--amber);font-weight:700}
+
+/* разделы */
+section.dir{padding:clamp(56px,9vw,110px) 0;border-bottom:1px solid var(--grid)}
+.dir .wrap{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:clamp(24px,5vw,72px)}
+.dir h2{font:700 clamp(30px,4.2vw,52px)/1 Unb,sans-serif;letter-spacing:-.02em;margin:10px 0 0}
+.dir .lead{margin:0 0 22px;font-size:clamp(18px,1.7vw,21px)}
+.dir ul{list-style:none;padding:0;margin:0}
+.dir li{padding:14px 0;border-top:1px solid var(--grid)}
+.dir li:last-child{border-bottom:1px solid var(--grid)}
+.dir li b{font-weight:600}
+.tag{color:var(--cobalt)}
+.stage{display:block;width:100%;height:auto;border-radius:10px;margin-top:8px}
+.sub{margin:28px 0 10px;color:var(--muted)}
+
+/* наука: две живые сцены */
+.demos{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.demo{display:flex;flex-direction:column;justify-content:space-between;min-height:230px;padding:22px;background:var(--card);border:1px solid var(--grid);border-radius:10px;text-decoration:none;transition:border-color .2s,transform .2s}
+.demo:hover{border-color:var(--cobalt);transform:translateY(-2px)}
+.demo h3{font:700 22px/1.15 Unb,sans-serif;margin:0 0 10px}
+.demo p{margin:0;color:var(--muted);font-size:16px}
+.demo .go{margin-top:18px;color:var(--cobalt)}
+.demo svg{display:block;margin-bottom:16px}
+
+/* связь */
+.contact .wrap{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:clamp(24px,5vw,72px)}
+form{display:grid;gap:12px}
+input,textarea{font:inherit;color:inherit;background:var(--card);border:1px solid var(--grid);border-radius:8px;padding:13px 14px;width:100%}
+textarea{min-height:120px;resize:vertical}
+a.btn{display:inline-block;text-decoration:none;font:600 16px Inter,sans-serif;background:var(--ink);color:var(--paper);border-radius:8px;padding:15px 22px}
+a.btn:hover{background:var(--cobalt)}
+button{font:600 16px Inter,sans-serif;background:var(--ink);color:var(--paper);border:0;border-radius:8px;padding:15px 22px;cursor:pointer;justify-self:start}
+button:hover{background:var(--cobalt)}
+.note{font-size:13px;color:var(--muted)}
+.trap{position:absolute;left:-9999px}
+footer{padding:28px 0 40px;color:var(--muted)}
+footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+@media (max-width:760px){
+  .top nav{display:none}
+  .dir .wrap,.contact .wrap{grid-template-columns:1fr}
+  .demos{grid-template-columns:1fr}
+  .readout{top:70px;right:12px}
+  .hero .wrap{grid-template-columns:1fr;gap:22px}
+  .portrait{order:-1;width:150px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <span class="mono">pogodinalexeev.ru</span>
+  <nav class="mono"><a href="#personal">personal</a><a href="#business">business</a><a href="#creative">creative</a><a href="#science">science</a><a href="/blog/">блог</a><a href="#contact">связь</a></nav>
+</div></header>
+
+<section class="hero" aria-label="Кто я">
+  <canvas id="g" aria-hidden="true"></canvas>
+  <div class="readout mono" id="ro" aria-hidden="true">∫ sin x dx = <b>0.00</b></div>
+  <div class="wrap">
+    <div>
+    <h1>Владислав<span>AI-инженер</span></h1>
+    <p>Проектирую и внедряю автоматизации на нейросетях: системы, которые берут на себя рутинную работу целиком и работают без участия разработчика.</p>
+    </div>
+    <img class="portrait" src="/img/vlad.webp" alt="Владислав с кларнетом и флейтой" width="679" height="708">
+  </div>
+</section>
+
+<section class="dir" id="personal"><div class="wrap">
+  <div><span class="mono tag">personal</span><h2>Персональные ассистенты</h2></div>
+  <div>
+    <p class="lead">Один инструмент закрывает широкий круг задач: заметки и дела, календарь, расшифровка голосовых, поиск по личному архиву файлов, сборка документов и отчётов, переписка от имени владельца по его разрешению. Собирается под конкретного человека и обучается в процессе работы: новые правила задаются обычной речью, без программирования.</p>
+    <p class="mono sub">реализованные кейсы</p>
+    <ul>
+      <li><b>Приёмщик автосервиса.</b> Голосовая сводка по машине превращается в готовый отчёт по работам.</li>
+      <li><b>Гид.</b> Составление программ туров, сборка авторских материалов в PDF.</li>
+      <li><b>Организатор мероприятий.</b> Подбор площадок, рассылка коммерческих предложений, учёт по каждому событию, нарезка и публикация промо-материалов.</li>
+      <li><b>Звукорежиссёр.</b> Поиск и нарезка звука по заданным критериям внутри аудиоредактора.</li>
+    </ul>
+  </div>
+</div></section>
+
+<section class="dir" id="business"><div class="wrap">
+  <div><span class="mono tag">business</span><h2>Ассистенты для бизнеса</h2></div>
+  <div>
+    <p class="lead">Действующий инженер по внедрению ИИ в компании, торгующей на маркетплейсах.</p>
+    <ul>
+      <li>Персональные ассистенты для руководителей (интеграция с Битрикс24, 1С, CRM, CMS).</li>
+      <li>Ассистенты для отделов: коммерческие предложения, приведение данных поставщиков к единому формату, отчётность.</li>
+    </ul>
+  </div>
+</div></section>
+
+<section class="dir" id="creative"><div class="wrap">
+  <div><span class="mono tag">creative</span><h2>Звук и железо</h2></div>
+  <div>
+    <p class="lead">Генерация и нарезка звука, автоматизация аудиоредакторов, Max for Live, собственные плагины, программное управление синтезаторами и студийным оборудованием.</p>
+    <img class="stage" src="/img/sax.webp" alt="Владислав с саксофоном на сцене" width="1214" height="708" loading="lazy">
+  </div>
+</div></section>
+
+<section class="dir" id="science"><div class="wrap">
+  <div><span class="mono tag">science</span><h2>Наглядная наука</h2></div>
+  <div>
+    <p class="lead">Учебные сцены в браузере: математику и теорию музыки можно потрогать руками. Открываются на компьютере и телефоне, ничего ставить не надо.</p>
+    <div class="demos">
+      <a class="demo" href="/integral/">
+        <div>
+          <svg width="64" height="36" viewBox="0 0 64 36" aria-hidden="true"><path d="M2 18 Q10 2 18 18 T34 18 T50 18 T66 18" fill="none" stroke="#2B4FDB" stroke-width="2.5"/><path d="M2 18 Q10 2 18 18 Z" fill="#EFA21B" opacity=".6"/></svg>
+          <h3>Сад интеграла</h3>
+          <p>Трёхмерная прогулка про синус, косинус и площадь под графиком.</p>
+        </div>
+        <span class="mono go">открыть →</span>
+      </a>
+      <a class="demo" href="/box/">
+        <div>
+          <svg width="64" height="36" viewBox="0 0 64 36" aria-hidden="true"><g stroke="#15201C" stroke-width="1"><path d="M0 6H64M0 14H64M0 22H64M0 30H64"/><path d="M16 2V34M32 2V34M48 2V34" opacity=".4"/></g><g fill="#2B4FDB"><circle cx="8" cy="14" r="4"/><circle cx="24" cy="14" r="4"/><circle cx="40" cy="14" r="4"/></g><g fill="#EFA21B"><circle cx="8" cy="22" r="4"/><circle cx="24" cy="22" r="4"/><circle cx="32" cy="22" r="4"/></g></svg>
+          <h3>Бесконечный бокс</h3>
+          <p>Тренажёр грифа гитары. На грифе горит кусок гаммы, нужно достроить соседний, как в тетрисе.</p>
+        </div>
+        <span class="mono go">открыть →</span>
+      </a>
+    </div>
+  </div>
+</div></section>
+
+<section class="dir contact" id="contact"><div class="wrap">
+  <div><span class="mono tag">связь</span><h2>Обсудить задачу</h2></div>
+  <div>
+    <p class="lead">Опишите задачу парой фраз, отвечу сам.</p>
+    <a class="btn" href="https://vk.com/pogodinalexeev">Написать ВКонтакте</a>
+  </div>
+</div></section>
+
+<footer><div class="wrap mono"><span>владислав · ai-инженер · <a href="/blog/">блог</a></span><span>© 2026</span></div></footer>
+
+<script>
+// График синуса на миллиметровке: площадь под кривой копится до курсора (или сама бежит по кругу).
+(function(){
+  var c=document.getElementById('g'), x=c.getContext('2d'), ro=document.querySelector('#ro b');
+  var still=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var W,H,dpr,target=null,pos=0,t0=performance.now();
+  function size(){dpr=Math.min(devicePixelRatio||1,2);W=c.clientWidth;H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0)}
+  var PER=4*Math.PI; // по ширине экрана два периода
+  function fy(u){return Math.sin(u)}
+  function draw(){
+    x.clearRect(0,0,W,H);
+    var step=W<700?24:32; x.strokeStyle='#D3DCD8'; x.lineWidth=1; x.beginPath();
+    for(var i=0;i<=W;i+=step){x.moveTo(i+.5,0);x.lineTo(i+.5,H)}
+    for(var j=0;j<=H;j+=step){x.moveTo(0,j+.5);x.lineTo(W,j+.5)}
+    x.stroke();
+    var mid=H*.36, amp=H*.16, k=PER/W;
+    x.strokeStyle='#15201C'; x.globalAlpha=.35; x.beginPath(); x.moveTo(0,mid+.5); x.lineTo(W,mid+.5); x.stroke(); x.globalAlpha=1;
+    // площадь до pos
+    x.beginPath(); x.moveTo(0,mid);
+    for(var px=0;px<=pos;px+=2){x.lineTo(px,mid-amp*fy(px*k))}
+    x.lineTo(pos,mid); x.closePath();
+    x.fillStyle='rgba(239,162,27,.45)'; x.fill();
+    // кривая
+    x.beginPath(); for(var p=0;p<=W;p+=2){var yy=mid-amp*fy(p*k); p?x.lineTo(p,yy):x.moveTo(p,yy)}
+    x.strokeStyle='#2B4FDB'; x.lineWidth=2.5; x.stroke();
+    // бегунок
+    x.beginPath(); x.moveTo(pos,mid-amp*1.25); x.lineTo(pos,mid+amp*1.25); x.strokeStyle='#15201C'; x.lineWidth=1; x.stroke();
+    ro.textContent=(1-Math.cos(pos*k)).toFixed(2);
+  }
+  function loop(now){
+    var goal = target!==null ? target : ((now-t0)/9000%1)*W;
+    pos += (goal-pos)*(target!==null?.18:1);
+    draw(); requestAnimationFrame(loop);
+  }
+  addEventListener('resize',function(){size();draw()});
+  c.parentElement.addEventListener('pointermove',function(e){var r=c.getBoundingClientRect();target=Math.max(0,Math.min(W,e.clientX-r.left))});
+  c.parentElement.addEventListener('pointerleave',function(){target=null;t0=performance.now()-pos/W*9000});
+  size();
+  if(still){pos=W*.25;draw()} else requestAnimationFrame(loop);
+})();
+
+
+</script>
+</body>
+</html>

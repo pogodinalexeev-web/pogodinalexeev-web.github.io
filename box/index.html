@@ -1,0 +1,1022 @@
+<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Бесконечный бокс — квиз</title>
+<!--
+  Прототип 20.09.2026. Идея квиза: Влад (голосовое Тимофею Ляпину 20.09.2026).
+  23.09.2026: имена палок Ш/П/Л с номером, три режима подсказок, вспышка при верном ходе,
+  камера на гриф (MediaPipe Hand Landmarker из ./vendor/, сам решает струну, высота ноты с микрофона).
+  Рисовалка грифа (геометрия ладов, палитра, классы .fb-*/.n) взята за основу
+  из MusicHelper / Chord Helper: https://138.124.61.107.sslip.io/demo/musichelper/sound_chords.html
+-->
+<style>
+:root{--bg:#05070b;--panel:#0b1018;--line:rgba(126,196,222,.16);--ink:#e9f3f8;--ink2:#9fb4c4;--muted:#66798a;
+--warm:#ffb44a;--teal:#62d9e8;--bad:#ff6b81;--ok:#7be0a4}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:1100px;margin:0 auto;padding:18px 14px 40px}
+h1{font-size:13px;letter-spacing:.17em;text-transform:uppercase;color:var(--teal);margin:0 0 4px}
+.lead{color:var(--ink2);margin:0 0 14px;max-width:760px}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
+.bar label{color:var(--muted);font-size:12px}
+select,button{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--ink2);border-radius:9px;padding:6px 11px;font:inherit;font-size:13px;cursor:pointer}
+button:hover,select:hover{color:var(--ink);border-color:rgba(98,217,232,.45)}
+button:disabled{opacity:.28;cursor:default}
+button.on{color:var(--teal);border-color:rgba(98,217,232,.55)}
+button.pri{color:#06121a;background:var(--teal);border-color:var(--teal);font-weight:600}
+.sp{flex:1}
+.stat{font-size:12.5px;color:var(--ink2);padding:3px 10px;border:1px solid var(--line);border-radius:20px}
+.stat b{color:var(--ink)}
+.fbwrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:8px 4px}
+#fb{display:block;width:100%;min-width:820px;height:auto;touch-action:manipulation;user-select:none}
+.fb-fret{stroke:rgba(126,196,222,.24);stroke-width:2}
+.fb-nut{stroke:#cfe6f2;stroke-width:5}
+.fb-string{stroke:rgba(233,243,248,.34)}
+.fb-inlay{fill:rgba(126,196,222,.13)}
+.fb-num{fill:var(--muted);font-size:13px;text-anchor:middle}
+.fb-num.mark{fill:var(--ink2)}
+.lane{fill:rgba(98,217,232,.07);stroke:rgba(98,217,232,.35);stroke-dasharray:5 5}
+.cell{fill:transparent;cursor:pointer}
+.cell:hover{fill:rgba(98,217,232,.10)}
+.cell.grab{cursor:grab;touch-action:none}
+.bx-drag{cursor:grab;touch-action:none}
+svg.bx-hold{outline:2px dashed var(--warm);outline-offset:4px;border-radius:10px}
+svg.bx-hold .bx-drag{cursor:grabbing}
+.stick.drag{stroke-width:3;stroke-dasharray:6 4}
+#c5{display:block;width:100%;touch-action:pan-y;border:1px solid var(--line);border-radius:14px;background:radial-gradient(ellipse at 50% 40%,rgba(98,217,232,.07),transparent 70%);cursor:grab;user-select:none}
+#libCut .bar button.on{background:var(--warm);color:#1d1406}#c5Info{margin:8px 0;line-height:1.5}
+#libDragBar{margin:6px 0 2px;align-items:flex-start}#libDrag{flex:1;min-width:200px;color:var(--muted);font-size:13.5px;line-height:1.45}
+.n circle{fill:rgba(5,7,11,.9);stroke:rgba(98,217,232,.5);stroke-width:1.5}
+.n text{fill:var(--ink);font-size:11.5px;text-anchor:middle;font-weight:600;pointer-events:none}
+.n text.small{font-size:9px}
+.n.tonic circle{fill:var(--warm);stroke:#ffd591}
+.n.tonic text{fill:#1d1406}
+.n.cur circle{fill:var(--teal);stroke:#c9f6fb;filter:drop-shadow(0 0 6px rgba(98,217,232,.8))}
+.n.cur text{fill:#04151a}
+.n.cur.tonic circle{fill:var(--warm);stroke:#fff;stroke-width:2.5;filter:drop-shadow(0 0 7px rgba(255,180,74,.9))}
+.n.pick circle{fill:rgba(98,217,232,.18);stroke:var(--teal);stroke-dasharray:3 3}
+.n.wrong circle{fill:rgba(255,107,129,.3);stroke:var(--bad);stroke-dasharray:none}
+.n.ghost circle{fill:rgba(123,224,164,.18);stroke:var(--ok)}
+.n.new circle{animation:pop .45s ease-out}
+@keyframes pop{0%{r:4}60%{r:15}100%{r:12}}
+.play{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;margin-top:14px}
+.pad{display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,40px);gap:4px}
+.pad button{padding:0;font-size:17px}
+.pad button.on{color:#06121a;background:var(--teal);border-color:var(--teal)}
+#msg{min-height:44px;color:var(--ink2)}
+#msg.good{color:var(--ok)}#msg.bad{color:var(--bad)}
+details{margin-top:16px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;color:var(--ink2)}
+summary{cursor:pointer;color:var(--ink)}
+.sticks{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0;font-family:ui-monospace,Menlo,monospace}
+.sticks span b{color:var(--teal);letter-spacing:.2em}
+.stick{fill:rgba(98,217,232,.10);stroke:rgba(98,217,232,.45);stroke-width:1.5}
+.stick.cur{fill:rgba(98,217,232,.22);stroke:var(--teal);stroke-width:2}
+.stick.new{animation:grow .5s ease-out}
+@keyframes grow{0%{opacity:0;stroke-width:8}100%{opacity:1}}
+.n.heard circle{fill:rgba(201,184,255,.25);stroke:#c9b8ff}
+#btnMic.on{color:#06121a;background:#c9b8ff;border-color:#c9b8ff;font-weight:600}
+#heard{font-size:12.5px;color:#c9b8ff;min-width:90px}
+.box{margin-top:16px;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:12px 14px}
+.box h2{margin:0 0 2px;font-size:15px;font-weight:600}
+.box p{margin:0 0 8px;color:var(--ink2);font-size:13px;max-width:820px}
+#boxmap{display:block;width:100%;max-width:760px;height:auto;margin:0 auto}
+.bx-line{stroke:rgba(126,196,222,.18);stroke-width:1.5}
+.bx-str{stroke:rgba(233,243,248,.28);stroke-width:1.5}
+.bx-stick{fill:rgba(98,217,232,.08);stroke:rgba(98,217,232,.35);stroke-width:1.5}
+.bx-stick.cur{fill:rgba(98,217,232,.28);stroke:var(--teal);stroke-width:2.5}
+.bx-n circle{fill:rgba(5,7,11,.9);stroke:rgba(98,217,232,.5);stroke-width:1.5}
+.bx-n text{fill:var(--ink);font-size:15px;font-weight:600;text-anchor:middle}
+.bx-n.tonic circle{fill:var(--warm);stroke:#ffd591}.bx-n.tonic text{fill:#1d1406}
+.bx-copy.pale{opacity:.33}
+.bx-copy.nb .bx-stick{fill:rgba(255,180,74,.16);stroke:var(--warm);stroke-width:2;stroke-dasharray:5 4}
+.bx-cap{fill:var(--muted);font-size:12.5px;text-anchor:middle}.bx-cap.main{fill:var(--teal);font-weight:700;letter-spacing:.15em}
+#boxmap.wide{max-width:1000px}
+/* вкладки и библиотека ладов (24.09.2026) */
+.tabs{display:flex;gap:6px;margin:0 0 12px}
+.tabs button{font-size:14px;padding:7px 14px}
+body.lib main>:not(h1):not(.tabs):not(#lib){display:none!important}
+#libBox{display:block;width:100%;max-width:1000px;height:auto;margin:0 auto}
+.lib-sub{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.chips button{font-size:12.5px;padding:5px 10px}
+.chips button.on{color:#06121a;background:var(--warm);border-color:var(--warm);font-weight:600}
+#libInfo{font-size:14px;color:var(--ink2);margin:6px 0 10px;min-height:44px}
+#libInfo b.nm{font-size:19px;color:var(--ink)}
+#libInfo .f{font-family:ui-monospace,Menlo,monospace;font-size:15px;color:var(--ink);letter-spacing:.06em}
+.alt{color:var(--warm);font-weight:700}
+table.modes{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+table.modes td,table.modes th{border-top:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:middle}
+table.modes th{color:var(--muted);font-weight:500;font-size:12px}
+table.modes tr{cursor:pointer}table.modes tr.on td{background:rgba(255,180,74,.09)}
+table.modes .f{font-family:ui-monospace,Menlo,monospace;letter-spacing:.05em;color:var(--ink)}
+.strip{display:inline-block;vertical-align:middle}
+#mSvg{display:block;min-width:640px;width:100%;height:auto}
+#mInfo{font-size:14px;color:var(--ink2);margin:4px 0 8px;min-height:40px}#mInfo b.nm{font-size:19px}
+.m-row{cursor:pointer}.m-cap{fill:var(--muted);font-size:12px}.m-real text.m-tag{fill:var(--ink2)}
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+#lib{min-width:0}
+@media(max-width:600px){table.modes{font-size:12px}table.modes td,table.modes th{padding:5px 5px}table.allm td.c,table.allm th.c{width:30px;font-size:12.5px}table.allm .par{display:none}table.allm td.c,table.allm th.c{padding:5px 1px;width:28px}}
+table.allm td.c,table.allm th.c{text-align:center;width:44px;font-family:ui-monospace,Menlo,monospace;font-size:14px}
+table.allm td.c{background:rgba(233,243,248,.06);color:var(--ink2)}
+table.allm td.c.up,table.allm td.c.dn{background:#000;font-weight:700}
+table.allm td.c.up{color:#ffb44a}table.allm td.c.dn{color:#6fb6ff}
+table.allm td.sc{font-weight:700;color:var(--ink);width:48px}table.allm td.par{color:var(--muted);font-size:12px}
+.bx-lab{fill:var(--muted);font-size:12px}.bx-lab.cur{fill:var(--teal);font-weight:600}
+.bx-shift{fill:var(--warm);font-size:12px}
+#ob{position:fixed;inset:0;z-index:20;background:rgba(3,5,8,.82);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;padding:14px}
+#ob .card{width:100%;max-width:640px;max-height:94vh;overflow:auto;background:var(--panel);border:1px solid rgba(98,217,232,.35);border-radius:18px;padding:20px 22px 16px;box-shadow:0 20px 80px rgba(0,0,0,.6)}
+#ob .step{font-size:11.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--teal)}
+#ob h2{margin:4px 0 10px;font-size:22px;line-height:1.25}
+#ob p{margin:0 0 10px;font-size:15.5px;line-height:1.55;color:var(--ink)}
+#ob p.soft{color:var(--ink2);font-size:14px}
+#ob b{color:var(--teal);font-weight:600}
+#ob .warm{color:var(--warm)}
+#ob .pic{margin:10px 0 12px;padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(5,7,11,.6)}
+#ob .pic svg{display:block;width:100%;height:auto}
+#ob .shapes{display:grid;gap:8px}
+#ob .shape{display:flex;align-items:center;gap:12px;font-size:14.5px}
+#ob .shape i{font-style:normal;font-family:ui-monospace,Menlo,monospace;font-size:20px;letter-spacing:.22em;color:var(--teal);min-width:118px}
+#ob .nav{display:flex;align-items:center;gap:8px;margin-top:8px}
+#ob .dots{display:flex;gap:6px;flex:1;justify-content:center}
+#ob .dots span{width:7px;height:7px;border-radius:50%;background:rgba(126,196,222,.25)}
+#ob .dots span.on{background:var(--teal)}
+#ob .x{margin-left:auto}
+#btnHelp{font-weight:700;color:var(--teal);border-color:rgba(98,217,232,.45)}
+/* имена палок, подсказки по режимам, вспышка, камера (23.09.2026) */
+.stkname{fill:var(--teal);font-size:11.5px;font-weight:700;text-anchor:middle;letter-spacing:.06em}
+.bx-name{fill:var(--teal);font-size:11.5px;font-weight:700;letter-spacing:.06em}
+.hint{margin-top:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:10px 14px}
+.hint .now{font-size:20px;font-weight:700;color:var(--teal)}
+.hint .now small{font-size:13px;font-weight:400;color:var(--ink2);margin-left:8px}
+.hint .nb{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin-top:8px}
+.hint .nb div{border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:12.5px;color:var(--ink2);line-height:1.4}
+.hint .nb b{color:var(--ink);font-size:17px;margin-right:4px}
+.hint .nb .ar{font-size:17px;color:var(--teal);margin-right:6px}
+.legend{margin-top:10px;font-size:12.5px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;display:flex;gap:16px;flex-wrap:wrap}
+.legend b{color:var(--teal)}
+#flash{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(3,5,8,.6);opacity:0;transition:opacity .25s}
+#flash.on{opacity:1}
+#flash .t{font-size:min(17vw,150px);font-weight:800;letter-spacing:.04em;color:var(--teal);text-shadow:0 0 40px rgba(98,217,232,.7);transform:scale(.6);transition:transform .35s cubic-bezier(.2,1.5,.4,1);white-space:nowrap;text-align:center}
+#flash.on .t{transform:scale(1)}
+#flash .d{font-size:min(5vw,26px);color:var(--ink2);text-align:center;margin-top:6px}
+#cam{margin-top:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:10px 14px}
+#cam h2{margin:0;font-size:15px;font-weight:600}
+#camsay,#camlive{font-size:12.5px;color:var(--ink2);min-height:18px;margin-top:4px}
+#camlive{color:var(--ok)}
+#camwrap{position:relative;max-width:640px;margin:8px auto 0}
+#camv{display:block;width:100%;border-radius:10px;background:#000}
+#camc{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none}
+#camc.calib{pointer-events:auto;cursor:crosshair}
+#btnCam.on{color:#06121a;background:var(--ok);border-color:var(--ok);font-weight:600}
+@media(max-width:600px){.play{grid-template-columns:1fr}.pad{margin:0 auto}}
+</style></head><body><main>
+<h1>Бесконечный бокс</h1>
+<nav class="tabs"><button id="tabTrain" class="on">Тренажёр</button><button id="tabLib">Библиотека ладов</button></nav>
+<p class="lead">На грифе одна «палка»: три соседние ступени лада на одной струне. Дострой соседнюю в любую сторону, как в тетрисе: вверх и вниз по струнам, вправо и влево по грифу. Карта лада рисуется твоими руками, без зубрёжки абсолютных аппликатур.</p>
+
+<div class="bar">
+  <label>Тональность</label><select id="selKey"></select>
+  <select id="selMode" title="гамма: движок палок один, меняется только набор нот"><option value="major">мажор</option><option value="minor">минор</option><option value="hmin">гарм. минор</option><option value="mmin">мелод. минор</option><option value="dharm">дважды гармонический</option><option value="hung">венгерский минор</option><option value="bebop">бибоп, 8 нот</option></select>
+  <label>Подписи</label><select id="selLab"><option value="deg">ступени</option><option value="note">ноты</option><option value="none">без подписей</option></select>
+  <label>Режим</label><select id="selTrain" title="1: говорят и рисуют. 2: только называют. 3: молчат, при верном ходе вспышка"><option value="1">1 · подсказки и картинка</option><option value="2">2 · только имена</option><option value="3">3 · вслепую</option></select>
+  <button id="btnFlash" class="on" title="вспышка на весь экран при верном ходе: откуда и куда перешёл">✨ вспышка</button>
+  <button id="btnHelp" title="как этим пользоваться">? Как играть</button>
+  <button id="btnNew">Новая карта</button>
+  <button id="btnMic" title="ноты берутся с гитары через микрофон, синтезатор молчит">🎤 Микрофон</button><span id="heard"></span>
+  <button id="btnCam" title="камера смотрит на гриф и решает, на какой струне сыграно: ↑ и → звучат одинаково">📷 Камера</button>
+  <span class="sp"></span>
+  <span class="stat">шагов <b id="stSteps">0</b></span>
+  <span class="stat">серия <b id="stStreak">0</b></span>
+  <span class="stat">ошибок <b id="stErr">0</b></span>
+  <span class="stat">карта <b id="stMap">0%</b></span>
+</div>
+
+<div class="fbwrap"><svg id="fb"></svg></div>
+
+<div class="play">
+  <div class="pad">
+    <span></span><button id="dUp" title="струна выше (↑)">↑</button><span></span>
+    <button id="dLeft" title="влево по грифу (←)">←</button><button id="btnShow" title="показать ответ" style="font-size:10.5px">ответ</button><button id="dRight" title="вправо по грифу (→)">→</button>
+    <span></span><button id="dDown" title="струна ниже (↓)">↓</button><span></span>
+  </div>
+  <div id="msg"></div>
+</div>
+
+<section class="hint" id="hint">
+  <div class="now" id="hintNow"></div>
+  <div class="nb" id="hintNb"></div>
+  <div class="legend" id="legend"><span><b>Ш</b> широкая ●·●·●</span><span><b>П</b> правая, хвост справа ●·●●</span><span><b>Л</b> левая, хвост слева ●●·●</span><span>номер: сверху вниз по боксу</span><span id="legendColors"></span></div>
+</section>
+
+<section id="cam" hidden>
+  <div class="bar" style="margin:0"><h2>Камера на гриф</h2><span class="sp"></span><button id="btnCamFlip" title="передняя или задняя камера">↺ другая камера</button><button id="btnCalib">разметить гриф</button><button id="btnCamOff">выключить</button></div>
+  <div id="camsay"></div>
+  <div id="camwrap"><video id="camv" playsinline muted autoplay></video><canvas id="camc"></canvas></div>
+  <div id="camlive"></div>
+</section>
+
+<section class="box" id="boxwrap">
+  <div class="bar" style="margin:0"><h2>Бесконечный бокс</h2><span class="sp"></span><button id="btnSides" class="on">соседи по бокам</button><button id="btnBox">спрятать</button></div>
+  <p><span id="boxOrder">Семь палок по струнам, сверху вниз Ш1 Ш2 Ш3 П1 П2 Л1 Л2</span>, дальше то же самое по кругу. Строй идеальный, все струны в кварту. Яркая палка та, на которой ты сейчас стоишь, янтарная нота тоника. Бледное по бокам это тот же самый бокс, съехавший вбок. Палки в янтарной пунктирной рамке: твои соседки слева и справа на этой же струне.</p>
+  <svg id="boxmap"></svg>
+</section>
+
+<details><summary>Шпаргалка словами</summary>
+  <div class="sticks">
+    <span><b>●·●·●</b> тон + тон — от ступеней 1, 4, 5</span>
+    <span><b>●·●●</b> тон + полутон — от 2, 6</span>
+    <span><b>●●·●</b> полутон + тон — от 3, 7</span>
+  </div>
+  <p style="margin:0">Вверх по струнам палки идут кругом: 1 → 4 → 7 → 3 → 6 → 2 → 5 → снова 1, то есть три «тон-тон» подряд, две «полутон-тон», две «тон-полутон». Следующая палка начинается с того же лада, что и текущая; сдвигов всего два: после палки от 4-й ступени (до 7-й там тритон, а не кварта) и на стыке струн G и B (терция вместо кварты). В обоих случаях всё уезжает на лад вправо. Вправо по той же струне лежит та же палка, что и струной выше: те же три ноты, только на 5 ладов правее. Влево наоборот: палка со струны ниже, на 5 ладов левее.</p>
+</details>
+<section class="box" id="lib" hidden>
+  <div class="lib-sub" id="libSub"><button data-lib="dh">Дважды гармонический</button><button data-lib="church">Церковные лады</button><button data-lib="hmin">Лады гармонического минора</button><button data-lib="mmin">Лады мелодического минора</button><button data-lib="all">Все относительно мажора</button><button data-lib="morph">Как палки перетекают</button><button data-lib="cut3">Три нарезки и квинтовый круг</button></div>
+  <p id="libIntro"></p>
+  <div class="bar" style="margin:0 0 4px"><label>Тональность</label><select id="libKey"></select><label>Подписи</label><select id="libLab"><option value="deg">ступени лада</option><option value="note">ноты</option></select><select id="morphPar" hidden><option value="major">мажор</option><option value="hmin">гарм. минор</option><option value="mmin">мелод. минор</option><option value="dharm">дважды гармонический</option></select><button id="libHung" hidden>дважды гармонический минор: выкл</button></div>
+  <div class="chips" id="libChips"></div>
+  <div id="libInfo"></div>
+  <svg id="libBox"></svg>
+  <div class="bar" id="libDragBar"><span id="libDrag"></span><button id="libReset" hidden>↺ собрать как было</button></div>
+  <div id="libAll" class="scrollx" hidden></div>
+  <div id="libMorph" hidden><div class="bar" style="margin:4px 0"><button id="mPrev">◀ на ноту влево</button><input type="range" id="mSlide" min="0" max="13" value="0" style="flex:1;min-width:140px"><button id="mNext">на ноту вправо ▶</button></div><div id="mInfo"></div><div class="scrollx"><svg id="mSvg"></svg></div><div class="scrollx"><table class="modes" id="mTable"></table></div></div>
+  <div id="libCut" hidden><div class="bar" style="margin:4px 0"><button id="c5Down" title="на квинту вниз, в бемоли">◀ квинта вниз</button><b id="c5Key" class="nm"></b><button id="c5Up" title="на квинту вверх, в диезы">квинта вверх ▶</button><span class="sp"></span><span class="m-cap">нарезка</span><button data-cut="0">1</button><button data-cut="1">2</button><button data-cut="2">3</button><button id="c5Spin">⟳ крутить</button></div><div class="bar" style="margin:0 0 4px"><button id="c5Trane" title="круг Колтрейна: квинтовый круг на двух кольцах">круг Колтрейна</button><button id="c5Giant" hidden title="на большую терцию вниз, как в Giant Steps">▼ шаг Колтрейна: на большую терцию</button></div><canvas id="c5"></canvas><div id="c5Info"></div><div class="scrollx"><table class="modes" id="c5Table"></table></div></div>
+  <div class="scrollx"><table class="modes" id="libTable"></table></div>
+</section>
+</main>
+<div id="flash"><div><div class="t" id="flashT"></div><div class="d" id="flashD"></div></div></div>
+<div id="ob" hidden><div class="card" role="dialog" aria-modal="true"><div id="obBody"></div>
+  <div class="nav"><button id="obPrev">← Назад</button><div class="dots" id="obDots"></div><button id="obNext" class="pri">Дальше →</button></div>
+</div></div>
+<script>
+(function(){'use strict';
+var NS='http://www.w3.org/2000/svg';
+function el(name,attrs,text){var e=document.createElementNS(NS,name);if(attrs)for(var k in attrs)if(attrs[k]!=null)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;return e}
+function $(s){return document.querySelector(s)}
+function mod12(n){return((n%12)+12)%12}
+
+var TUNING=[40,45,50,55,59,64],STRINGS=6,N=19;
+var MAJOR=[0,2,4,5,7,9,11];
+// Гаммы (23.09.2026, слово Влада: «сделай ебанутый режим для дважды гармонического мажора и ещё там для чего-нибудь»).
+// Движок соседей берёт просто следующую ноту гаммы, поэтому любая гамма из 7 или 8 нот ложится в тот же бокс.
+// ref: от какой ноты считать ступени палок. У минора это параллельный мажор, чтобы имена палок совпадали с мажорными.
+var SCALES={
+  major:{ru:'мажор',iv:MAJOR,ref:0},
+  minor:{ru:'минор',iv:MAJOR,ref:3},
+  hmin:{ru:'гармонический минор',iv:[0,2,3,5,7,8,11],ref:0},
+  mmin:{ru:'мелодический минор',iv:[0,2,3,5,7,9,11],ref:0},
+  dharm:{ru:'дважды гармонический мажор',iv:[0,1,4,5,7,8,11],ref:0},
+  hung:{ru:'венгерский минор',iv:[0,2,3,6,7,8,11],ref:0},
+  bebop:{ru:'бибоп доминантовый',iv:[0,2,4,5,7,9,10,11],ref:0}
+};
+function SC(){return SCALES[S.scale]||SCALES.minor}
+function IV(){return SC().iv}
+function NN(){return IV().length}
+var SHARP=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'],FLAT=['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+var FLAT_MAJ=[5,10,3,8,1]; // F B♭ E♭ A♭ D♭
+var DEG={0:'1',1:'♭2',2:'2',3:'♭3',4:'3',5:'4',6:'♭5',7:'5',8:'♭6',9:'6',10:'♭7',11:'7'};
+
+var S={tonic:9,scale:'minor',lab:'deg',sides:true,tmode:1,flash:true,sticks:[],freshStick:-1,cur:null,dir:null,picks:{},wrong:{},ghost:{},fresh:{},revealed:{},steps:0,streak:0,err:0,busy:false};
+
+// --- теория ---
+function majRoot(){return mod12(S.tonic+SC().ref)} // от какой ноты считаем ступени (у минора параллельный мажор)
+function inScale(midi){return IV().indexOf(mod12(midi-majRoot()))>=0}
+function nextUp(midi){do{midi++}while(!inScale(midi));return midi}
+function nextDown(midi){do{midi--}while(!inScale(midi));return midi}
+function midi(s,f){return TUNING[s]+f}
+function okFrets(a){return a.every(function(f){return f>=0&&f<=N})}
+function name(pc){return(FLAT_MAJ.indexOf(majRoot())>=0?FLAT:SHARP)[pc]}
+function label(s,f){var pc=mod12(midi(s,f));return S.lab==='none'?'':S.lab==='note'?name(pc):degLab(pc)}
+/** Подпись ступени по теории: номер ступени лада плюс знак против мажора (у венгерского минора ♯4, а не ♭5). S.degMap: полутон от тоники → подпись. */
+function degLab(pc){var k=mod12(pc-S.tonic);return S.degMap&&S.degMap[k]||DEG[k]}
+function modeDegMap(iv,k){var n=iv.length,m={},j,rel,d,ACC={'-2':'♭♭','-1':'♭','0':'','1':'♯','2':'♯♯'};if(n!==7)return null;
+  for(j=0;j<7;j++){rel=mod12(iv[(k+j)%7]-iv[k]);d=rel-MAJOR[j];if(d>6)d-=12;if(d<-6)d+=12;m[rel]=(ACC[d]!=null?ACC[d]:'?')+(j+1)}return m}
+function trainerDegMap(){var iv=IV();return modeDegMap(iv,iv.indexOf(mod12(S.tonic-majRoot())))}
+
+/** Соседняя палка. need — лады, которые надо поставить самому; given — общая нота (для ←/→). */
+function target(dir){var t=rawTarget(dir);if(t)t.need=t.need.filter(function(f){return!S.revealed[t.s+':'+f]});return t}
+function rawTarget(dir){
+  var c=S.cur,s=c.s,a,b,d,fr;
+  if(dir==='up'){if(s+1>=STRINGS)return null;a=nextUp(midi(s,c.frets[2]));b=nextUp(a);d=nextUp(b);fr=[a,b,d].map(function(m){return m-TUNING[s+1]});return okFrets(fr)?{s:s+1,frets:fr,need:fr}:null}
+  if(dir==='down'){if(s-1<0)return null;d=nextDown(midi(s,c.frets[0]));b=nextDown(d);a=nextDown(b);fr=[a,b,d].map(function(m){return m-TUNING[s-1]});return okFrets(fr)?{s:s-1,frets:fr,need:fr}:null}
+  if(dir==='right'){a=nextUp(midi(s,c.frets[2]));b=nextUp(a);d=nextUp(b);fr=[a,b,d].map(function(m){return m-TUNING[s]});return okFrets(fr)?{s:s,frets:fr,need:fr}:null}
+  if(dir==='left'){d=nextDown(midi(s,c.frets[0]));b=nextDown(d);a=nextDown(b);fr=[a,b,d].map(function(m){return m-TUNING[s]});return okFrets(fr)?{s:s,frets:fr,need:fr}:null}
+  return null;
+}
+var DIRS=['up','down','left','right'],DIR_RU={up:'на струну выше',down:'на струну ниже',left:'влево по грифу',right:'вправо по грифу'},ARROW={up:'↑',down:'↓',left:'←',right:'→'};
+
+// --- имена палок (23.09.2026, слово Влада: левая, правая, широкая; номер сверху вниз по карте бокса) ---
+// Ключ: индекс ступени, с которой палка начинается (0 = первая ступень). Карта бокса снизу вверх: 5,1,4,7,3,6,2,
+// карта рисуется от Ш1 снизу, значит сверху вниз: Ш1(от 4), Ш2(от 1), Ш3(от 5), П1(от 2), П2(от 6), Л1(от 3), Л2(от 7). Переименовать = поправить одну таблицу.
+// С 23.09.2026 таблица считается из гаммы (rebuildNames), для мажора выходит ровно прежняя:
+// {1:'П1',5:'П2',2:'Л1',6:'Л2',3:'Ш1',0:'Ш2',4:'Ш3'}. Вид палки берётся из двух шагов между её нотами.
+// Виды К, Лд, Пд заведены для гамм с полутора тонами (дважды гармонический и родня); имена мои, не Влада.
+var NAME_BY_DEG={},COLOR={},BOX_UP=[];
+var KIND_RU={'Ш':'широкая','П':'правая','Л':'левая','К':'кулак','Лд':'левая с дырой','Пд':'правая с дырой','Ф':'форма'};
+var KIND_BY_STEPS={'2,2':'Ш','2,1':'П','1,2':'Л','1,1':'К','1,3':'Лд','3,1':'Пд'};
+var KIND_DOTS={'Ш':'●·●·●','П':'●·●●','Л':'●●·●','К':'●●●','Лд':'●●··●','Пд':'●··●●'};
+var KIND_ORDER=['Ш','П','Л','К','Лд','Пд','Ф'];
+// цвет палки: радуга снизу вверх по карте бокса (слово Влада 23.09.2026). У мажора низ Ш1 красный, дальше Л2, Л1, П2, П1, Ш3, Ш2 фиолетовый; восьмой цвет для бибопа.
+var RAINBOW=['#ff5a5a','#ff9a3c','#ffd93c','#5fdc7a','#4fb8ff','#7c8cff','#c77dff','#ff7ac8'];
+function stepAt(d){var iv=IV(),n=iv.length;d=((d%n)+n)%n;return mod12(iv[(d+1)%n]-iv[d])}
+function kindAt(d){return KIND_BY_STEPS[stepAt(d)+','+stepAt(d+1)]||'Ф'}
+function kindOf(nm){return String(nm).replace(/\d+$/,'')}
+function boxDeg(r){return(3+3*r)%NN()} // ряд бокса снизу: низ = палка от 4-й ступени
+/** Имена: номер внутри вида сверху вниз по боксу; цвет: радуга снизу вверх. */
+function rebuildNames(){var n=NN(),cnt={},r,d,k;NAME_BY_DEG={};COLOR={};BOX_UP=[];
+  for(r=n;r>=1;r--){d=boxDeg(r);k=kindAt(d);cnt[k]=(cnt[k]||0)+1;NAME_BY_DEG[d]=k+cnt[k]}
+  for(r=0;r<n;r++){d=boxDeg(r);BOX_UP.push(NAME_BY_DEG[d]);COLOR[NAME_BY_DEG[d]]=RAINBOW[r%RAINBOW.length]}}
+var IV_RU={3:'малая терция',4:'большая терция',5:'кварта',6:'тритон',7:'квинта'},GAP_RU={1:'впритык, без пустого лада',2:'через один пустой лад',3:'через два пустых лада'};
+function spanUp(d){var iv=IV(),n=iv.length;return mod12(iv[(d+3)%n]-iv[d])}
+function renderLegend(){var ks={};BOX_UP.forEach(function(nm){ks[kindOf(nm)]=1});
+  var bo=$('#boxOrder');if(bo)bo.textContent=boxOrderText();
+  $('#legend').innerHTML=KIND_ORDER.filter(function(k){return ks[k]}).map(function(k){return'<span><b>'+k+'</b> '+({'П':'правая, хвост справа','Л':'левая, хвост слева','К':'кулак, три лада подряд'}[k]||KIND_RU[k])+' '+(KIND_DOTS[k]||'')+'</span>'}).join('')+
+    '<span>номер: сверху вниз по боксу</span><span id="legendColors">радуга снизу вверх: '+BOX_UP.map(function(nm){return'<span style="color:'+COLOR[nm]+'">'+nm+'</span>'}).join(' ')+'</span>'}
+function boxOrderText(){var n=NN(),w={7:'Семь',8:'Восемь'}[n]||n;return w+' палок по струнам'+(S.scale==='major'||S.scale==='minor'?'':' ('+SC().ru+')')+', сверху вниз '+[BOX_UP[0]].concat(BOX_UP.slice(1).reverse()).join(' ')}
+function setScale(v){if(!SCALES[v])return;S.scale=v;$('#selMode').value=v;try{localStorage.setItem('infbox.scale',v)}catch(e){}rebuildNames();S.degMap=trainerDegMap();renderLegend();newMap()}
+function colorOf(st){return COLOR[nameOf(st)]||'#62d9e8'}
+function tint(hex,a){return'rgba('+parseInt(hex.slice(1,3),16)+','+parseInt(hex.slice(3,5),16)+','+parseInt(hex.slice(5,7),16)+','+a+')'}
+function degOf(st){return IV().indexOf(mod12(midi(st.s,st.frets[0])-majRoot()))}
+function nameOf(st){return NAME_BY_DEG[degOf(st)]||'?'}
+/** Сосед по направлению: имя, сдвиг по ладам и почему. Сдвиг вверх бывает, когда от палки до палки струной выше не кварта
+ *  (в мажоре только после палки от 4-й ступени, там тритон), и на стыке струн G и B. Вбок: впритык или через пустой лад. */
+function nbInfo(dir){var t=rawTarget(dir);if(!t)return null;var c=S.cur,d0=t.frets[0]-c.frets[0],why=[],txt,n=NN(),sp,
+  lad=function(k){return k+' лад'+(k>1&&k<5?'а':k>=5?'ов':'')},ivr=function(x){return IV_RU[x]||x+' полутонов'},
+  side=function(k){return k>0?' вправо':' влево'};
+  if(dir==='up'||dir==='down'){var lo=dir==='up'?c:t;sp=spanUp(degOf(lo));
+    if(sp!==5)why.push((dir==='up'?'после ':'под ')+nameOf(lo)+(dir==='up'?' вверх ':' ')+ivr(sp)+', а не кварта');
+    if(lo.s===3)why.push('стык струн G и B');
+    txt=d0===0?(dir==='up'?'ровно над':'ровно под')+', с того же лада'+(why.length>1?': '+why.join(' и ')+', одно гасит другое':'')
+      :'сдвиг на '+lad(Math.abs(d0))+side(d0)+': '+why.join(' и ')}
+  else if(dir==='right')txt='та же палка, что струной выше, на '+lad(d0)+' правее; '+GAP_RU[stepAt(degOf(c)+2)]
+  else txt='та же палка, что струной ниже, на '+lad(-d0)+' левее; '+GAP_RU[stepAt(degOf(c)+n-1)];
+  return{dir:dir,name:nameOf(t),shift:d0,why:txt}}
+/** Панель подсказки по режиму: 1 имена, сдвиги и бокс; 2 только имена; 3 ничего. */
+function renderHint(){var m=S.tmode,h=$('#hint');h.hidden=m===3;$('#boxwrap').hidden=m!==1;if(m===3)return;
+  var cn=nameOf(S.cur),cd=degOf(S.cur);
+  $('#hintNow').innerHTML='Стоишь на <span style="color:'+COLOR[cn]+'">'+cn+'</span>'+(m===1?'<small>'+(KIND_RU[kindOf(cn)]||'')+', от '+(cd+1)+'-й ступени</small>':'');
+  $('#hintNb').innerHTML=DIRS.map(function(d){var i=nbInfo(d);if(!i)return'<div><span class="ar">'+ARROW[d]+'</span>гриф кончился</div>';
+    return'<div style="border-color:'+tint(COLOR[i.name],.5)+'"><span class="ar">'+ARROW[d]+'</span><b style="color:'+COLOR[i.name]+'">'+i.name+'</b>'+(m===1?'<br>'+i.why:'')+'</div>'}).join('')}
+var FL=null;
+/** Вспышка на весь экран при верном ходе: «Ш1 → Ш2», под ней словами куда. Выключается кнопкой. */
+function flash(from,dir,to){if(!S.flash||!dir)return;$('#flashT').innerHTML='<span style="color:'+COLOR[from]+'">'+from+'</span> '+ARROW[dir]+' <span style="color:'+COLOR[to]+'">'+to+'</span>';$('#flashD').textContent=DIR_RU[dir];
+  var f=$('#flash');f.classList.add('on');clearTimeout(FL);FL=setTimeout(function(){f.classList.remove('on')},1100)}
+
+// --- звук ---
+var AC=null;
+function ac(){AC=AC||new(window.AudioContext||window.webkitAudioContext)();return AC}
+/** Айфон: звук страницы молчит, пока его не разбудили прямо в касании, а беззвучный рычажок глушит WebAudio.
+    Лечится тремя вещами сразу: тип сеанса «воспроизведение», тихий зацикленный <audio> и пустой щелчок в самом касании. */
+var UNLOCKED=false,KEEP=null;
+function silentWav(){var sr=8000,n=sr/2,buf=new ArrayBuffer(44+n),v=new DataView(buf),i;
+  function w(o,s){for(i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))}
+  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);
+  for(i=0;i<n;i++)v.setUint8(44+i,128);return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}))}
+function unlock(){
+  try{if(navigator.audioSession)navigator.audioSession.type=MIC.on?'play-and-record':'playback'}catch(e){}
+  try{var c=ac();if(c.state!=='running')c.resume();
+    if(!UNLOCKED){var s=c.createBufferSource();s.buffer=c.createBuffer(1,1,22050);s.connect(c.destination);s.start(0)}}catch(e){}
+  try{if(!KEEP){KEEP=document.createElement('audio');KEEP.src=silentWav();KEEP.loop=true;KEEP.setAttribute('playsinline','');KEEP.volume=0.01}
+    if(KEEP.paused){var pr=KEEP.play();if(pr&&pr.catch)pr.catch(function(){})}}catch(e){}
+  UNLOCKED=true}
+['touchstart','touchend','pointerdown','mousedown','keydown','click'].forEach(function(ev){document.addEventListener(ev,unlock,{capture:true,passive:true})});
+document.addEventListener('visibilitychange',function(){if(!document.hidden&&AC&&AC.state!=='running')AC.resume()});
+function pluck(m,when){if(MIC.on)return;try{var c=ac();if(c.state!=='running'){c.resume().then(function(){voice(c,m,when)});return}voice(c,m,when)}catch(e){}}
+function voice(c,m,when){var t=c.currentTime+(when||0)+.01,f0=440*Math.pow(2,(m-69)/12);
+  var o=c.createOscillator(),o2=c.createOscillator(),lp=c.createBiquadFilter(),g=c.createGain();
+  o.type='sawtooth';o.frequency.value=f0;o2.type='triangle';o2.frequency.value=f0*2.003;
+  lp.type='lowpass';lp.frequency.setValueAtTime(Math.min(9000,f0*9),t);lp.frequency.exponentialRampToValueAtTime(Math.max(300,f0*1.5),t+.6);
+  g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(.4,t+.006);g.gain.exponentialRampToValueAtTime(.001,t+1.4);
+  o.connect(lp);o2.connect(lp);lp.connect(g);g.connect(c.destination);o.start(t);o2.start(t);o.stop(t+1.5);o2.stop(t+1.5)}
+
+// --- микрофон: высота ноты методом YIN ---
+var MIC={on:false,stream:null,an:null,buf:null,timer:null,last:-1,run:0,fired:-1,quiet:0};
+function detectPitch(buf,sr){var n=buf.length,half=n>>1,i,tau,rms=0;for(i=0;i<n;i++)rms+=buf[i]*buf[i];rms=Math.sqrt(rms/n);if(rms<0.012)return null;
+  var tmin=Math.floor(sr/1400),tmax=Math.min(half-1,Math.ceil(sr/70)),d=new Float32Array(tmax+1),sum=0,best=-1;
+  for(tau=1;tau<=tmax;tau++){var s=0;for(i=0;i<half;i++){var x=buf[i]-buf[i+tau];s+=x*x}sum+=s;d[tau]=sum?s*tau/sum:1}
+  for(tau=tmin;tau<=tmax;tau++){if(d[tau]<0.12){while(tau+1<=tmax&&d[tau+1]<d[tau])tau++;best=tau;break}}
+  if(best<0)return null;
+  var a=d[best-1]||d[best],b0=d[best],c=d[best+1]||d[best],sh=(a-c)/(2*(a-2*b0+c)||1);
+  return sr/(best+(isFinite(sh)?sh:0))}
+function micTick(){if(AC.state!=='running'){AC.resume();$('#heard').textContent='звук спит ('+AC.state+'), ткни по экрану';return}
+  MIC.an.getFloatTimeDomainData(MIC.buf);var lv=0,k;for(k=0;k<MIC.buf.length;k++)lv+=MIC.buf[k]*MIC.buf[k];lv=Math.sqrt(lv/MIC.buf.length);
+  MIC.tick=(MIC.tick||0)+1;if(MIC.tick%4===0&&MIC.fired<0)$('#heard').textContent='уровень '+lv.toFixed(3);
+  var hz=detectPitch(MIC.buf,AC.sampleRate);
+  if(!hz){MIC.quiet++;if(MIC.quiet>3){MIC.last=-1;MIC.run=0;MIC.fired=-1}return}
+  MIC.quiet=0;var m=Math.round(69+12*Math.log(hz/440)/Math.LN2);
+  if(m===MIC.last)MIC.run++;else{MIC.last=m;MIC.run=1}
+  if(MIC.run>=3&&MIC.fired!==m){MIC.fired=m;hear(m)}}
+function micToggle(){
+  if(MIC.on){MIC.on=false;clearInterval(MIC.timer);if(MIC.stream)MIC.stream.getTracks().forEach(function(x){x.stop()});
+    $('#btnMic').classList.remove('on');$('#heard').textContent='';if(navigator.audioSession){try{navigator.audioSession.type='auto'}catch(e){}}idle();return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){say('Браузер не даёт микрофон. Нужен https и свежий браузер.','bad');return}
+  // будим звук прямо в нажатии: айфон после ожидания разрешения жест уже не засчитывает
+  // айфон: звуковой сеанс надо явно перевести в «играю и пишу», иначе Safari отбивает микрофон с InvalidStateError
+  var ses=navigator.audioSession;if(ses){try{ses.type='play-and-record'}catch(e){}}
+  var c=ac();if(c.state!=='running')c.resume();
+  var WHY={NotAllowedError:'доступ запрещён. Если страница открыта внутри Телеграма, открой её в Safari или Chrome. Иначе разреши микрофон этому сайту в настройках браузера.',
+    NotFoundError:'микрофон не найден.',
+    NotReadableError:'микрофон занят другим приложением (звонок, диктофон). Закрой его и нажми ещё раз.',
+    InvalidStateError:'браузер не в том состоянии. Обычно это встроенный браузер приложения: открой страницу в Safari или Chrome.',
+    SecurityError:'браузер запретил по безопасности, нужен https.'};
+  // шаг пишем в ошибку, чтобы было видно, где упало: на доступе или на подключении звука
+  function fail(step,e){var n=e&&e.name||String(e);say('Микрофон не дали ['+step+'] ('+n+'): '+(WHY[n]||'')+' '+(e&&e.message||''),'bad')}
+  function wire(st,ctx){MIC.an=ctx.createAnalyser();MIC.an.fftSize=4096;MIC.buf=new Float32Array(4096);ctx.createMediaStreamSource(st).connect(MIC.an);
+    // Safari не гоняет звук через узлы, которые не доведены до выхода: доводим через нулевую громкость
+    var z=ctx.createGain();z.gain.value=0;MIC.an.connect(z);z.connect(ctx.destination)}
+  function start(st){
+    try{if(c.state!=='running')c.resume();wire(st,c)}
+    catch(e1){try{AC=null;c=ac();wire(st,c)}catch(e2){st.getTracks().forEach(function(x){x.stop()});fail('звук',e2);return}}
+    MIC.stream=st;MIC.on=true;MIC.last=-1;MIC.run=0;MIC.fired=-1;
+    MIC.timer=setInterval(micTick,50);$('#btnMic').classList.add('on');
+    say('Микрофон слушает. Выбери сторону стрелкой и сыграй ноты следующей палки по одной. Синтезатор молчит.')}
+  var md=navigator.mediaDevices;
+  md.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}})
+    .catch(function(e){if(e&&e.name==='NotAllowedError')throw e;return md.getUserMedia({audio:true})})
+    .then(start,function(e){fail('доступ',e)})}
+/** Услышана нота (номер MIDI). Кладём её в палку, если она там ждётся.
+    ↑ и → (как и ↓ и ←) состоят из одних и тех же нот, по звуку их не различить: решает камера, без неё стрелка, без стрелки берём ↑/↓ и говорим об этом. */
+function hear(m){
+  $('#heard').textContent='слышу: '+name(mod12(m));
+  if(S.busy)return;
+  var order=S.dir?[S.dir]:['up','down','right','left'],cands=[],i,t,f;
+  for(i=0;i<order.length;i++){t=target(order[i]);if(!t||!t.need.length)continue;f=m-TUNING[t.s];if(t.need.indexOf(f)>=0)cands.push({dir:order[i],t:t,f:f})}
+  if(!cands.length){
+    if(!inScale(m))say('Сыграл '+name(mod12(m))+', её в ладу нет.','bad');
+    else say('Сыграл '+name(mod12(m))+'. В соседних палках '+(S.dir?'на этой стороне ':'')+'она сейчас не ждётся.');return}
+  var pick=cands[0],note='';
+  if(cands.length>1){
+    var cs=CAM.on?camString(m,cands.map(function(c){return c.t.s})):null;
+    if(cs!=null){pick=cands.filter(function(c){return c.t.s===cs})[0];note=' Камера: '+(6-cs)+'-я струна.'}
+    else note=' '+cands.map(function(c){return ARROW[c.dir]}).join(' или ')+'? Считаю '+ARROW[pick.dir]+'; выбери стрелкой'+(CAM.on?', камера пальца у лада не увидела.':' или включи камеру.')}
+  if(S.dir!==pick.dir){S.dir=pick.dir;S.picks={}}
+  var k=key(pick.t.s,pick.f);if(S.picks[k])return;S.picks[k]=1;S.wrong={};
+  var n=Object.keys(S.picks).length;
+  if(n<pick.t.need.length){say('Поймал '+name(mod12(m))+'. Осталось: '+(pick.t.need.length-n)+'.'+note,'good');draw();return}
+  check(pick.t)}
+
+// --- камера: смотрит на гриф и решает, на какой струне сыграно; высоту ноты по-прежнему даёт микрофон ---
+var DST=[[0,0],[1,0],[1,1],[0,1]]; // порядок точек разметки: 6-я у порожка, 6-я у 12-го, 1-я у 12-го, 1-я у порожка
+var CAM={on:false,stream:null,lm:null,H:null,Hi:null,quad:null,calib:null,tips:[],facing:'environment',raf:0,lastT:0,visionP:null};
+var CAL_STEPS=['толстая струна (6-я, E) у порожка','толстая струна у 12-го лада','тонкая струна (1-я, E) у 12-го лада','тонкая струна у порожка'];
+function camSay(s,bad){var e=$('#camsay');e.textContent=s;e.style.color=bad?'var(--bad)':''}
+function loadVision(){if(CAM.visionP)return CAM.visionP;
+  CAM.visionP=import('./vendor/tasks-vision/vision_bundle.mjs').then(function(mod){
+    return mod.FilesetResolver.forVisionTasks('./vendor/tasks-vision/wasm').then(function(fs){
+      function make(dl){return mod.HandLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:'./vendor/hand_landmarker.task',delegate:dl},runningMode:'VIDEO',numHands:2})}
+      return make('GPU').catch(function(){return make('CPU')})})});
+  return CAM.visionP}
+function camToggle(){if(CAM.on){camStop();return}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){say('Браузер не даёт камеру. Нужен https и свежий браузер.','bad');return}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:CAM.facing,width:{ideal:1280},height:{ideal:720}},audio:false}).then(function(st){
+    CAM.stream=st;var v=$('#camv');v.srcObject=st;var pr=v.play();if(pr&&pr.catch)pr.catch(function(){});
+    CAM.on=true;$('#cam').hidden=false;$('#btnCam').classList.add('on');loadQuad();
+    camSay(CAM.H?'Камера смотрит, разметка грифа с прошлого раза. Съехала? Ткни «разметить гриф».':'Поставь телефон так, чтобы гриф был виден от порожка до 12-го лада, и ткни «разметить гриф».');
+    $('#camlive').textContent='гружу распознавание рук…';
+    loadVision().then(function(lm){CAM.lm=lm;$('#camlive').textContent='';camLoop()},function(e){camSay('Распознавание рук не загрузилось: '+(e&&e.message||e),1)});
+  },function(e){say('Камеру не дали ('+(e&&e.name||e)+'). Внутри Телеграма камеры нет, открой страницу в Safari или Chrome.','bad')})}
+function camStop(){CAM.on=false;cancelAnimationFrame(CAM.raf);if(CAM.stream)CAM.stream.getTracks().forEach(function(x){x.stop()});CAM.stream=null;CAM.tips=[];CAM.calib=null;
+  $('#cam').hidden=true;$('#btnCam').classList.remove('on');$('#camv').srcObject=null;$('#camc').classList.remove('calib')}
+function camLoop(){if(!CAM.on)return;CAM.raf=requestAnimationFrame(camLoop);var v=$('#camv');if(v.readyState<2||!CAM.lm)return;
+  var now=performance.now();if(now-CAM.lastT<66)return;CAM.lastT=now;var res;
+  try{res=CAM.lm.detectForVideo(v,now)}catch(e){return}
+  var tips=[];((res&&res.landmarks)||[]).forEach(function(h){[8,12,16,20].forEach(function(i){tips.push({x:h[i].x,y:h[i].y})})});
+  CAM.tips=tips;drawCam()}
+/** Гомография по 4 точкам (Гаусс на 8×8): картинка → гриф, u вдоль (0 порожек, 1 двенадцатый лад), v поперёк (0 толстая E, 1 тонкая E). */
+function homography(src,dst){var A=[],i,r,c,k,n=8;
+  for(i=0;i<4;i++){var x=src[i].x,y=src[i].y,u=dst[i][0],w=dst[i][1];A.push([x,y,1,0,0,0,-u*x,-u*y,u]);A.push([0,0,0,x,y,1,-w*x,-w*y,w])}
+  for(c=0;c<n;c++){var p=c;for(r=c+1;r<n;r++)if(Math.abs(A[r][c])>Math.abs(A[p][c]))p=r;var tmp=A[c];A[c]=A[p];A[p]=tmp;
+    if(Math.abs(A[c][c])<1e-12)return null;
+    for(r=0;r<n;r++){if(r===c)continue;var f=A[r][c]/A[c][c];for(k=c;k<=n;k++)A[r][k]-=f*A[c][k]}}
+  var h=[];for(r=0;r<n;r++)h.push(A[r][n]/A[r][r]);h.push(1);return h}
+function applyH(h,x,y){var d=h[6]*x+h[7]*y+h[8];if(Math.abs(d)<1e-9)return null;return{x:(h[0]*x+h[1]*y+h[2])/d,y:(h[3]*x+h[4]*y+h[5])/d}}
+function setQuad(q){var H=homography(q,DST);if(!H)return false;CAM.quad=q;CAM.H=H;CAM.Hi=homography(DST.map(function(d){return{x:d[0],y:d[1]}}),q.map(function(p){return[p.x,p.y]}));return true}
+/** Клетка грифа под точкой картинки. Порожек лада f стоит на u(f)=2·(1−2^(−f/12)); палец стоит перед порожком, значит лад = ceil от обратной функции. */
+function neckCell(p){var q=CAM.H&&applyH(CAM.H,p.x,p.y);if(!q)return null;var u=q.x,v=q.y;if(u<-0.05||u>=1.95||v<-0.15||v>1.15)return null;
+  var fr=u<=0?0:-12*Math.log(1-u/2)/Math.LN2;return{s:Math.max(0,Math.min(5,Math.round(v*5))),f:Math.max(0,Math.min(N,Math.ceil(fr-0.08)))}}
+/** Нота m услышана, по звуку подходят струны strings. Отдаём ту, где камера видит палец у нужного лада (±1), иначе null. Открытую струну пальцем не увидеть. */
+function camString(m,strings){if(!CAM.H||!CAM.tips.length)return null;var best=null;
+  strings.forEach(function(s){var f=m-TUNING[s];if(f<=0)return;
+    CAM.tips.forEach(function(p){var c=neckCell(p);if(!c||c.s!==s)return;var d=Math.abs(c.f-f);if(d<=1&&(!best||d<best.d))best={s:s,d:d}})});
+  return best?best.s:null}
+function calibStart(){if(!CAM.on)return;CAM.calib=[];$('#camc').classList.add('calib');camSay('Разметка, точка 1 из 4: '+CAL_STEPS[0]+'. Ткни по картинке в это место.');drawCam()}
+function calibClick(e){if(!CAM.calib)return;var c=$('#camc'),r=c.getBoundingClientRect();CAM.calib.push({x:(e.clientX-r.left)/r.width,y:(e.clientY-r.top)/r.height});
+  if(CAM.calib.length<4){camSay('Точка '+(CAM.calib.length+1)+' из 4: '+CAL_STEPS[CAM.calib.length]+'.');drawCam();return}
+  $('#camc').classList.remove('calib');var ok=setQuad(CAM.calib);CAM.calib=null;
+  if(!ok){camSay('Точки легли в линию, разметка не вышла. Попробуй ещё раз.',1);drawCam();return}
+  try{localStorage.setItem('infbox.quad',JSON.stringify({q:CAM.quad,facing:CAM.facing}))}catch(e2){}
+  camSay('Гриф размечен. Играй: высоту ноты слышит микрофон, струну видит камера.');drawCam()}
+function loadQuad(){try{var j=JSON.parse(localStorage.getItem('infbox.quad')||'null');if(j&&j.q&&j.q.length===4&&j.facing===CAM.facing)setQuad(j.q)}catch(e){}}
+function drawCam(){var c=$('#camc'),v=$('#camv'),W2=v.clientWidth||640,H2=v.clientHeight||360;if(c.width!==W2||c.height!==H2){c.width=W2;c.height=H2}
+  var x=c.getContext('2d');x.clearRect(0,0,W2,H2);
+  var q=CAM.calib&&CAM.calib.length?CAM.calib:CAM.quad;
+  if(CAM.Hi&&!CAM.calib){x.strokeStyle='rgba(255,180,74,.45)';x.lineWidth=1;var f,s,a,b;
+    for(f=1;f<=N;f++){var u=2*(1-Math.pow(2,-f/12));a=applyH(CAM.Hi,u,-0.1);b=applyH(CAM.Hi,u,1.1);if(!a||!b)continue;x.beginPath();x.moveTo(a.x*W2,a.y*H2);x.lineTo(b.x*W2,b.y*H2);x.stroke()}
+    for(s=0;s<6;s++){a=applyH(CAM.Hi,0,s/5);b=applyH(CAM.Hi,1.9,s/5);if(!a||!b)continue;x.beginPath();x.moveTo(a.x*W2,a.y*H2);x.lineTo(b.x*W2,b.y*H2);x.stroke()}}
+  if(q){x.strokeStyle='rgba(98,217,232,.85)';x.lineWidth=2;x.beginPath();q.forEach(function(p,i){x[i?'lineTo':'moveTo'](p.x*W2,p.y*H2)});if(q.length===4)x.closePath();x.stroke();
+    x.fillStyle='#62d9e8';x.font='bold 13px system-ui';q.forEach(function(p,i){x.beginPath();x.arc(p.x*W2,p.y*H2,5,0,7);x.fill();x.fillText(String(i+1),p.x*W2+8,p.y*H2-8)})}
+  var seen=[];CAM.tips.forEach(function(p){var cell=neckCell(p);x.fillStyle=cell?'#7be0a4':'rgba(255,255,255,.5)';x.beginPath();x.arc(p.x*W2,p.y*H2,6,0,7);x.fill();
+    if(cell){x.fillStyle='#7be0a4';x.font='bold 12px system-ui';x.fillText((6-cell.s)+'/'+cell.f,p.x*W2+8,p.y*H2+4);seen.push((6-cell.s)+'-я, '+cell.f+' лад')}});
+  if(CAM.lm&&!CAM.calib)$('#camlive').textContent=CAM.H?(seen.length?'вижу пальцы: '+seen.join('; '):'пальцев на грифе не вижу'):''}
+
+// --- гриф (геометрия из Chord Helper) ---
+var W=1000,padL=50,padR=12,top=30,gap=31,H=top+(STRINGS-1)*gap+44,x0=padL,x1=W-padR;
+function fx(f){var lin=f/N,real=(1-Math.pow(2,-f/12))/(1-Math.pow(2,-N/12));return x0+(x1-x0)*(0.5*lin+0.5*real)}
+function sy(s){return top+(STRINGS-1-s)*gap}
+function cxOf(f){return f===0?x0-26:(fx(f-1)+fx(f))/2}
+function key(s,f){return s+':'+f}
+
+function draw(){
+  var svg=$('#fb');while(svg.firstChild)svg.removeChild(svg.firstChild);
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);
+  var g=el('g');svg.appendChild(g);
+  [3,5,7,9,12,15,17,19].forEach(function(f){if(f>N)return;var cx=cxOf(f),mid=top+(STRINGS-1)*gap/2;
+    if(f%12===0){g.appendChild(el('circle',{cx:cx,cy:mid-gap,r:5,'class':'fb-inlay'}));g.appendChild(el('circle',{cx:cx,cy:mid+gap,r:5,'class':'fb-inlay'}))}
+    else g.appendChild(el('circle',{cx:cx,cy:mid,r:5,'class':'fb-inlay'}))});
+  for(var f=0;f<=N;f++){g.appendChild(el('line',{x1:fx(f),x2:fx(f),y1:top-9,y2:top+(STRINGS-1)*gap+9,'class':f===0?'fb-nut':'fb-fret'}));
+    if(f>0)g.appendChild(el('text',{x:cxOf(f),y:H-8,'class':'fb-num'+([3,5,7,9,12,15,17,19].indexOf(f)>=0?' mark':'')},String(f)))}
+  for(var s=0;s<STRINGS;s++)g.appendChild(el('line',{x1:x0,x2:x1,y1:sy(s),y2:sy(s),'class':'fb-string','stroke-width':(2.6-s*0.32).toFixed(2)}));
+  // дорожка, куда строим
+  if(S.dir){var t=target(S.dir);if(t)g.appendChild(el('rect',{x:4,y:sy(t.s)-gap/2+2,width:W-8,height:gap-4,rx:8,'class':'lane'}))}
+  // палки: капсула под тремя нотами
+  S.sticks.forEach(function(st,i){var xa=cxOf(st.frets[0])-15,xb=cxOf(st.frets[2])+15,isCur=st.s===S.cur.s&&st.frets.join()===S.cur.frets.join();
+    var col=colorOf(st);
+    g.appendChild(el('rect',{x:xa,y:sy(st.s)-14,width:xb-xa,height:28,rx:14,'class':'stick'+(isCur?' cur':'')+(S.freshStick===i?' new':''),style:'fill:'+tint(col,isCur?.28:.13)+';stroke:'+col}));
+    if(S.tmode!==3)g.appendChild(el('text',{x:(xa+xb)/2,y:sy(st.s)-17,'class':'stkname',style:'fill:'+col},nameOf(st)))});
+  // ноты
+  function dot(s,f,cls,txt){var n=el('g',{'class':'n '+cls,transform:'translate('+cxOf(f).toFixed(1)+','+sy(s)+')'});n.appendChild(el('circle',{r:12}));
+    if(txt)n.appendChild(el('text',{y:4,'class':txt.length>2?'small':null},txt));g.appendChild(n)}
+  Object.keys(S.revealed).forEach(function(k){var p=k.split(':'),s=+p[0],f=+p[1],cls='';
+    if(mod12(midi(s,f))===S.tonic)cls+=' tonic';
+    if(S.cur.s===s&&S.cur.frets.indexOf(f)>=0)cls+=' cur';
+    if(S.fresh[k])cls+=' new';
+    dot(s,f,cls,label(s,f))});
+  Object.keys(S.ghost).forEach(function(k){if(S.revealed[k])return;var p=k.split(':');dot(+p[0],+p[1],'ghost',label(+p[0],+p[1]))});
+  Object.keys(S.picks).forEach(function(k){var p=k.split(':');dot(+p[0],+p[1],S.wrong[k]?'wrong':(MIC.on?'heard':'pick'),MIC.on?label(+p[0],+p[1]):'')});
+  // палка, которую тащат пальцем (24.09.2026): рисуется поверх, с именем той палки, какой она станет
+  if(S.drag){var dr=S.drag,dxa=cxOf(dr.frets[0])-15,dxb=cxOf(dr.frets[2])+15,dcol=colorOf(dr);
+    g.appendChild(el('rect',{x:dxa,y:sy(dr.s)-14,width:dxb-dxa,height:28,rx:14,'class':'stick cur drag',style:'fill:'+tint(dcol,.34)+';stroke:'+dcol}));
+    if(S.tmode!==3)g.appendChild(el('text',{x:(dxa+dxb)/2,y:sy(dr.s)-17,'class':'stkname',style:'fill:'+dcol},nameOf(dr)));
+    dr.frets.forEach(function(f){dot(dr.s,f,'cur'+(mod12(midi(dr.s,f))===S.tonic?' tonic':''),label(dr.s,f))})}
+  // клетки для клика — поверх всего
+  for(s=0;s<STRINGS;s++)for(f=0;f<=N;f++){var xa=f===0?x0-46:fx(f-1),xb=f===0?x0-6:fx(f);
+    var r=el('rect',{x:xa,y:sy(s)-gap/2,width:xb-xa,height:gap,'class':'cell'+(!S.busy&&s===S.cur.s&&S.cur.frets.indexOf(f)>=0?' grab':'')});r.dataset.s=s;r.dataset.f=f;g.appendChild(r)}
+  // панель
+  DIRS.forEach(function(d){var b=$('#d'+d[0].toUpperCase()+d.slice(1));b.disabled=!target(d)||S.busy;b.classList.toggle('on',S.dir===d)});
+  $('#btnShow').disabled=!S.dir||S.busy;
+  $('#stSteps').textContent=S.steps;$('#stStreak').textContent=S.streak;$('#stErr').textContent=S.err;
+  var total=0;for(s=0;s<STRINGS;s++)for(f=0;f<=N;f++)if(inScale(midi(s,f)))total++;
+  $('#stMap').textContent=Math.round(100*Object.keys(S.revealed).length/total)+'%';
+  $('#boxmap').classList.toggle('wide',S.sides);drawBox();renderHint();
+}
+// --- перетаскивание палок (24.09.2026, слово Влада: «палку можно пальцем перетянуть… как в Тетрисе, и весь блок целиком, если удерживать»).
+// Нота гаммы по порядковому номеру: 0 = тоника родителя, 7 = она же октавой выше. Высота в полутонах от majRoot().
+var BX={};
+function ordP(j){var iv=IV(),n=iv.length,q=Math.floor(j/n);return iv[j-q*n]+12*q}
+function ordNear(P){var n=NN(),q=Math.floor(P/12),best=null,o,i;for(o=q-1;o<=q+1;o++)for(i=0;i<n;i++){var j=o*n+i,d=Math.abs(ordP(j)-P);if(!best||d<best.d)best={j:j,d:d}}return best.j}
+function svgPt(svg,e){var pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;return pt.matrixTransform(svg.getScreenCTM().inverse())}
+function plural(k,a,b,c){k=Math.abs(k);var t=k%10,h=k%100;return k+' '+(t===1&&h!==11?a:t>=2&&t<=4&&(h<10||h>=20)?b:c)}
+/** Текст под боксом библиотеки: что стало после перетаскивания. Зовётся внутри libWith, имена палок там уже лада. */
+function bxSay(id){var bs=BX[id],svg=$('#'+id),n=NN(),t=bs.last,out;
+  var nm=function(j){var d=((j%n)+n)%n;return'<b style="color:'+COLOR[NAME_BY_DEG[d]]+'">'+NAME_BY_DEG[d]+'</b>'},kr=function(j){var d=((j%n)+n)%n;return(KIND_RU[kindOf(NAME_BY_DEG[d])]||'')+', от '+(d+1)+'-й ступени'};
+  $('#libReset').hidden=!(bs.shift||Object.keys(bs.mv).length);
+  if(t&&t.type==='hold')out='Держишь весь бокс. Тащи вбок: нарезка начнётся с другой ноты.';
+  else if(t&&t.type==='one'){var it=(svg.__geo.items||[]).filter(function(x){return x.id===t.id})[0],dj=it?it.j-t.fromJ:0,dr=it?it.r-t.fromR:0;
+    out=!it||(!dj&&!dr)?'Палка осталась на месте.':nm(t.fromJ)+' переехала и стала '+nm(it.j)+' ('+kr(it.j)+'). '+
+      (dr?'Ушла на '+plural(dr,'струну','струны','струн')+' '+(dr>0?'выше':'ниже')+': на тех же ладах там другие ноты, поэтому и палка другая.':
+        'Сдвиг на '+plural(dj,'ноту','ноты','нот')+' '+(dj>0?'вправо':'влево')+(Math.abs(dj)%3===0?': это шаг бокса, она встала соседкой по струне.':': она теперь лежит внутри соседок, наполовину в одной, наполовину в другой.'))}
+  else if(t&&t.type==='block'){var sh=bs.shift,m3=((sh%3)+3)%3,top=[],r;for(r=n;r>=1;r--)top.push(nm(3+3*r+sh));
+    out=(m3===0?(sh?'Сдвиг на '+plural(sh,'ноту','ноты','нот')+' кратен трём: нарезка та же, что была, бокс просто съехал вдоль грифа. ':'Бокс на месте. '):'Бокс нарезан с другой ноты, сдвиг на '+plural(sh,'ноту','ноты','нот')+'. ')+
+      'Сверху вниз: '+top.join(' ')+'. Порядок по кругу тот же, но каждая палка встала на другое место грифа, поэтому на тех же ладах цвета другие. Разных нарезок всего три: сдвиг на три ноты возвращает первую.'}
+  else out='Тащи палку пальцем, как в тетрисе: по струне она едет нота за нотой и на каждой ноте становится другой палкой, на соседнюю струну тоже можно. Удержи палку полсекунды и тащи: поедет весь бокс, нарезанный с другой ноты.';
+  $('#libDrag').innerHTML=out}
+function bxBind(svg){var D=null;
+  svg.addEventListener('touchstart',function(e){if(e.target.closest&&e.target.closest('.bx-drag'))e.preventDefault()},{passive:false});
+  svg.addEventListener('pointerdown',function(e){var bs=BX[svg.id],g=e.target.closest('[data-id]'),geo=svg.__geo;if(!bs||!g||!geo||!geo.items)return;
+    var it=geo.items.filter(function(x){return x.id===g.getAttribute('data-id')})[0];if(!it)return;
+    var q=svgPt(svg,e),cf=(q.x-geo.L)/geo.cw-.5+geo.cmin,gi=0,bd=1e9;for(var i=0;i<3;i++){var d=Math.abs(it.col0+it.p[i]-it.p[0]-cf);if(d<bd){bd=d;gi=i}}
+    D={it:it,gi:gi,x:e.clientX,y:e.clientY,mode:null,sh0:bs.shift};try{svg.setPointerCapture(e.pointerId)}catch(_){}
+    D.t=setTimeout(function(){if(D&&!D.mode){D.mode='block';bs.frozen=[geo.cmin,geo.cmax];svg.classList.add('bx-hold');if(navigator.vibrate)try{navigator.vibrate(25)}catch(_){};bs.last={type:'hold'};bs.redraw()}},420);
+    e.preventDefault()});
+  svg.addEventListener('pointermove',function(e){if(!D)return;var bs=BX[svg.id],geo=svg.__geo;
+    if(!D.mode){if(Math.hypot(e.clientX-D.x,e.clientY-D.y)<8)return;clearTimeout(D.t);D.mode='one';bs.frozen=[geo.cmin,geo.cmax]}
+    var q=svgPt(svg,e),cf=(q.x-geo.L)/geo.cw-.5+geo.cmin,rf=geo.rows-1-((q.y-geo.T)/geo.rh-.5);
+    if(D.mode==='one'){var r=Math.max(0,Math.min(geo.rows-1,Math.round(rf))),nj=ordNear(Math.round(cf)+5*r+5)-D.gi;bs.mv[D.it.id]={dr:r-D.it.br,dj:nj-D.it.bj}}
+    else{var nj2=ordNear(Math.round(cf)+5*D.it.r+5)-D.gi;bs.shift=Math.max(-7,Math.min(7,D.sh0+nj2-D.it.j))}
+    bs.redraw()});
+  function end(){if(!D)return;clearTimeout(D.t);var bs=BX[svg.id];svg.classList.remove('bx-hold');
+    if(D.mode==='one'){var m=bs.mv[D.it.id];if(m&&!m.dr&&!m.dj)delete bs.mv[D.it.id];bs.last={type:'one',id:D.it.id,fromJ:D.it.j,fromR:D.it.r}}
+    else if(D.mode==='block')bs.last={type:'block'};
+    var was=D.mode;bs.frozen=null;D=null;if(was)bs.redraw()}
+  svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end)}
+/** Большая подсказка: семь палок в идеальном квартовом строе, снизу вверх, плюс повтор первой. */
+/** Ряды бокса снизу вверх: ступень начала, три высоты от ноты отсчёта, первый столбец. Каждый ряд = струна выше (5 полутонов). */
+function boxRows(){var iv=IV(),n=iv.length,rows=[],deg=3,pitch=iv[3],r,i;
+  for(r=0;r<=n;r++){var p=[pitch],d=deg,q=pitch;for(i=0;i<2;i++){var nd=(d+1)%n;q+=mod12(iv[nd]-iv[d]);p.push(q);d=nd}
+    rows.push({deg:deg,p:p,col0:pitch-5*r-5});for(i=0;i<3;i++){var nd2=(deg+1)%n;pitch+=mod12(iv[nd2]-iv[deg]);deg=nd2}}
+  return rows}
+function drawBox(into,sides){
+  var svg=into||$('#boxmap');if(!svg||(!into&&svg.parentNode.classList.contains('off')))return;while(svg.firstChild)svg.removeChild(svg.firstChild);
+  if(!into)sides=S.sides;
+  var BR=boxRows(),rows=BR.length,bmin=Math.min.apply(null,BR.map(function(b){return b.col0})),bmax=Math.max.apply(null,BR.map(function(b){return b.col0+b.p[2]-b.p[0]})),cmin=sides?bmin-5:bmin,cmax=sides?bmax+5:Math.max(bmax,6),cols=cmax-cmin+1,cw=sides?50:78,rh=sides?52:46,L=sides?14:190,T=sides?40:16,R=sides?14:130,nr=sides?14:16;
+  // палки бокса списком (24.09.2026): ряд, порядковый номер первой ноты; перетаскивание в библиотеке правит их через BX
+  var bst=into&&BX[svg.id],ITEMS=null;
+  if(sides){var n7=NN(),sh=bst?bst.shift:0,cd=IV().indexOf(mod12(midi(S.cur.s,S.cur.frets[0])-majRoot()));ITEMS=[];
+    for(var r1=0;r1<rows;r1++){var jb=3+3*r1+sh;
+      [['R',r1-1],['L',r1+1],['M',r1]].forEach(function(t){var id=t[0]+(r1),m=bst&&bst.mv[id];ITEMS.push({id:id,br:t[1],bj:jb,r:t[1]+(m?m.dr:0),j:jb+(m?m.dj:0),main:t[0]==='M',moved:!!m})})}
+    ITEMS.forEach(function(it){it.deg=((it.j%n7)+n7)%n7;it.p=[ordP(it.j),ordP(it.j+1),ordP(it.j+2)];it.col0=it.p[0]-5*it.r-5;
+      if(it.main)it.kind='';else{var mr=((3+3*it.r+sh)%n7+n7)%n7;it.kind=!it.moved&&mr===cd?'nb':'pale'}});
+    if(bst&&bst.frozen){cmin=bst.frozen[0];cmax=bst.frozen[1]}
+    else if(bst&&(sh||Object.keys(bst.mv).length))ITEMS.forEach(function(it){if(it.r<0||it.r>=rows)return;cmin=Math.min(cmin,it.col0);cmax=Math.max(cmax,it.col0+it.p[2]-it.p[0])});
+    cols=cmax-cmin+1}
+  var Wb=L+cols*cw+R,Hb=T+rows*rh+10;svg.setAttribute('viewBox','0 0 '+Wb+' '+Hb);
+  var root=majRoot(),g=el('g');svg.appendChild(g);
+  var curDeg=IV().indexOf(mod12(midi(S.cur.s,S.cur.frets[0])-root));
+  var SHAPE={'2,2':'тон + тон','2,1':'тон + полутон','1,2':'полутон + тон','1,1':'полутон + полутон','1,3':'полутон + полтора тона','3,1':'полтора тона + полутон'};
+  function yy(r){return T+(rows-1-r)*rh+rh/2}function xx(c){return L+(c-cmin)*cw+cw/2}
+  for(var c=0;c<=cols;c++)g.appendChild(el('line',{x1:L+c*cw,x2:L+c*cw,y1:T+6,y2:Hb-16,'class':'bx-line'}));
+  for(var r0=0;r0<rows;r0++)g.appendChild(el('line',{x1:L,x2:L+cols*cw,y1:yy(r0),y2:yy(r0),'class':'bx-str'}));
+  // одна палка: ряд, первый столбец, высоты трёх нот, вид (''=сам бокс, 'pale'=копия сбоку, 'nb'=соседка текущей)
+  function stick(r,col0,p,kind,isCur,it){
+    if(r<0||r>=rows)return;var gg=el('g',{'class':(kind==='pale'||kind==='nb'?'bx-copy '+kind:'')+(bst&&it?(kind?' ':'')+'bx-drag':''),'data-id':bst&&it?it.id:null});g.appendChild(gg);
+    var col=COLOR[NAME_BY_DEG[IV().indexOf(mod12(p[0]))]]||'#62d9e8';
+    gg.appendChild(el('rect',{x:xx(col0)-nr-8,y:yy(r)-nr-3,width:xx(col0+p[2]-p[0])-xx(col0)+2*nr+16,height:2*nr+6,rx:nr+3,'class':'bx-stick'+(isCur?' cur':''),style:'fill:'+tint(col,isCur?.3:.11)+';stroke:'+col}));
+    for(var i=0;i<3;i++){var pc=mod12(root+p[i]),n=el('g',{'class':'bx-n'+(pc===S.tonic?' tonic':''),transform:'translate('+xx(col0+p[i]-p[0])+','+yy(r)+')'});
+      n.appendChild(el('circle',{r:nr}));n.appendChild(el('text',{y:sides?4.5:5,'font-size':sides?12.5:null},S.lab==='note'?name(pc):degLab(pc)));gg.appendChild(n)}}
+  var prevCol=null,i; // низ бокса: палка от 4-й ступени (в мажоре Ш1), тогда сверху вниз читается Ш1 Ш2 Ш3 П1 П2 Л1 Л2 и повтор Ш1 внизу
+  if(sides)ITEMS.forEach(function(it){stick(it.r,it.col0,it.p,it.kind,it.main&&it.deg===curDeg,it);
+    if((it.main||it.moved)&&it.r>=0&&it.r<rows)g.appendChild(el('text',{x:xx(it.col0)-nr-6,y:yy(it.r)-nr-5,'class':'bx-name',style:'fill:'+COLOR[NAME_BY_DEG[it.deg]]},NAME_BY_DEG[it.deg]))});
+  svg.__geo={L:L,T:T,cw:cw,rh:rh,rows:rows,cmin:cmin,cmax:cmax,items:ITEMS};
+  for(var r=0;r<rows&&!sides;r++){
+    var deg=BR[r].deg,p=BR[r].p,col0=BR[r].col0,isCur=deg===curDeg;
+    if(sides){ // тот же бокс: вправо на 5 ладов и струной ниже; влево на 5 ладов и струной выше
+      var rightIsNb=r>0&&rowDeg(r-1)===curDeg,leftIsNb=r<rows-1&&rowDeg(r+1)===curDeg;
+      stick(r-1,col0+5,p,rightIsNb?'nb':'pale',false);stick(r+1,col0-5,p,leftIsNb?'nb':'pale',false)}
+    stick(r,col0,p,'',isCur);
+    if(sides)g.appendChild(el('text',{x:xx(col0)-nr-6,y:yy(r)-nr-5,'class':'bx-name',style:'fill:'+COLOR[NAME_BY_DEG[deg]]},NAME_BY_DEG[deg]));
+    if(!sides){g.appendChild(el('text',{x:8,y:yy(r)+4,'class':'bx-lab'+(isCur?' cur':''),style:'fill:'+COLOR[NAME_BY_DEG[deg]]},(isCur?'▶ ':'')+NAME_BY_DEG[deg]+' · '+SHAPE[(p[1]-p[0])+','+(p[2]-p[1])]));
+      if(prevCol!==null&&col0!==prevCol){var dc=col0-prevCol;g.appendChild(el('text',{x:L+cols*cw+8,y:yy(r)+4,'class':'bx-shift'},'← сдвиг на '+(Math.abs(dc)===1?'лад':Math.abs(dc)+' лада')+(dc<0?' влево':'')))}}
+    prevCol=col0;
+  }
+  function rowDeg(r){return boxDeg(r)}
+  if(sides){var mid=xx((bmin+bmax)/2);
+    g.appendChild(el('text',{x:xx(bmin-2),y:18,'class':'bx-cap'},'он же: 5 ладов влево, струной выше'));
+    g.appendChild(el('text',{x:mid,y:18,'class':'bx-cap main'},'БОКС'));
+    g.appendChild(el('text',{x:xx(bmax+2),y:18,'class':'bx-cap'},'он же: 5 ладов вправо, струной ниже'))}
+}
+function say(t,cls){var m=$('#msg');m.textContent=t;m.className=cls||''}
+function idle(){say('Выбери сторону стрелкой или сразу ткни в лад на соседней струне (или на этой же, левее либо правее палки). Свою палку можно утащить пальцем в другое место.')}
+
+// --- игра ---
+function newMap(){
+  S.revealed={};S.picks={};S.wrong={};S.ghost={};S.fresh={};S.dir=null;S.steps=0;S.streak=0;S.err=0;S.busy=false;S.sticks=[];S.freshStick=-1;
+  var s=1+Math.floor(Math.random()*4),f=3+Math.floor(Math.random()*6);
+  while(!inScale(midi(s,f)))f++;
+  var a=midi(s,f),b=nextUp(a),c=nextUp(b);
+  S.cur={s:s,frets:[a,b,c].map(function(m){return m-TUNING[s]})};
+  S.cur.frets.forEach(function(x){S.revealed[key(s,x)]=1});S.sticks.push({s:s,frets:S.cur.frets});
+  idle();draw();
+}
+function setDir(d){if(S.busy)return;if(!target(d)){say('Туда не построить: гриф кончился.','bad');return}
+  if(!target(d).need.length){S.dir=d;commit(target(d),false);say('Тут уже открыто, переехал.');return}
+  S.dir=(S.dir===d&&!Object.keys(S.picks).length)?null:d;S.picks={};S.wrong={};S.ghost={};
+  if(S.dir){var t=target(d);say('Строим '+DIR_RU[d]+'. Поставь '+t.need.length+' ноты на подсвеченной струне.')}else idle();
+  draw()}
+function inferDir(s,f){var c=S.cur;if(s===c.s+1)return'up';if(s===c.s-1)return'down';
+  if(s===c.s&&f>c.frets[2])return'right';if(s===c.s&&f<c.frets[0])return'left';return null}
+function click(s,f){
+  if(S.busy)return;
+  if(S.revealed[key(s,f)]){pluck(midi(s,f));return}
+  if(!Object.keys(S.picks).length){
+    var d=inferDir(s,f);if(!d){say('Сюда палка не цепляется. Соседняя струна либо эта же, левее или правее.','bad');return}
+    if(!target(d)){say('Туда не построить: гриф кончился.','bad');return}
+    S.dir=d;S.ghost={};
+    if(!target(d).need.length){commit(target(d),false);say('Тут уже открыто, переехал.');return}}
+  var t=target(S.dir);if(s!==t.s)return;
+  var k=key(s,f);if(S.revealed[k])return;
+  if(S.picks[k])delete S.picks[k];else{S.picks[k]=1;pluck(midi(s,f))}
+  S.wrong={};
+  var n=Object.keys(S.picks).length;
+  if(n<t.need.length){say('Строим '+DIR_RU[S.dir]+'. Осталось поставить: '+(t.need.length-n)+'.');draw();return}
+  check(t)}
+function check(t){
+  var bad=Object.keys(S.picks).filter(function(k){return t.need.indexOf(+k.split(':')[1])<0});
+  if(!bad.length){commit(t,true);return}
+  S.err++;S.streak=0;bad.forEach(function(k){S.wrong[k]=1});S.busy=true;
+  say('Мимо: '+bad.length+' из '+t.need.length+'. Вспомни, на какой ступени стоишь и какая палка идёт следом.','bad');draw();
+  setTimeout(function(){bad.forEach(function(k){delete S.picks[k]});S.wrong={};S.busy=false;draw()},900)}
+function commit(t,clean){
+  var from=nameOf(S.cur),dir=S.dir;
+  S.fresh={};t.frets.forEach(function(f){var k=key(t.s,f);if(!S.revealed[k])S.fresh[k]=1;S.revealed[k]=1});
+  t.frets.forEach(function(f,i){pluck(midi(t.s,f),i*.11)});
+  var have=-1;S.sticks.forEach(function(st,i){if(st.s===t.s&&st.frets.join()===t.frets.join())have=i});
+  if(have<0){S.sticks.push({s:t.s,frets:t.frets});S.freshStick=S.sticks.length-1}else S.freshStick=-1;
+  S.cur={s:t.s,frets:t.frets};S.dir=null;S.picks={};S.wrong={};S.ghost={};S.steps++;
+  if(clean){S.streak++;say('Есть. '+from+' '+ARROW[dir]+' '+nameOf(t)+'. Двигай дальше.','good');flash(from,dir,nameOf(t))}
+  draw()}
+function showAnswer(){if(!S.dir||S.busy)return;var t=target(S.dir);S.err++;S.streak=0;S.picks={};
+  t.need.forEach(function(f){S.ghost[key(t.s,f)]=1});S.busy=true;say('Вот так она стоит. Запоминай форму и ступень, с которой началась.','bad');draw();
+  setTimeout(function(){S.busy=false;commit(t,false)},1400)}
+
+// --- вводный показ: сам открывается один раз, дальше только по кнопке «?» ---
+var OB=[
+ {h:'Зачем эта штука',b:'<p>Гитаристы обычно зубрят гамму кусками: «первая позиция», «вторая позиция», и так пять-семь картинок. Картинок много, в голове каша, шаг в сторону и ты заблудился.</p><p>Тут по-другому. Ты учишь <b>одно маленькое правило</b>, и по нему сам дорисовываешь ноты в любую сторону: вверх, вниз, вправо, влево. Как в тетрисе, только вместо кирпичей ноты.</p><p class="soft">Польза: перестаёшь бояться грифа. Неважно, где ты стоишь и какая тональность. Знаешь, на какой ступени палец, значит знаешь, что лежит вокруг. Это и нужно для быстрых мелодий и импровизации.</p>'},
+ {h:'Что такое палка',b:'<p><b>Палка</b> это три соседние ноты лада на одной струне. Сыграл три ноты подряд на одной струне, вот тебе и палка.</p><p>Форм у палки всего три, других не бывает:</p><div class="pic shapes"><div class="shape"><i>●·●·●</i><span><b>Ш, широкая</b>: через лад и ещё через лад (тон + тон)</span></div><div class="shape"><i>●·●●</i><span><b>П, правая</b>: хвост справа, через лад, потом вплотную (тон + полутон)</span></div><div class="shape"><i>●●·●</i><span><b>Л, левая</b>: хвост слева, вплотную, потом через лад (полутон + тон)</span></div></div><p class="soft">Точка между кружками это пустой лад, который пропускаем.</p>'},
+ {h:'Что такое бесконечный бокс',b:'<p>Сложи палки друг на друга по струнам, снизу вверх. Получится узор из <b>семи палок</b>. Дальше он повторяется по кругу, снова и снова. Поэтому он и бесконечный.</p><div class="pic"><svg id="obBox"></svg></div><p>Порядок сверху вниз всегда один: <b>три широких, две правых, две левых</b>, и опять три широких. Любая «позиция» из учебника это просто окошко, вырезанное из этого узора.</p><p class="soft"><span class="warm">Янтарная</span> нота это тоника, главная нота лада, твой дом.</p>'},
+ {h:'Как палки зовут',b:'<p>У каждой из семи палок бокса есть имя: <b>буква формы и номер сверху вниз по карте бокса</b>. Сверху: Ш1, Ш2, Ш3, потом П1, П2, потом Л1, Л2, а под ними снова Ш1. Ш2 стоит на тонике, Ш1 та самая, после которой вверх сдвиг.</p><p>Наверху три режима. <b>1</b>: говорят имена соседей, сдвиг и почему, рисуют бокс. <b>2</b>: только имена, картинки нет. <b>3</b>: молчат совсем. Ты играешь, и если связка верная, на весь экран вспыхивает, откуда куда перешёл: <b>Ш1 → Ш2</b>. Вспышку можно выключить кнопкой ✨.</p><p class="soft">Ход в любом режиме один: дострой соседнюю палку. Отличается только то, сколько тебе подсказывают.</p>'},
+ {h:'Где узор сдвигается',b:'<p>Обычно следующая палка начинается <b>ровно над предыдущей</b>, с того же лада. Сдвигов всего два, запомни оба:</p><p>1. <b>Вверх после Ш1</b>, нижней из трёх широких, всё уезжает на один лад вправо, в сторону корпуса гитары. На картинке бокса это место помечено «сдвиг на лад».</p><p>2. <b>Между струнами G и B</b> (третья и вторая). Гитара там настроена по-другому, чуть уже, поэтому на второй струне всё тоже уезжает на лад вправо. Всегда, в любом месте грифа.</p><p class="soft">Больше подвохов нет. Два сдвига, три формы, семь палок по кругу. Вся гамма на всём грифе.</p>'},
+ {h:'А как палки стыкуются вбок',b:'<p>Секрет простой: <b>палка справа на твоей струне это та же самая палка, что лежит струной выше</b>. Те же три ноты, один в один. Просто сыграны на твоей струне, а не на соседней, поэтому уехали на <b>5 ладов вправо</b>.</p><div class="pic"><svg id="obTile"></svg></div><p>Поэтому весь бокс справа от тебя это <b>он же</b>, только съехавший на 5 ладов вправо и на одну струну вниз. Слева то же самое наоборот: 5 ладов влево и на струну вверх. На картинке копии бледные.</p><p class="soft">Значит, учить отдельно «вбок» не надо. Знаешь, что над тобой, значит знаешь, что справа. Знаешь, что под тобой, значит знаешь, что слева. Палки в янтарной пунктирной рамке: соседки яркой палки по её струне. Одна поправка: рядом со струной B вместо пяти ладов четыре, это всё тот же её сдвиг.</p>'},
+ {h:'Как играть',b:'<p>На грифе горит одна палка, <b>бирюзовая</b>. Твоя задача: достроить соседнюю.</p><p>1. Выбери сторону: стрелки на экране или на клавиатуре. <b>↑ ↓</b> это соседняя струна, <b>← →</b> это та же струна левее или правее. Можно просто ткнуть в нужную струну.</p><p>2. Тыкай в лады, где по-твоему стоят ноты новой палки. Каждый тык звучит. В любую сторону нужно три ноты: новая палка целиком.</p><p>3. Угадал, и ноты слипаются в палку, а ты переезжаешь на неё. Промазал, и лишнее мигнёт красным, попробуй ещё.</p><p class="soft">Как угадывать: посмотри, на какой ступени стоишь (цифры в кружках), найди эту палку на большой картинке бокса внизу, и глянь, какая лежит рядом. Кнопка «ответ» посередине стрелок покажет решение. Когда станет легко, спрячь картинку бокса и выключи подписи.</p>'},
+ {h:'С настоящей гитарой',b:'<p>Нажми <b>🎤 Микрофон</b> и разреши доступ. Теперь тыкать не надо: выбери сторону стрелкой и <b>сыграй ноты следующей палки на гитаре</b>, по одной, чисто.</p><p>Программа слышит ноту и сама ставит её на гриф. Сыграл все три, они слиплись в палку. Сама страница в этом режиме молчит, чтобы не мешать гитаре.</p><p class="soft">Играй по одной ноте и дай ей прозвучать. Аккорды и дребезг она не поймёт.</p><p>Подвох: палка справа и палка струной выше состоят из одних и тех же нот, по звуку их не отличить. Без камеры программа считает ↑ (или ↓), либо выбери сторону стрелкой. <b>📷 Камера</b> снимает подвох: поставь телефон так, чтобы был виден гриф от порожка до 12-го лада, ткни «разметить гриф» и отметь четыре точки. Дальше высоту ноты слышит микрофон, а струну видит камера по пальцу.</p><p class="soft">Это окошко всегда открывается кнопкой «? Как играть» наверху.</p>'}
+],obI=0;
+function obShow(i){obI=Math.max(0,Math.min(OB.length-1,i));var s=OB[obI];
+  $('#obBody').innerHTML='<div class="bar" style="margin:0"><span class="step">шаг '+(obI+1)+' из '+OB.length+'</span><button class="x" id="obX" title="закрыть">✕</button></div><h2>'+s.h+'</h2>'+s.b;
+  $('#obDots').innerHTML=OB.map(function(_,k){return'<span'+(k===obI?' class="on"':'')+'></span>'}).join('');
+  $('#obPrev').disabled=obI===0;$('#obNext').textContent=obI===OB.length-1?'Поехали!':'Дальше →';
+  $('#obX').addEventListener('click',obClose);if($('#obBox'))drawBox($('#obBox'),false);if($('#obTile'))drawBox($('#obTile'),true);
+  $('#ob .card').scrollTop=0}
+function obOpen(){$('#ob').hidden=false;obShow(0)}
+function obClose(){$('#ob').hidden=true;try{localStorage.setItem('infbox.seen','1')}catch(e){}}
+$('#obPrev').addEventListener('click',function(){obShow(obI-1)});
+$('#obNext').addEventListener('click',function(){if(obI===OB.length-1)obClose();else obShow(obI+1)});
+$('#ob').addEventListener('click',function(e){if(e.target===$('#ob'))obClose()});
+$('#btnHelp').addEventListener('click',obOpen);
+
+// --- привязки ---
+$('#fb').addEventListener('click',function(e){if(FD.skip>Date.now())return;var r=e.target.closest('.cell');if(r)click(+r.dataset.s,+r.dataset.f)});
+// перетащить свою палку по грифу (24.09.2026): едет по нотам лада, на каждой ноте другое имя и цвет; отпустил, играешь от неё, счёт не трогаем
+var FD={on:false,skip:0,d:null};
+function fbDragTo(e){var svg=$('#fb'),q=svgPt(svg,e),s=Math.max(0,Math.min(STRINGS-1,Math.round(STRINGS-1-(q.y-top)/gap))),f=0,bd=1e9,i;
+  for(i=0;i<=N;i++){var d=Math.abs(cxOf(i)-q.x);if(d<bd){bd=d;f=i}}
+  var m0=midi(s,f),m=null;[0,-1,1,-2,2].some(function(k){if(inScale(m0+k)){m=m0+k;return true}});if(m===null)return;
+  var ns=FD.d.gi===0?[m,nextUp(m),nextUp(nextUp(m))]:FD.d.gi===1?[nextDown(m),m,nextUp(m)]:[nextDown(nextDown(m)),nextDown(m),m],fr=ns.map(function(x){return x-TUNING[s]});
+  if(!okFrets(fr))return;S.drag={s:s,frets:fr};var same=s===S.cur.s&&fr.join()===S.cur.frets.join();
+  say(same?'Тащи палку пальцем: по струне она едет нота за нотой.':'Тащишь: '+nameOf(S.cur)+' → '+nameOf(S.drag)+'. Отпусти, и играешь от неё.');draw()}
+function relocate(t){var from=nameOf(S.cur);t.frets.forEach(function(f){S.revealed[key(t.s,f)]=1});
+  var have=-1;S.sticks.forEach(function(st,i){if(st.s===t.s&&st.frets.join()===t.frets.join())have=i});if(have<0){S.sticks.push({s:t.s,frets:t.frets});S.freshStick=S.sticks.length-1}else S.freshStick=-1;
+  S.cur={s:t.s,frets:t.frets};S.dir=null;S.picks={};S.wrong={};S.ghost={};S.fresh={};
+  say('Переставил: '+from+' → '+nameOf(t)+'. Счёт не тронут, играй дальше от неё.','good');draw()}
+$('#fb').addEventListener('touchstart',function(e){if(e.target.closest&&e.target.closest('.cell.grab'))e.preventDefault()},{passive:false});
+$('#fb').addEventListener('pointerdown',function(e){if(S.busy)return;var r=e.target.closest('.cell.grab');if(!r)return;
+  FD.d={gi:S.cur.frets.indexOf(+r.dataset.f),s:+r.dataset.s,f:+r.dataset.f,x:e.clientX,y:e.clientY,touch:e.pointerType!=='mouse'};FD.on=false;try{$('#fb').setPointerCapture(e.pointerId)}catch(_){}});
+$('#fb').addEventListener('pointermove',function(e){if(!FD.d)return;if(!FD.on){if(Math.hypot(e.clientX-FD.d.x,e.clientY-FD.d.y)<8)return;FD.on=true}fbDragTo(e)});
+function fbEnd(e,cancel){if(!FD.d)return;var d=FD.d,t=S.drag;FD.d=null;S.drag=null;
+  if(FD.on){FD.on=false;FD.skip=Date.now()+400;if(!cancel&&t&&!(t.s===S.cur.s&&t.frets.join()===S.cur.frets.join()))relocate(t);else{idle();draw()}return}
+  if(d.touch&&!cancel){FD.skip=Date.now()+400;click(d.s,d.f)}} // тап без движения: на телефоне клик глушится, зовём сами
+$('#fb').addEventListener('pointerup',function(e){fbEnd(e,false)});$('#fb').addEventListener('pointercancel',function(e){fbEnd(e,true)});
+DIRS.forEach(function(d){$('#d'+d[0].toUpperCase()+d.slice(1)).addEventListener('click',function(){setDir(d)})});
+$('#btnShow').addEventListener('click',showAnswer);
+$('#btnNew').addEventListener('click',newMap);
+$('#btnMic').addEventListener('click',micToggle);
+$('#btnCam').addEventListener('click',camToggle);$('#btnCamOff').addEventListener('click',camStop);$('#btnCalib').addEventListener('click',calibStart);
+$('#btnCamFlip').addEventListener('click',function(){CAM.facing=CAM.facing==='environment'?'user':'environment';CAM.H=null;CAM.Hi=null;CAM.quad=null;camStop();camToggle()});
+$('#camc').addEventListener('click',calibClick);$('#camv').addEventListener('loadedmetadata',drawCam);window.addEventListener('resize',function(){if(CAM.on)drawCam()});
+$('#selTrain').addEventListener('change',function(){S.tmode=+$('#selTrain').value;try{localStorage.setItem('infbox.mode',String(S.tmode))}catch(e){}draw()});
+$('#btnFlash').addEventListener('click',function(){S.flash=!S.flash;$('#btnFlash').classList.toggle('on',S.flash);try{localStorage.setItem('infbox.flash',S.flash?'1':'0')}catch(e){}});
+try{S.tmode=+(localStorage.getItem('infbox.mode')||'1')||1;S.flash=localStorage.getItem('infbox.flash')!=='0'}catch(e){}
+$('#selTrain').value=S.tmode;$('#btnFlash').classList.toggle('on',S.flash);
+$('#btnSides').addEventListener('click',function(){S.sides=!S.sides;$('#btnSides').classList.toggle('on',S.sides);draw()});
+$('#btnBox').addEventListener('click',function(){var w=$('#boxwrap'),off=w.classList.toggle('off');$('#boxmap').style.display=off?'none':'';$('#btnBox').textContent=off?'показать':'спрятать';draw()});
+document.addEventListener('keydown',function(e){if(!$('#ob').hidden){if(e.key==='Escape')obClose();if(e.key==='ArrowRight')$('#obNext').click();if(e.key==='ArrowLeft')$('#obPrev').click();return}
+  var m={ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[e.key];
+  if(m&&e.target.tagName!=='SELECT'){e.preventDefault();setDir(m)}if(e.key==='Escape'){S.dir=null;S.picks={};idle();draw()}});
+var sk=$('#selKey');SHARP.forEach(function(n,i){var o=document.createElement('option');o.value=i;o.textContent=n+' / '+FLAT[i];if(SHARP[i]===FLAT[i])o.textContent=n;sk.appendChild(o)});
+try{var sc0=localStorage.getItem('infbox.scale');if(SCALES[sc0])S.scale=sc0}catch(e){}
+sk.value=S.tonic;$('#selMode').value=S.scale;rebuildNames();S.degMap=trainerDegMap();renderLegend();
+sk.addEventListener('change',function(){S.tonic=+sk.value;newMap()});
+$('#selMode').addEventListener('change',function(){setScale($('#selMode').value)});
+$('#selLab').addEventListener('change',function(){S.lab=$('#selLab').value;draw()});
+// --- библиотека ладов (24.09.2026, слово Влада: «отдельная вкладка дважды гармонический мажор… минор с повышенной
+// четвёртой, который можно включить и выключить… три блока: церковные лады, лады гармонического минора, лады мелодического минора с подписями»).
+// Лад = тот же бокс родительской гаммы, те же палки; меняется только тоника, от неё и подписи ступеней.
+var LIB={
+  dh:{parent:'dharm',root:4,title:'Дважды гармонический мажор',
+    intro:'Мажор с пониженными 2-й и 6-й ступенями. Тот же бесконечный бокс, строй идеальный: все струны в кварту, поэтому сдвига на стыке G и B здесь нет. Две дыры по полтора тона, кулак из трёх ладов подряд. Кнопка «дважды гармонический минор» переносит тонику на 4-ю ступень: это минор с повышенной 4-й, он же венгерский. Ноты и палки те же самые.',
+    modes:['Дважды гармонический мажор','Лидийский ♯2 ♯6','Ультрафригийский','Дважды гармонический минор (венгерский)','Восточный','Ионийский ♯2 ♯5','Локрийский ♭♭3 ♭♭7']},
+  church:{parent:'major',root:0,title:'Церковные лады',
+    intro:'Семь ладов из одного мажорного бокса. По белым клавишам: до мажор, а тоника переезжает с ноты на ноту, от До до Си. Палки и цвета не меняются, меняется то, какая нота главная. Жми лад, и янтарная тоника прыгнет на свою палку.',
+    modes:['Ионийский (мажор)','Дорийский','Фригийский','Лидийский','Миксолидийский','Эолийский (натуральный минор)','Локрийский']},
+  hmin:{parent:'hmin',root:9,title:'Лады гармонического минора',
+    intro:'Гармонический минор это натуральный минор с поднятой 7-й ступенью. Между 6-й и 7-й дыра в полтора тона, отсюда палки с дырой. Его семь ладов живут в одном боксе.',
+    modes:['Гармонический минор','Локрийский ♮6','Ионийский ♯5','Дорийский ♯4 (украинский)','Фригийский доминантовый','Лидийский ♯2','Сверхлокрийский ♭♭7']},
+  mmin:{parent:'mmin',root:9,title:'Лады мелодического минора',
+    intro:'Мелодический минор это минор с поднятыми 6-й и 7-й, джазовый вариант, одинаковый вверх и вниз. Дыр нет, только Ш, П и Л, как в мажоре, но в другом порядке. Отсюда лидийский доминантовый и альтерированный.',
+    modes:['Мелодический минор','Дорийский ♭2','Лидийский увеличенный','Лидийский доминантовый','Миксолидийский ♭6','Локрийский ♮2 (полууменьшенный)','Альтерированный']}
+};
+LIB.morph={parent:'major',root:0,title:'Как палки перетекают',modes:['']};
+var L={morphPar:'major',morphAt:0,tab:'dh',mode:{dh:0,church:0,hmin:0,mmin:0,morph:0},key:{dh:4,church:0,hmin:9,mmin:9,morph:0},lab:'deg'};
+/** Отрисовать лад в чужом состоянии: временно подменяем гамму и тонику тренажёра, рисуем тем же drawBox, возвращаем как было. */
+function libWith(tab,k,fn){var cfg=LIB[tab],iv=SCALES[cfg.parent].iv,root=L.key[tab],ton=mod12(root+iv[k]),
+  keep={scale:S.scale,tonic:S.tonic,cur:S.cur,lab:S.lab,degMap:S.degMap,nb:NAME_BY_DEG,co:COLOR,bu:BOX_UP};
+  SCALES.__lib={ru:cfg.title,iv:iv,ref:mod12(root-ton)};S.scale='__lib';S.tonic=ton;S.lab=L.lab;S.degMap=modeDegMap(iv,k);
+  S.cur={s:0,frets:[mod12(ton-TUNING[0])]};rebuildNames();
+  try{return fn({iv:iv,root:root,ton:ton})}finally{S.scale=keep.scale;S.tonic=keep.tonic;S.cur=keep.cur;S.lab=keep.lab;S.degMap=keep.degMap;NAME_BY_DEG=keep.nb;COLOR=keep.co;BOX_UP=keep.bu}}
+/** Ноты родительской гаммы с правильными буквами: каждая ступень своя буква, знак по разнице с белой клавишей. */
+var LET=['C','D','E','F','G','A','B'],LETN=[0,2,4,5,7,9,11],ACCS={'-2':'♭♭','-1':'♭','0':'','1':'♯','2':'♯♯'};
+function spellParent(root,iv){var nm0=(FLAT_MAJ.indexOf(root)>=0?FLAT:SHARP)[root],L0=LET.indexOf(nm0[0]),o=[];
+  for(var j=0;j<7;j++){var li=(L0+j)%7,pc=mod12(root+iv[j]),d=pc-LETN[li];if(d>6)d-=12;if(d<-6)d+=12;o.push(LET[li]+(ACCS[d]!=null?ACCS[d]:'?'))}return o}
+function compOf(root,iv,k){var sp=spellParent(root,iv),o=[];for(var j=0;j<7;j++)o.push(sp[(k+j)%7]);return o}
+function formulaOf(iv,k){var m=modeDegMap(iv,k),o=[];for(var j=0;j<7;j++)o.push(m[mod12(iv[(k+j)%7]-iv[k])]);return o}
+function fHtml(f){return f.map(function(x){return x.length>1?'<span class="alt">'+x+'</span>':x}).join(' ')}
+function stripSvg(iv,k,col){var w=12*11+2,o='<svg class="strip" width="'+w+'" height="14" viewBox="0 0 '+w+' 14">',j,rel={};for(j=0;j<7;j++)rel[mod12(iv[(k+j)%7]-iv[k])]=1;
+  for(j=0;j<12;j++)o+='<circle cx="'+(6+j*11)+'" cy="7" r="'+(rel[j]?4.2:1.6)+'" fill="'+(j===0?'#ffb44a':rel[j]?col:'rgba(126,196,222,.35)')+'"/>';return o+'</svg>'}
+/** Все лады библиотеки против ступеней мажора: клетка 1..7, изменённая ступень чёрная; тепло = диезы минус бемоли. */
+var ALL_TABS=['church','hmin','mmin','dh'],ALL_RU={church:'мажор',hmin:'гарм. минор',mmin:'мелод. минор',dh:'дв. гарм.'};
+function allModes(){var out=[];ALL_TABS.forEach(function(t){var iv=SCALES[LIB[t].parent].iv;for(var k=0;k<7;k++){var f=formulaOf(iv,k),sc=0;
+  f.forEach(function(x){sc+=(x.match(/♯/g)||[]).length-(x.match(/♭/g)||[]).length});
+  out.push({tab:t,k:k,name:LIB[t].modes[k],f:f,score:sc})}});
+  return out.sort(function(a,b){return b.score-a.score||ALL_TABS.indexOf(a.tab)-ALL_TABS.indexOf(b.tab)||a.k-b.k})}
+function heat(sc){var t=Math.max(-1,Math.min(1,sc/5));return t>=0?'rgba(255,'+Math.round(150-60*t)+',60,'+(.10+.30*t)+')':'rgba(70,'+Math.round(150+40*-t)+',255,'+(.10+.30*-t)+')'}
+function libAllRender(){var ms=allModes();
+  $('#libAll').innerHTML='<table class="modes allm"><tr><th>тепло</th><th>лад</th><th class="par">из чего</th>'+[1,2,3,4,5,6,7].map(function(n){return'<th class="c">'+n+'</th>'}).join('')+'</tr>'+
+    ms.map(function(m){return'<tr data-t="'+m.tab+'" data-k="'+m.k+'" style="background:'+heat(m.score)+'"><td class="sc">'+(m.score>0?'+':'')+m.score+'</td><td>'+m.name+'</td><td class="par">'+ALL_RU[m.tab]+', '+(m.k+1)+'-я</td>'+
+      m.f.map(function(x){var a=x.length>1;return'<td class="c'+(a?(/♯/.test(x)?' up':' dn'):'')+'">'+x+'</td>'}).join('')+'</tr>'}).join('')+'</table>'}
+/** Как палки перетекают (24.09.2026, слово Влада: «в каждой палке лежит другая палка… сыграл широкую, от средней вправо это уже правая… градиентом нарисовать»).
+ *  Вдоль струны идёт сплошная цепочка нот гаммы. Бокс режет её шагом в три ноты, окно из трёх нот можно двигать шагом в одну. */
+function morphRender(){LIB.morph.parent=L.morphPar;var W=15;
+  libWith('morph',0,function(c){var iv=c.iv,n=iv.length,cw=30,x0=70,top=58,rh=38,j,i;
+    var notes=[];for(j=0;j<W+2;j++)notes.push({j:j,deg:j%n,st:iv[j%n]+12*Math.floor(j/n)});
+    var x=function(st){return x0+st*cw},starts=[];for(j=0;j<=n;j++)starts.push(j);
+    var at=Math.min(L.morphAt,starts.length-1);L.morphAt=at;$('#mSlide').max=starts.length-1;$('#mSlide').value=at;
+    var nm=function(j){return NAME_BY_DEG[j%n]},col=function(j){return COLOR[nm(j)]||'#62d9e8'};
+    var rows=n+1,Hs=top+rows*rh+30,Ws=x(notes[W+1].st)+40,svg=$('#mSvg');while(svg.firstChild)svg.removeChild(svg.firstChild);
+    svg.setAttribute('viewBox','0 0 '+Ws+' '+Hs);
+    // градиент: цвет в точке = цвет палки, которая начинается с этой ноты
+    var defs=el('defs'),lg=el('linearGradient',{id:'mGrad',x1:x(notes[0].st),x2:x(notes[W].st),y1:0,y2:0,gradientUnits:'userSpaceOnUse'});
+    for(j=0;j<=W;j++)lg.appendChild(el('stop',{offset:((notes[j].st-notes[0].st)/(notes[W].st-notes[0].st)).toFixed(4),'stop-color':col(j)}));
+    defs.appendChild(lg);svg.appendChild(defs);
+    svg.appendChild(el('text',{x:8,y:16,'class':'m-cap'},'цвет струны: какая палка начинается с этой ноты'));
+    svg.appendChild(el('rect',{x:x(notes[0].st)-10,y:24,width:x(notes[W].st)-x(notes[0].st)+20,height:14,rx:7,fill:'url(#mGrad)'}));
+    for(j=0;j<=W;j++){var tt=el('text',{x:x(notes[j].st),y:52,'class':'m-cap','text-anchor':'middle'},degLab(mod12(c.root+iv[j%n])));svg.appendChild(tt)}
+    // лесенка: окно от каждой ноты первой октавы, сплошное = так режет бокс, пунктир = палка, спрятанная внутри
+    for(i=0;i<rows;i++){var jj=i,y=top+i*rh+rh/2,real=jj%3===0,cc=col(jj);
+      var g=el('g',{'class':'m-row'+(real?' m-real':''),'data-j':jj});
+      g.appendChild(el('line',{x1:x(notes[0].st)-10,x2:x(notes[W].st)+10,y1:y,y2:y,stroke:'rgba(233,243,248,.14)','stroke-width':1.5}));
+      for(j=0;j<=W;j++)g.appendChild(el('circle',{cx:x(notes[j].st),cy:y,r:2.2,fill:'rgba(126,196,222,.35)'}));
+      var a=x(notes[jj].st),b=x(notes[jj+2].st);
+      g.appendChild(el('rect',{x:a-13,y:y-13,width:b-a+26,height:26,rx:13,style:'fill:'+tint(cc,jj===at?.38:.14)+';stroke:'+cc+';stroke-width:'+(jj===at?3:1.6)+(real?'':';stroke-dasharray:5 4')}));
+      for(var q=0;q<3;q++){var pc=mod12(c.root+iv[(jj+q)%n]),dg=el('g',{transform:'translate('+x(notes[jj+q].st)+','+y+')'});
+        dg.appendChild(el('circle',{r:10.5,style:'fill:'+(pc===c.ton?'#ffb44a':'rgba(5,7,11,.9)')+';stroke:'+cc}));
+        dg.appendChild(el('text',{y:4,'text-anchor':'middle','font-size':11,style:'fill:'+(pc===c.ton?'#1d1406':'#e9f3f8')+';font-weight:600'},L.lab==='note'?name(pc):degLab(pc)));g.appendChild(dg)}
+      g.appendChild(el('text',{x:8,y:y+4,'class':'m-tag',style:'fill:'+cc+';font-weight:700;font-size:13px'},nm(jj)+(real?'':' ·')));
+      svg.appendChild(g)}
+    svg.appendChild(el('text',{x:8,y:Hs-8,'class':'m-cap'},'сплошная рамка: так режет бокс, шаг три ноты · пунктир: палка, спрятанная внутри соседних, шаг одна нота'));
+    // окно, выбранное ползунком (может уйти во вторую октаву)
+    var k=at,nk=nm(k),kind=function(j){return KIND_RU[kindOf(nm(j))]||''};
+    $('#mInfo').innerHTML='Окно с '+(k%n+1)+'-й ступени: <b class="nm" style="color:'+col(k)+'">'+nk+'</b> '+kind(k)+'. '+
+      'Сдвинь на ноту вправо, выйдет <b style="color:'+col(k+1)+'">'+nm(k+1)+'</b> ('+kind(k+1)+'), на две: <b style="color:'+col(k+2)+'">'+nm(k+2)+'</b>, на три: <b style="color:'+col(k+3)+'">'+nm(k+3)+'</b>, это уже соседка по струне в боксе. '+
+      'С <b style="color:'+col(k+1)+'">'+nm(k+1)+'</b> у неё общие две ноты, с <b style="color:'+col(k+2)+'">'+nm(k+2)+'</b> одна.';
+    $('#mTable').innerHTML='<tr><th>палка</th><th>вид</th><th>на ноту вправо</th><th>на две</th><th>на три = соседка в боксе</th><th>на ноту влево</th></tr>'+
+      [0,1,2,3,4,5,6].slice(0,n).map(function(d){var b=function(t){t=((t%n)+n)%n;return'<b style="color:'+COLOR[NAME_BY_DEG[t]]+'">'+NAME_BY_DEG[t]+'</b> <span class="m-cap">'+(KIND_DOTS[kindOf(NAME_BY_DEG[t])]||'')+'</span>'};
+        return'<tr data-j="'+d+'" class="'+(d===k%n?'on':'')+'"><td>'+b(d)+'</td><td>'+(KIND_RU[kindOf(NAME_BY_DEG[d])]||'')+', от '+(d+1)+'-й</td><td>'+b(d+1)+'</td><td>'+b(d+2)+'</td><td>'+b(d+3)+'</td><td>'+b(d-1)+'</td></tr>'}).join('')})}
+/** Три нарезки и квинтовый круг, 3D (24.09.2026, слово Влада: «раскрой тему, что разных нарезок ровно три… 3D-визуализацию… что будет, если перетаскивать что-то типа квинтового круга»).
+ *  Спираль: виток = октава, три витка = 21 нота = семь палок, каждая по разу. Сверху квинтовый круг с окошком из семи квинт подряд, это и есть мажор.
+ *  Круг щёлкнул на квинту: одна нота съехала на полутон, на каждом витке перекосило одну палку. Спираль абсолютная: низ = C, нарезка отсчитана от нижней ноты гаммы. */
+var C5={trane:false,root:0,kU:0,cut:0,yaw:-0.55,tilt:0.34,auto:true,ringA:0,ringT:0,from:null,to:null,t0:0,raf:0,drag:null,last:null,maj:null,ringPts:[]};
+var C5TRN=['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'],FIFTHS=[0,7,2,9,4,11,6,1,8,3,10,5],C5STEP=Math.PI/6,C5POS=['первой','средней','последней'],C5POSN=['первая','средняя','последняя'];
+function c5Maj(){if(!C5.maj)libWith('church',0,function(){var nb={},co={},k;for(k in NAME_BY_DEG)nb[k]=NAME_BY_DEG[k];for(k in COLOR)co[k]=COLOR[k];C5.maj={nb:nb,co:co}});return C5.maj}
+// Ноту ведём по букве, а не по высоте: O = 7*октава + буква (C=0..B=6). Щелчок круга меняет знак у одной буквы, номера остальных не трогаются.
+// Мажор с kU диезами это квинты с номерами kU-1..kU+5 на линии квинт, у квинты m буква (4m mod 7) и знак floor((m+1)/7).
+function c5Acc(kU){var a=[0,0,0,0,0,0,0];for(var m=kU-1;m<=kU+5;m++)a[((4*m)%7+7)%7]=Math.floor((m+1)/7);return a}
+function c5Notes(kU){var a=c5Acc(kU),o=[];for(var O=-14;O<=35;O++){var l=((O%7)+7)%7,p=12*Math.floor(O/7)+LETN[l]+a[l];if(p>=0&&p<=36)o.push({O:O,p:p})}return o}
+function c5TL(kU){return((4*kU)%7+7)%7}
+function c5Spell(root){var sp=spellParent(root,MAJOR),m={};for(var j=0;j<7;j++)m[mod12(root+MAJOR[j])]=sp[j];return m}
+function c5Sticks(ns,kU,cut){var mj=c5Maj(),o=[],tl=c5TL(kU);for(var i=0;i+2<ns.length;i++){if(((ns[i].O-cut)%3+3)%3||ns[i+2].O!==ns[i].O+2)continue;var d=((ns[i].O-tl)%7+7)%7,nm=mj.nb[d];
+  o.push({i:i,O:ns[i].O,d:d,nm:nm,col:mj.co[nm]||'#62d9e8',kind:KIND_BY_STEPS[(ns[i+1].p-ns[i].p)+','+(ns[i+2].p-ns[i+1].p)]||'Ф'})}return o}
+function c5KeyName(root){return c5Spell(root)[root]}
+function c5Disp(){var to=C5.to||c5Notes(C5.kU);if(!C5.from)return to.map(function(n){return n.p});var k=Math.min(1,(performance.now()-C5.t0)/450),e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+  return to.map(function(n){var f=C5.from[n.O]!=null?C5.from[n.O]:n.p;return f+(n.p-f)*e})}
+function c5Tonics(ns,st,kU,cut){var tl=c5TL(kU);return ns.map(function(n,i){return{p:n.p,O:n.O,i:i}}).filter(function(t){return((t.O%7)+7)%7===tl}).map(function(t){
+  return{o:Math.floor(t.p/12),pos:((t.O-cut)%3+3)%3,s:st.filter(function(x){return x.i<=t.i&&t.i<=x.i+2})[0]}})}
+function c5Step(dk){var old=c5Notes(C5.kU),oldSt=c5Sticks(old,C5.kU,C5.cut),oldRoot=C5.root,dsp=c5Disp(),fm={};old.forEach(function(n,i){fm[n.O]=dsp[i]});
+  C5.kU+=dk;var root=FIFTHS[mod12(C5.kU)],ns=c5Notes(C5.kU),st=c5Sticks(ns,C5.kU,C5.cut),opc={},npc={};
+  old.forEach(function(n){opc[mod12(n.p)]=1});ns.forEach(function(n){npc[mod12(n.p)]=1});
+  var ch=[];st.forEach(function(x){var o=oldSt.filter(function(y){return y.O===x.O})[0];if(o&&o.kind!==x.kind)ch.push({o:o,n:x,oct:Math.floor(ns[x.i].p/12)})});
+  C5.from=fm;C5.to=ns;C5.t0=performance.now();C5.root=root;
+  C5.last={dk:dk,oldK:C5.kU-dk,nch:ch.length,oldRoot:oldRoot,gone:Object.keys(opc).filter(function(k){return!npc[k]}).map(Number),came:Object.keys(npc).filter(function(k){return!opc[k]}).map(Number),ch:ch};
+  if(!C5.drag)C5.ringT=-C5.kU*C5STEP;c5Info();c5Kick()}
+function c5Info(){var root=C5.root,sp=c5Spell(root),ns=c5Notes(C5.kU),st=c5Sticks(ns,C5.kU,C5.cut),win=[],k;
+  for(k=-1;k<=5;k++)win.push(sp[mod12(root+7*k)]);
+  var b=function(x){return'<b style="color:'+x.col+'">'+x.nm+'</b>'},T=c5Tonics(ns,st,C5.kU,C5.cut),L5=C5.last;
+  $('#c5Key').textContent=c5KeyName(root)+' мажор';
+  document.querySelectorAll('#libCut [data-cut]').forEach(function(x){x.classList.toggle('on',+x.dataset.cut===C5.cut)});$('#c5Spin').classList.toggle('on',C5.auto);
+  var h='В окошке квинтового круга семь квинт подряд: <b>'+win.join(' ')+'</b>. Это и есть '+c5KeyName(root)+' мажор.';
+  if(C5.trane){var K=root,kn=function(p){return c5KeyName(mod12(p))},tri=[K,K-4,K-8].map(kn),dom=[K+3,K-1,K+7].map(kn);
+    h='<b>Круг Колтрейна</b> это тот же квинтовый круг, разведённый на два кольца. Снаружи целотонная гамма от C: C D E G♭ A♭ B♭, внутри целотонная от B: B D♭ E♭ F G A, так их подписал он сам. Шаг по одному кольцу это целый тон, а зигзаг между кольцами идёт квинтами. '+
+      '<br><span style="color:#ffb44a">Жёлтый треугольник</span>: три тональности через большую терцию, <b>'+tri.join(', ')+'</b>. Они лежат на одном кольце через три позиции. <span style="color:#62d9e8">Бирюзовый</span>: их доминанты '+dom.join(', ')+', на соседнем кольце. Вместе это шестиконечная звезда с его рисунка. '+
+      '<br><b>Что с ним делать.</b> Giant Steps ходит по жёлтому треугольнику и в каждую вершину заходит через её доминанту: <b>'+tri[0]+' → '+dom[0]+'7 → '+tri[1]+' → '+dom[1]+'7 → '+tri[2]+' → '+dom[2]+'7 → '+tri[0]+'</b>. Жми «шаг Колтрейна» и смотри спираль: съезжают сразу 4 ноты, общих остаётся 3 из 7, поэтому скачок и звучит гигантским. Три вершины вместе дают все 12 нот. '+
+      'На грифе большая терция это 4 лада: тот же бокс с теми же палками, сдвинутый на 4 лада вниз, и есть следующая вершина. Три позиции через 4 лада, и ты прошёл треугольник.<br>'+h}
+  if(L5&&L5.dk&&Math.abs(L5.dk)!==1){var so2=c5Spell(L5.oldRoot),ao=c5Acc(L5.oldK),an=c5Acc(C5.kU),mv=[];for(var l=0;l<7;l++)if(ao[l]!==an[l])mv.push(so2[mod12(LETN[l]+ao[l])]+' → '+sp[mod12(LETN[l]+an[l])]);
+    h+='<br>Прыжок на '+plural(L5.dk,'квинту','квинты','квинт')+' разом: съехали '+plural(mv.length,'нота','ноты','нот')+', <b>'+mv.join(', ')+'</b>. Форму поменяли '+L5.nch+' палок из '+st.length+'. Общих нот со старой тональностью осталось '+(7-mv.length)+' из 7.'}
+  else if(L5&&L5.gone.length===1&&L5.came.length===1){var so=c5Spell(L5.oldRoot);
+    h+='<br>Круг щёлкнул на квинту '+(mod12(root-L5.oldRoot)===7?'вверх':'вниз')+': одна нота съехала на полутон, <b>'+so[L5.gone[0]]+' → '+sp[L5.came[0]]+'</b>. '+
+      (L5.ch.length?'На каждом витке эта нота сидит в одной палке, и её перекосило, причём на каждом витке другую: '+L5.ch.map(function(c){return(c.oct+1)+'-й виток '+b(c.o)+' '+KIND_DOTS[c.o.kind]+' стала '+b(c.n)+' '+KIND_DOTS[c.n.kind]}).join(', ')+'. ':'')+
+      'Остальные палки той же формы, но имена у всех съехали: имя считается от тоники, а тоника переехала на квинту.'}
+  var turns=Math.floor(C5.kU/12);h+='<br>Щелчков от C мажора: '+C5.kU+(C5.kU>=12||C5.kU<=-12?' (оборотов круга '+(C5.kU/12).toFixed(1).replace('.0','')+')':'')+'. Полный оборот круга, 12 щелчков, возвращает те же ноты, но каждая нота за это время доползает до соседней, и нарезка сдвигается на одну ноту. Три оборота круга перебирают все три нарезки.';
+  h+='<br>Нарезка '+(C5.cut+1)+': янтарная тоника по виткам снизу вверх стоит '+T.map(function(t){return C5POS[t.pos]}).join(', ')+' нотой палки. Каждый виток сдвигает её на одно место, потому что в октаве 7 нот, а 7 это два куска по три и одна лишняя.';
+  $('#c5Info').innerHTML=h;
+  $('#c5Table').innerHTML='<tr><th>виток</th><th>палки снизу вверх</th><th>где тоника</th></tr>'+[0,1,2].map(function(o){
+    var ps=st.filter(function(x){return ns[x.i].p>=12*o&&ns[x.i].p<12*o+12}),t=T.filter(function(x){return x.o===o})[0];
+    return'<tr><td>'+(o+1)+'-я октава</td><td>'+ps.map(b).join(' ')+'</td><td>'+(t?C5POSN[t.pos]+' нота '+(t.s?b(t.s):'обрезанной палки'):'')+'</td></tr>'}).join('')+
+    '<tr><td>все три</td><td colspan="2">'+st.length+' палок, разных имён '+Object.keys(st.reduce(function(a,x){a[x.nm]=1;return a},{})).length+'</td></tr>'}
+function c5Draw(){var cv=$('#c5');if(!cv||$('#libCut').hidden||$('#lib').hidden)return;
+  var W=cv.clientWidth||600,H=Math.round(Math.max(390,Math.min(540,W*(W<600?1.02:.72)))),dpr=window.devicePixelRatio||1;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);cv.style.height=H+'px'}
+  var x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,W,H);
+  var R=1.0,hs=0.092,F=Math.min(.94*H,1.25*W),D=5.6,sref=F/D,cy=Math.cos(C5.yaw),sy=Math.sin(C5.yaw),ct=Math.cos(C5.tilt),st_=Math.sin(C5.tilt);
+  function pr(X,Y,Z){var x1=X*cy+Z*sy,z1=-X*sy+Z*cy,y2=Y*ct+z1*st_,z2=z1*ct-Y*st_,s=F/(D+z2);return{x:W/2+x1*s,y:H*.61-y2*s,z:z2,k:s/sref}}
+  function hp(p){var a=-Math.PI/2+C5.yaw-p/12*2*Math.PI;return pr(R*Math.cos(a),(p-18)*hs,R*Math.sin(a))}
+  var prim=[],add=function(z,f){prim.push({z:z,f:f})},root=C5.root,sp=c5Spell(root),ns=C5.to||c5Notes(C5.kU),disp=c5Disp(),stx=c5Sticks(ns,C5.kU,C5.cut),
+    gen=FLAT_MAJ.indexOf(root)>=0?FLAT:SHARP,T=c5Tonics(ns,stx,C5.kU,C5.cut),seg=function(A,B,col,w,al){add((A.z+B.z)/2,function(){x.globalAlpha=al;x.strokeStyle=col;x.lineWidth=w;x.lineCap='round';x.beginPath();x.moveTo(A.x,A.y);x.lineTo(B.x,B.y);x.stroke();x.globalAlpha=1})};
+  var q,A,B;for(q=0;q<36;q+=0.25){A=hp(q);B=hp(q+0.25);seg(A,B,'#e9f3f8',1.4*A.k,.12+.1*A.k)}
+  for(q=0;q<=36;q++)if(MAJOR.indexOf(mod12(q-root))<0){(function(P){add(P.z,function(){x.fillStyle='rgba(126,196,222,.35)';x.beginPath();x.arc(P.x,P.y,2.2*P.k,0,7);x.fill()})})(hp(q))}
+  stx.forEach(function(s){var a=disp[s.i],b=disp[s.i+2];for(var u=a;u<b-1e-6;u+=0.2){var P1=hp(u),P2=hp(Math.min(b,u+0.2));seg(P1,P2,s.col,11*P1.k,.5+.4*Math.min(1,P1.k))}});
+  disp.forEach(function(p,i){var P=hp(p),pc=mod12(ns[i].p),isR=pc===root,s=stx.filter(function(t){return t.i<=i&&i<=t.i+2})[0],tn=isR&&T.filter(function(t){return t.o===Math.floor(ns[i].p/12)})[0];
+    add(P.z-0.05,function(){var r=10.5*P.k;x.beginPath();x.arc(P.x,P.y,r,0,7);x.fillStyle=isR?'#ffb44a':'rgba(5,7,11,.92)';x.fill();x.lineWidth=2*P.k;x.strokeStyle=s?s.col:'rgba(126,196,222,.5)';x.stroke();
+      x.fillStyle=isR?'#1d1406':'#e9f3f8';x.font='600 '+Math.max(7,Math.round(10*P.k))+'px system-ui';x.textAlign='center';x.textBaseline='middle';x.fillText(sp[pc]||gen[pc],P.x,P.y+.5);
+});
+    if(tn)add(-50,function(){var r=10.5*P.k,t=(tn.o+1)+'-й виток: '+C5POSN[tn.pos]+' нота '+(tn.s?tn.s.nm:'');x.textAlign='left';x.textBaseline='middle';x.font='700 '+Math.max(9,Math.round(11.5*P.k))+'px system-ui';
+      if(W<600)t=(tn.o+1)+'-й: '+C5POSN[tn.pos];var tx=P.x+r+6;if(tx+x.measureText(t).width>W-4){x.textAlign='right';tx=P.x-r-6}
+      x.lineWidth=4;x.strokeStyle='rgba(5,7,11,.9)';x.lineJoin='round';x.strokeText(t,tx,P.y);x.fillStyle='#ffb44a';x.fillText(t,tx,P.y)})});
+  // квинтовый круг: окошко стоит лицом к зрителю, ноты крутятся под ним
+  var Rr=1.4,yr=18*hs+(C5.trane?0.85:0.95),base=-Math.PI/2+C5.yaw,tf=C5.trane?0.62:0.32,ring=function(a,rr){rr=rr||Rr;return pr(rr*Math.cos(a),yr+tf*rr*Math.sin(a-C5.yaw),rr*Math.sin(a))},pts=[],RO=1.55,RI=1.08,rOf=function(k){return C5.trane?(k%2?RI:RO):Rr};
+  (C5.trane?[RO,RI]:[Rr]).forEach(function(rr){for(q=0;q<72;q++){A=ring(q/72*2*Math.PI,rr);B=ring((q+1)/72*2*Math.PI,rr);seg(A,B,'#7ec4de',1.6*A.k,.35)}});
+  if(!C5.trane)for(q=-3.5;q<3.5;q+=0.25){A=ring(base+q*C5STEP);B=ring(base+(q+0.25)*C5STEP);seg(A,B,'#ffb44a',7*A.k,.55)}
+  var kr=mod12(C5.kU);for(var k=0;k<12;k++){var off=k-C5.kU,rel=((off%12)+12)%12,inWin=rel<=5||rel===11,pc=FIFTHS[k],P=ring(base+C5.ringA+(k-2)*C5STEP,rOf(k));pts.push(P);
+    (function(P,pc,inWin){add(P.z-0.05,function(){var isR=pc===root;x.font=(inWin?'700 ':'500 ')+Math.round((inWin?15:12)*P.k)+'px system-ui';x.textAlign='center';x.textBaseline='middle';
+      if(isR){x.fillStyle='#ffb44a';x.beginPath();x.arc(P.x,P.y,12*P.k,0,7);x.fill()}
+      x.fillStyle=isR?'#1d1406':inWin?'#e9f3f8':'rgba(126,196,222,.55)';x.fillText(inWin?sp[pc]:C5.trane?C5TRN[pc]:gen[pc],P.x,P.y+.5)})})(P,pc,inWin)}
+  C5.ringPts=pts;
+  if(C5.trane){var line=function(P1,P2,col,dash){add((P1.z+P2.z)/2+0.02,function(){x.save();x.globalAlpha=.9;x.strokeStyle=col;x.lineWidth=2.6*P1.k;if(dash)x.setLineDash([7,5]);x.beginPath();x.moveTo(P1.x,P1.y);x.lineTo(P2.x,P2.y);x.stroke();x.restore()})};
+    var kk=[0,1,2].map(function(t){return mod12(C5.kU-4*t)});
+    for(var t=0;t<3;t++){line(pts[kk[t]],pts[kk[(t+1)%3]],'#ffb44a',false);line(pts[mod12(kk[t]+1)],pts[mod12(kk[(t+1)%3]+1)],'#62d9e8',true)}}
+  add(-99,function(){x.fillStyle='rgba(233,243,248,.6)';x.font='12px system-ui';x.textAlign='center';x.textBaseline='alphabetic';x.fillText(W<600?'круг наверху тащи вбок · спираль крути по пустому':'квинтовый круг наверху: тащи его вбок · спираль: тащи пустое место',W/2,H-8)});
+  prim.sort(function(a,b){return b.z-a.z});prim.forEach(function(p){p.f()})}
+function c5Kick(){if(!C5.raf)C5.raf=requestAnimationFrame(c5Tick)}
+function c5Tick(){C5.raf=0;if($('#libCut').hidden||$('#lib').hidden)return;var busy=!!C5.drag;
+  if(C5.auto&&!C5.drag){C5.yaw+=0.0035;busy=true}
+  if(!C5.drag){var d=C5.ringT-C5.ringA;if(Math.abs(d)>1e-3){C5.ringA+=d*0.2;busy=true}else C5.ringA=C5.ringT}
+  if(C5.from){if(performance.now()-C5.t0<470)busy=true;else{C5.from=null}}
+  c5Draw();if(busy)c5Kick()}
+function c5Bind(){var cv=$('#c5');
+  cv.addEventListener('pointerdown',function(e){var r=cv.getBoundingClientRect(),px=e.clientX-r.left,py=e.clientY-r.top,near=C5.ringPts.some(function(P){return Math.hypot(P.x-px,P.y-py)<30});
+    C5.drag={x:e.clientX,y:e.clientY,ring:near,yaw0:C5.yaw,tilt0:C5.tilt,a0:C5.ringA};C5.auto=false;$('#c5Spin').classList.remove('on');try{cv.setPointerCapture(e.pointerId)}catch(_){}c5Kick()});
+  cv.addEventListener('pointermove',function(e){var d=C5.drag;if(!d)return;var dx=e.clientX-d.x,dy=e.clientY-d.y;
+    if(d.ring){C5.ringA=d.a0+dx*0.012;C5.ringT=C5.ringA;var kt=Math.round(-C5.ringA/C5STEP);while(C5.kU<kt)c5Step(1);while(C5.kU>kt)c5Step(-1)}
+    else{C5.yaw=d.yaw0+dx*0.01;C5.tilt=Math.max(0.05,Math.min(1.2,d.tilt0+dy*0.006))}c5Kick()});
+  function end(){if(!C5.drag)return;C5.drag=null;C5.ringT=-C5.kU*C5STEP;c5Kick()}
+  cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+  $('#c5Up').addEventListener('click',function(){c5Step(1)});$('#c5Down').addEventListener('click',function(){c5Step(-1)});
+  document.querySelectorAll('#libCut [data-cut]').forEach(function(bt){bt.addEventListener('click',function(){C5.cut=+bt.dataset.cut;C5.last=null;C5.from=null;c5Info();c5Kick()})});
+  $('#c5Spin').addEventListener('click',function(){C5.auto=!C5.auto;c5Info();c5Kick()});
+  $('#c5Trane').addEventListener('click',function(){C5.trane=!C5.trane;$('#c5Trane').classList.toggle('on',C5.trane);$('#c5Giant').hidden=!C5.trane;C5.last=null;c5Info();c5Kick()});
+  $('#c5Giant').addEventListener('click',function(){c5Step(-4)});
+  window.addEventListener('resize',function(){c5Kick()})}
+function libRender(){var tab=L.tab;document.querySelectorAll('#libSub button').forEach(function(b){b.classList.toggle('on',b.dataset.lib===tab)});
+  var isC=tab==='cut3',isAll=tab==='all'||isC,isM=tab==='morph';['#libBox','#libChips','#libInfo','#libTable'].forEach(function(q){$(q).toggleAttribute('hidden',isAll||isM)});$('#libDragBar').hidden=isAll||isM;$('#libAll').hidden=tab!=='all';$('#libMorph').hidden=!isM;$('#libCut').hidden=!isC;if(isC)$('#libHung').hidden=true;
+  $('#libKey').parentNode.hidden=isAll;$('#morphPar').hidden=!isM;if(isM)$('#libHung').hidden=true;
+  if(isC){$('#libIntro').textContent='Палка это три ноты лада подряд, и бокс кладёт палки встык, без дыр и без нахлёста. Значит, вся цепочка нот режется на куски по три, как колбаса. Способов резать ровно три: первый кусок начинается с первой, второй или третьей ноты, а четвёртый способ совпадает с первым. Дальше фокус. В октаве семь нот, это два куска и одна лишняя нота, поэтому каждая следующая октава режется на ноту позже. Смотри на янтарную тонику на спирали: на каждом витке она сдвигается в своей палке на одно место, первая, средняя, последняя, и снова первая. Три витка это 21 нота, ровно семь палок, каждая по разу, и узор замкнулся. Бокс из семи струн по три ноты и есть эти три витка, намотанные на гриф, поэтому все три нарезки живут в одном боксе, просто в разных октавах. Сверху квинтовый круг: тащи его пальцем вбок. Спираль крутится пальцем по пустому месту.';
+    c5Info();c5Kick();return}
+  if(isM){$('#libIntro').textContent='Разбивка на палки условная. Вдоль струны идёт сплошная цепочка нот лада, бокс режет её шагом в три ноты. Двигай окно из трёх нот по одной, и внутри каждой палки найдётся следующая: широкая от средней ноты превращается в правую, правая в левую. Цвет струны сверху меняется градиентом: в каждой точке это цвет палки, которая начинается с этой ноты.';
+    $('#libKey').value=L.key.morph;$('#libLab').value=L.lab;$('#morphPar').value=L.morphPar;morphRender();return}
+  if(isAll){$('#libIntro').textContent='Все 28 ладов библиотеки против ступеней мажора. Чёрная клетка: ступень изменена, тёплая буква поднята, холодная опущена. Сверху самые светлые (больше диезов), внизу самые тёмные (больше бемолей). Тепло = число диезов минус число бемолей. Ткни строку, откроется её бокс.';libAllRender();return}
+  var cfg=LIB[tab],k=L.mode[tab];
+  $('#libIntro').textContent=cfg.intro;$('#libKey').value=L.key[tab];$('#libLab').value=L.lab;
+  var hb=$('#libHung');hb.hidden=tab!=='dh';hb.classList.toggle('on',k===3);hb.textContent='дважды гармонический минор (минор с ♯4): '+(k===3?'вкл':'выкл');
+  $('#libChips').toggleAttribute('hidden',tab==='dh');
+  var rows=[],sig=tab+':'+k+':'+L.key[tab]+':'+L.lab,bs=BX.libBox;$('#libDragBar').hidden=false;
+  if(!bs||bs.sig.split(':').slice(0,3).join()!==sig.split(':').slice(0,3).join())bs=BX.libBox={shift:0,mv:{},last:null};bs.sig=sig;
+  bs.redraw=function(){libWith(L.tab,L.mode[L.tab],function(){drawBox($('#libBox'),true);bxSay('libBox')})};
+  libWith(tab,k,function(c){drawBox($('#libBox'),true);bxSay('libBox');
+    var nm=NAME_BY_DEG[k],f=formulaOf(c.iv,k);
+    var cp=compOf(c.root,c.iv,k);
+    $('#libInfo').innerHTML='<b class="nm">'+cp[0]+' '+cfg.modes[k].toLowerCase()+'</b> · от '+(k+1)+'-й ступени родителя, тоника на палке <b style="color:'+COLOR[nm]+'">'+nm+'</b><br><span class="f">'+fHtml(f)+'</span> &nbsp; состав: <span class="f">'+cp.join(' ')+'</span>'});
+  $('#libChips').innerHTML=cfg.modes.map(function(m,i){return'<button data-k="'+i+'" class="'+(i===k?'on':'')+'">'+(i+1)+' · '+m+'</button>'}).join('');
+  var ms=[0,1,2,3,4,5,6];
+  $('#libTable').innerHTML='<tr><th>№</th><th>лад</th><th>состав</th><th>формула</th><th>октава</th><th>палка тоники</th></tr>'+ms.map(function(i){
+    return libWith(tab,i,function(c){var nm=NAME_BY_DEG[i];return'<tr data-k="'+i+'" class="'+(i===k?'on':'')+'"><td>'+(i+1)+'</td><td>'+cfg.modes[i]+'</td><td class="f">'+compOf(c.root,c.iv,i).join(' ')+'</td><td class="f">'+fHtml(formulaOf(c.iv,i))+'</td><td>'+stripSvg(c.iv,i,COLOR[nm])+'</td><td><b style="color:'+COLOR[nm]+'">'+nm+'</b></td></tr>'})}).join('')}
+function showTab(lib){document.body.classList.toggle('lib',lib);$('#lib').hidden=!lib;$('#tabTrain').classList.toggle('on',!lib);$('#tabLib').classList.toggle('on',lib);
+  try{localStorage.setItem('infbox.tab',lib?'lib':'train')}catch(e){}if(lib)libRender();else draw()}
+window.__quiz={C5:C5,c5Step:c5Step,c5Notes:c5Notes,c5Acc:c5Acc,c5Info:c5Info,c5Sticks:c5Sticks,c5Tonics:c5Tonics,c5Draw:c5Draw,BX:BX,ordP:ordP,ordNear:ordNear,relocate:relocate,FD:FD,morphRender:morphRender,allModes:allModes,compOf:compOf,spellParent:spellParent,LIB:LIB,L:L,libRender:libRender,libWith:libWith,formulaOf:formulaOf,modeDegMap:modeDegMap,showTab:showTab,SCALES:SCALES,setScale:setScale,boxRows:boxRows,spanUp:spanUp,stepAt:stepAt,names:function(){return{NAME_BY_DEG:NAME_BY_DEG,COLOR:COLOR,BOX_UP:BOX_UP}},S:S,target:target,click:click,setDir:setDir,newMap:newMap,hear:hear,detectPitch:detectPitch,MIC:MIC,CAM:CAM,nameOf:nameOf,nbInfo:nbInfo,homography:homography,applyH:applyH,setQuad:setQuad,neckCell:neckCell,camString:camString,commit:commit};
+(function(){var lk=$('#libKey');SHARP.forEach(function(n,i){var o=document.createElement('option');o.value=i;o.textContent=SHARP[i]===FLAT[i]?n:n+' / '+FLAT[i];lk.appendChild(o)});
+  lk.addEventListener('change',function(){L.key[L.tab]=+lk.value;libRender()});
+  $('#libLab').addEventListener('change',function(){L.lab=$('#libLab').value;libRender()});
+  $('#libSub').addEventListener('click',function(e){var b=e.target.closest('button');if(b){L.tab=b.dataset.lib;libRender()}});
+  $('#libChips').addEventListener('click',function(e){var b=e.target.closest('button');if(b){L.mode[L.tab]=+b.dataset.k;libRender()}});
+  $('#libTable').addEventListener('click',function(e){var r=e.target.closest('tr[data-k]');if(r){L.mode[L.tab]=+r.dataset.k;libRender()}});
+  $('#libAll').addEventListener('click',function(e){var r=e.target.closest('tr[data-t]');if(r){var t=r.dataset.t,k=+r.dataset.k;L.tab=t;L.mode[t]=k;libRender()}});
+  $('#morphPar').addEventListener('change',function(){L.morphPar=$('#morphPar').value;libRender()});
+  $('#mSlide').addEventListener('input',function(){L.morphAt=+$('#mSlide').value;morphRender()});
+  $('#mPrev').addEventListener('click',function(){L.morphAt=Math.max(0,L.morphAt-1);morphRender()});
+  $('#mNext').addEventListener('click',function(){L.morphAt=Math.min(+$('#mSlide').max,L.morphAt+1);morphRender()});
+  $('#mSvg').addEventListener('click',function(e){var g=e.target.closest('[data-j]');if(g){L.morphAt=+g.getAttribute('data-j');morphRender()}});
+  $('#mTable').addEventListener('click',function(e){var r=e.target.closest('tr[data-j]');if(r){L.morphAt=+r.dataset.j;morphRender()}});
+  $('#libHung').addEventListener('click',function(){L.mode.dh=L.mode.dh===3?0:3;libRender()});
+  bxBind($('#libBox'));c5Bind();$('#libReset').addEventListener('click',function(){var bs=BX.libBox;if(!bs)return;bs.shift=0;bs.mv={};bs.last=null;bs.redraw()});
+  $('#tabTrain').addEventListener('click',function(){showTab(false)});$('#tabLib').addEventListener('click',function(){showTab(true)});})();
+newMap();
+try{if(localStorage.getItem('infbox.tab')==='lib')showTab(true)}catch(e){}
+var seen=false;try{seen=localStorage.getItem('infbox.seen')==='1'}catch(e){}
+if(!seen)obOpen();
+})();
+</script></body></html>
