@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Два сада: интеграл и нейросеть, по которым можно гулять</title>
+<meta name="description" content="Математика и нейросеть, превращённые в сады: ходишь и смотришь, как устроен интеграл и как сеть видит картинку. Собрано вместе с Claude Code.">
+<meta property="og:title" content="Два сада, по которым можно гулять">
+<meta property="og:description" content="Сад интеграла и сад свёрточной сети. Открывается в браузере, с телефона тоже.">
+<meta property="og:image" content="https://pogodinalexeev-web.github.io/sad/integral.jpg">
+<style>
+@font-face{font-family:Lit;src:url(/f/Lit.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Lit;font-weight:700;src:url(/f/Lit-B.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Lit;font-style:italic;src:url(/f/Lit-It.woff2) format("woff2");font-display:swap}
+@font-face{font-family:Inter;src:url(/f/Inter.woff2) format("woff2");font-display:swap}
+:root{--ink:#2A1C13;--paper:#F4EAD2;--paper2:#FBF6EA;--gold:#F1BF4A;--brown:#8C5E0E;--teal:#3C8783;--night:#2F2748}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font:18px/1.55 Inter,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--ink);
+  background:linear-gradient(180deg,var(--night) 0,#5b4a78 260px,#c98a8f 520px,#efc9a4 700px,var(--paper) 900px) no-repeat,var(--paper);min-height:100vh}
+.wrap{max-width:980px;margin:0 auto;padding:56px 20px 64px}
+header{color:#FFF3DC;text-align:center;margin-bottom:40px}
+header .k{font:600 13px Inter;letter-spacing:.28em;text-transform:uppercase;opacity:.8}
+h1{font:700 clamp(34px,6vw,58px)/1.08 Lit,Georgia,serif;margin:14px 0 16px}
+header p{font:italic 19px/1.5 Lit,Georgia,serif;max-width:620px;margin:0 auto;opacity:.92}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+@media(max-width:720px){.grid{grid-template-columns:1fr}}
+.card{background:var(--paper2);border:3px solid var(--ink);box-shadow:8px 10px 0 rgba(42,28,19,.28);text-decoration:none;color:inherit;display:flex;flex-direction:column;transition:transform .2s}
+.card:nth-child(1){transform:rotate(-.8deg)}.card:nth-child(2){transform:rotate(.7deg)}
+.card:hover{transform:rotate(0) translateY(-4px)}
+.card img{display:block;width:100%;aspect-ratio:6/5;object-fit:cover;border-bottom:3px solid var(--ink)}
+.card .b{padding:20px 22px 24px}
+.card .n{font:700 15px Lit,serif;color:var(--brown);letter-spacing:.1em}
+.card h2{font:700 28px/1.15 Lit,Georgia,serif;margin:6px 0 10px}
+.card p{margin:0 0 16px}
+.go{display:inline-block;font:700 16px Inter;background:var(--gold);border:2px solid var(--ink);border-radius:40px;padding:10px 20px}
+.ask{margin:52px auto 0;max-width:640px;text-align:center;background:var(--paper);border:3px double var(--ink);padding:30px 24px;transform:rotate(-.6deg)}
+.ask h3{font:700 clamp(24px,4vw,32px)/1.2 Lit,Georgia,serif;margin:0 0 10px}
+.ask p{margin:0 0 20px}
+.stamp{display:inline-block;font:700 15px Inter;letter-spacing:.2em;text-transform:uppercase;color:#B8322A;border:3px double #B8322A;padding:14px 22px;text-decoration:none;transform:rotate(-1.5deg)}
+footer{text-align:center;margin-top:40px;font-size:15px;opacity:.75}
+footer a{color:inherit}
+</style></head>
+<body><div class="wrap">
+<header>
+  <div class="k">Математика, по которой можно гулять</div>
+  <h1>Два сада</h1>
+  <p>Мне всегда было мало формул, хотелось увидеть, как оно устроено, в пространстве. Попросил Claude Code, и получились два сада. Открываются прямо в браузере, с телефона тоже. Дальше хочу в VR.</p>
+</header>
+<div class="grid">
+  <a class="card" href="/integral/">
+    <img src="integral.jpg" alt="Станция «синус и косинус» в саду интеграла" loading="lazy">
+    <div class="b"><div class="n">САД I</div><h2>Сад интеграла</h2>
+    <p>Синус и косинус как тени бегущей точки, площадь под холмом, вода, которая набирается в баке. Четыре станции.</p>
+    <span class="go">Войти в сад →</span></div>
+  </a>
+  <a class="card" href="/cnn-sad/">
+    <img src="cnn.jpg" alt="Картинка кота, разложенная на красный, зелёный и синий слои" loading="lazy">
+    <div class="b"><div class="n">САД II</div><h2>Сад свёрточной сети</h2>
+    <p>Как нейросеть видит картинку: кот распадается на три таблицы чисел, окошко ищет края, слой за слоем всё сжимается в вектор и в ответ.</p>
+    <span class="go">Войти в сад →</span></div>
+  </a>
+</div>
+<div class="ask">
+  <h3>Что бы вы хотели увидеть в таком саду?</h3>
+  <p>Напишите мне. Самое интересное построю следующим садом.</p>
+  <a class="stamp" href="https://vk.com/pogodinalexeev">Написать ВКонтакте</a>
+</div>
+<footer><a href="/">Владислав: музыкант, инженер, педагог</a></footer>
+</div></body></html>
