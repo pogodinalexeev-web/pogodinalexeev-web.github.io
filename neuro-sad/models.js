@@ -41,67 +41,102 @@ export function makeModels(K) {
   function gauss(R) { let u = 0, v = 0; while (u === 0) u = R(); v = R(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(TAU * v); }
   const softmax = (a) => { const m = Math.max(...a), e = a.map((x) => Math.exp(x - m)), s = e.reduce((p, q) => p + q, 0); return e.map((x) => x / s); };
 
+
   // =========================================================================
-  // Герой всей тропы: ромашка (белые лепестки, жёлтая серединка) и василёк (синий).
-  // Появляются на стенде 1 и не уходят до стенда 13.
+  // Герой всей тропы: пиксельная ромашка 8×8 со стенда 1 и её 64 числа.
+  // Та же картинка идёт по всем стендам; рядом с ней стопка из 28 картинок.
   // =========================================================================
-  // 8×8 картинки стенда 1: . фон (тёмная трава), W белый лепесток, Y жёлтая серединка,
-  // G зелёный стебель, B синий лепесток, D тёмно-синяя серединка
+  // . фон (тёмная трава), W белый лепесток, Y жёлтая серединка, G зелёный стебель, B синий лепесток, D тёмно-синяя серединка
   const PIX8 = {
     'ромашка': ['.W.WW.W.', '..WWWW..', 'WWWYYWWW', 'WWWYYWWW', '..WWWW..', '.W.WW.W.', '...GG...', '..GGG...'],
     'василёк': ['.B.B.B..', 'B.BBB.B.', '.BBDDBB.', 'BBDDDDBB', '.BBDDBB.', 'B.BBB.B.', '...G....', '..GGG...'],
     'колокольчик': ['..GGG...', '..G.....', '..BBB...', '.BBBBB..', '.BBBBB..', 'BBBBBBB.', 'B.B.B.B.', '........'],
   };
   const GRAY8 = { '.': 40, W: 232, Y: 160, G: 100, B: 118, D: 66 };
+  const CHN = { '.': 'фон', W: 'лепесток', Y: 'серединка', G: 'стебель', B: 'лепесток', D: 'серединка' };
   const pix8 = (name) => { const rows = PIX8[name], out = []; for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) out.push(Math.min(255, GRAY8[rows[i][j]] + ((i * 7 + j * 3) % 5) * 4)); return out; };
-  function drawPix8(g, x0, y0, c, name = 'ромашка', grid = true) {
-    const v = pix8(name);
-    for (let p = 0; p < 64; p++) { const i = p >> 3, j = p & 7; g.fillStyle = `rgb(${v[p]},${v[p]},${v[p]})`; g.fillRect(x0 + j * c, y0 + i * c, c + 0.5, c + 0.5); if (grid) { g.strokeStyle = 'rgba(120,110,100,0.45)'; g.lineWidth = 1.2; g.strokeRect(x0 + j * c, y0 + i * c, c, c); } }
-    inkRect(g, x0, y0, c * 8, c * 8, 4, PAL.ink, 11);
-  }
-  // нарисованная ромашка: r это радиус до кончиков лепестков
-  function daisy(g, x, y, r, o = {}) {
-    const n = o.n || 12, rot = o.rot || 0;
-    g.save(); g.globalAlpha = o.alpha ?? 1;
-    for (let q = 0; q < n; q++) {
-      const a = rot + q / n * TAU;
-      g.fillStyle = q === o.hi ? '#FFF2C2' : '#FDFBF4'; g.beginPath(); g.ellipse(x + Math.cos(a) * r * 0.58, y + Math.sin(a) * r * 0.58, r * 0.42, r * 0.15, a, 0, TAU); g.fill();
-      if (r > 14) { g.lineWidth = Math.max(1, r / 40); g.strokeStyle = 'rgba(60,50,40,0.55)'; g.stroke(); }
+  // две клетки, которые станут точкой на поле: серединка (ряд 3, место 4) и лепесток (ряд 4, место 1)
+  const CC = 19, CP = 24, C_MID = '#C8601A', C_PET = '#2F6EB5', F_DAISY = '#D9A21E', F_CORN = '#2F5FB0';
+  const cellRC = (p) => `${(p >> 3) + 1}·${(p & 7) + 1}`;
+  const big = (n) => String(Math.round(n)).replace('-', '−').replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  // любые 64 числа рисуем как серую картинку 8×8; o.nums = размер шрифта для чисел в клетках
+  function drawVals(g, v, x0, y0, c, o = {}) {
+    for (let p = 0; p < 64; p++) {
+      const i = p >> 3, j = p & 7, b = clamp(Math.round(v[p]), 0, 255);
+      g.fillStyle = o.alpha ? `rgba(${b},${b},${b},${o.alpha})` : `rgb(${b},${b},${b})`; g.fillRect(x0 + j * c, y0 + i * c, c + 0.5, c + 0.5);
+      if (o.grid) { g.strokeStyle = 'rgba(120,110,100,0.55)'; g.lineWidth = 1.2; g.strokeRect(x0 + j * c, y0 + i * c, c, c); }
+      if (o.nums) txt(g, String(b), x0 + j * c + c / 2, y0 + i * c + c / 2 + 1, o.nums, { a: 'center', b: 'middle', w: 700, c: b < 125 ? '#F4EBDD' : '#1E120B' });
     }
-    g.fillStyle = '#F2B824'; g.beginPath(); g.arc(x, y, r * 0.24, 0, TAU); g.fill();
-    if (r > 14) { g.fillStyle = 'rgba(190,120,20,0.55)'; for (let k = 0; k < 7; k++) { const a = k * 2.4; g.beginPath(); g.arc(x + Math.cos(a) * r * 0.12, y + Math.sin(a) * r * 0.12, r * 0.035, 0, TAU); g.fill(); } }
-    g.lineWidth = Math.max(1.2, r / 30); g.strokeStyle = 'rgba(60,40,20,0.7)'; g.beginPath(); g.arc(x, y, r * 0.24, 0, TAU); g.stroke();
-    g.restore();
+    if (o.frame !== false) { g.lineWidth = o.fw || Math.max(2, c / 4); g.strokeStyle = o.frame || PAL.ink; g.strokeRect(x0, y0, c * 8, c * 8); }
+    (o.mark || []).forEach(([p, cl]) => { const i = p >> 3, j = p & 7, lw = Math.max(3, c / 7); g.lineWidth = lw; g.strokeStyle = cl; g.strokeRect(x0 + j * c + lw / 2, y0 + i * c + lw / 2, c - lw, c - lw); });
   }
-  // нарисованный василёк: синие лепестки с зубчиками
-  function corn(g, x, y, r, o = {}) {
-    const n = 8;
-    g.save(); g.globalAlpha = o.alpha ?? 1;
-    for (let q = 0; q < n; q++) {
-      const a = q / n * TAU + 0.2, ca = Math.cos(a), sa = Math.sin(a), px = -sa, py = ca;
-      const b0 = r * 0.2, b1 = r, w = r * 0.26;
-      g.fillStyle = '#3E6FC4'; g.beginPath();
-      g.moveTo(x + ca * b0 + px * w * 0.35, y + sa * b0 + py * w * 0.35);
-      g.lineTo(x + ca * b1 * 0.86 + px * w, y + sa * b1 * 0.86 + py * w);
-      g.lineTo(x + ca * b1 + px * w * 0.5, y + sa * b1 + py * w * 0.5);
-      g.lineTo(x + ca * b1 * 0.9, y + sa * b1 * 0.9);
-      g.lineTo(x + ca * b1 - px * w * 0.5, y + sa * b1 - py * w * 0.5);
-      g.lineTo(x + ca * b1 * 0.86 - px * w, y + sa * b1 * 0.86 - py * w);
-      g.lineTo(x + ca * b0 - px * w * 0.35, y + sa * b0 - py * w * 0.35);
-      g.closePath(); g.fill();
-      if (r > 14) { g.lineWidth = Math.max(1, r / 40); g.strokeStyle = 'rgba(20,30,70,0.6)'; g.stroke(); }
-    }
-    g.fillStyle = '#23336E'; g.beginPath(); g.arc(x, y, r * 0.24, 0, TAU); g.fill();
-    g.restore();
-  }
-  const flower = (g, x, y, r, isDaisy, o) => (isDaisy ? daisy(g, x, y, r, o) : corn(g, x, y, r, o));
-  // 28 цветков стенда 2: у каждого измерили лепесток, [длина, ширина, 1 ромашка / −1 василёк].
-  // Те же 28 цветков катаются по стендам 3 и 4.
-  const FLOWERS = [];
+  const thumb = (g, v, cx, cy, size, y, fw) => drawVals(g, v, cx - size / 2, cy - size / 2, size / 8, { frame: y > 0 ? F_DAISY : F_CORN, fw: fw || Math.max(3, size / 10) });
+  // стопка: 14 ромашек и 14 васильков 8×8, у каждой свои 64 числа. Первые в каждой половине это ромашка и василёк стенда 1.
+  const STACK = [];
   {
-    const R = mulberry(5);
-    while (FLOWERS.length < 14) { const a = 6.6 + gauss(R) * 1.05, b = 3.1 + gauss(R) * 0.95; if (a - b > 1.2 && a < 9.6 && b > 0.4) FLOWERS.push([a, b, 1]); }
-    while (FLOWERS.length < 28) { const a = 3.1 + gauss(R) * 0.95, b = 6.5 + gauss(R) * 1.05; if (b - a > 1.2 && b < 9.6 && a > 0.4) FLOWERS.push([a, b, -1]); }
+    const R = mulberry(23);
+    for (const [name, y] of [['ромашка', 1], ['василёк', -1]]) {
+      STACK.push({ v: pix8(name), y, name });
+      for (let k = 1; k < 14; k++) {
+        const rows = PIX8[name], mir = R() < 0.5, v = [];
+        for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) v.push(clamp(Math.round(GRAY8[rows[i][mir ? 7 - j : j]] + (R() * 2 - 1) * 20), 0, 255));
+        STACK.push({ v, y, name });
+      }
+    }
+  }
+  const P2 = STACK.map((s) => [s.v[CC], s.v[CP], s.y]); // [яркость серединки, яркость лепестка, 1 ромашка / −1 василёк]
+  // нейрон стенда 2 на всех 64 числах: вес 1 у 32 клеток цветка ромашки, вес 0 у фона и стебля
+  const W64 = PIX8['ромашка'].join('').split('').map((ch) => (ch === 'W' || ch === 'Y' ? 1 : 0)), TH64 = 5000;
+  const sum64 = (v) => v.reduce((s, x, i) => s + x * W64[i], 0);
+  // поле «яркость серединки → / яркость лепестка ↑», 0..VMAX
+  const VMAX = 280;
+  function fenceSeg(w1, w2, th) {
+    const M = VMAX, P = [], eq = (x, y) => [x, y];
+    if (Math.abs(w2) > 1e-9) for (const x of [0, M]) { const y = (th - w1 * x) / w2; if (y >= 0 && y <= M) P.push(eq(x, y)); }
+    if (Math.abs(w1) > 1e-9) for (const y of [0, M]) { const x = (th - w2 * y) / w1; if (x >= 0 && x <= M) P.push(eq(x, y)); }
+    if (P.length < 2) return null;
+    P.sort((a, b) => a[0] - b[0] || a[1] - b[1]); return [P[0], P[P.length - 1]];
+  }
+  function field(g, F, o = {}) {
+    const { X0, Y0, X1, Y1 } = F, sx = (v) => X0 + (X1 - X0) * v / VMAX, sy = (v) => Y1 - (Y1 - Y0) * v / VMAX, fs = o.fs || 40;
+    const fence = o.th !== undefined;
+    if (fence) {
+      const n = 28;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        const a = (j + 0.5) / n * VMAX, b = VMAX - (i + 0.5) / n * VMAX, s = o.w1 * a + o.w2 * b - o.th;
+        g.fillStyle = s > 0 ? 'rgba(241,191,74,0.30)' : 'rgba(62,143,196,0.20)';
+        g.fillRect(X0 + (X1 - X0) * j / n, Y0 + (Y1 - Y0) * i / n, (X1 - X0) / n + 1, (Y1 - Y0) / n + 1);
+      }
+    } else { g.fillStyle = 'rgba(226,209,176,0.45)'; g.fillRect(X0, Y0, X1 - X0, Y1 - Y0); }
+    for (const v of [100, 200]) { quickStroke(g, [[sx(v), Y0], [sx(v), Y1]], 1.5, rgba(PAL.inkFaint, 0.45), 1, [6, 8]); quickStroke(g, [[X0, sy(v)], [X1, sy(v)]], 1.5, rgba(PAL.inkFaint, 0.45), 1, [6, 8]); }
+    inkRect(g, X0, Y0, X1 - X0, Y1 - Y0, 4, PAL.ink, 2);
+    if (o.lab !== false) {
+      for (const v of [0, 100, 200]) { txt(g, String(v), sx(v), Y1 + fs * 0.85, fs * 0.7, { a: 'center', c: PAL.inkSoft }); if (v) txt(g, String(v), X0 - 8, sy(v) + fs * 0.25, fs * 0.7, { a: 'right', c: PAL.inkSoft }); }
+      txt(g, 'яркость серединки →', X1, Y1 + fs * 1.75, fs, { a: 'right', c: C_MID, w: 700 });
+      g.save(); g.translate(X0 - fs * 1.35, (Y0 + Y1) / 2); g.rotate(-Math.PI / 2); txt(g, 'яркость лепестка →', 0, 0, fs, { a: 'center', c: C_PET, w: 700 }); g.restore();
+    }
+    if (fence) {
+      const seg = fenceSeg(o.w1, o.w2, o.th);
+      if (seg) { const [a, b] = seg; inkStroke(g, [[sx(a[0]), sy(a[1])], [sx(b[0]), sy(b[1])]], o.fenceW || 9, PAL.wood, { seed: 3 }); inkStroke(g, [[sx(a[0]), sy(a[1])], [sx(b[0]), sy(b[1])]], 3, PAL.ink, { seed: 5, double: false }); }
+    }
+    const pts = o.pts || STACK, n = o.n ?? pts.length, size = o.size || 40;
+    let bad = 0;
+    for (let k = 0; k < n; k++) {
+      const s = pts[k], x = sx(s.v[CC]), y = sy(s.v[CP]);
+      thumb(g, s.v, x, y, size, s.y);
+      if (fence && Math.sign(o.w1 * s.v[CC] + o.w2 * s.v[CP] - o.th || -1) !== s.y) { bad++; g.lineWidth = Math.max(3, size / 9); g.strokeStyle = PAL.red; g.beginPath(); g.arc(x, y, size * 0.85, 0, TAU); g.stroke(); }
+      if (k === o.sel) { g.lineWidth = 6; g.strokeStyle = PAL.orange; g.beginPath(); g.arc(x, y, size * 1.1, 0, TAU); g.stroke(); }
+    }
+    return { sx, sy, bad };
+  }
+  // сноска: картинка 8×8 крупно и стрелка от неё к её точке
+  function callout(g, v, y, bx, by, c, tx, ty, lines = [], W = 250) {
+    const pw = c * 8, w = Math.max(pw, W), h = pw + lines.length * 44 + 18;
+    g.fillStyle = 'rgba(239,227,201,0.95)'; rr(g, bx - 12, by - 12, w + 24, h + 12, 14); g.fill(); g.lineWidth = 3; g.strokeStyle = PAL.ink; rr(g, bx - 12, by - 12, w + 24, h + 12, 14); g.stroke();
+    drawVals(g, v, bx + (w - pw) / 2, by, c, { frame: y > 0 ? F_DAISY : F_CORN, fw: 5, mark: [[CC, C_MID], [CP, C_PET]] });
+    lines.forEach(([s, cl], k) => txt(g, s, bx + w / 2, by + pw + 40 + k * 44, 34, { a: 'center', w: 700, c: cl || PAL.ink, maxW: w }));
+    const ax = tx < bx ? bx - 12 : tx > bx + w ? bx + w + 12 : bx + w / 2, ay = ty < by ? by - 12 : ty > by + h ? by + h : by + h / 2;
+    arrow(g, ax, ay, tx + Math.sign(ax - tx) * 26, ty + Math.sign(ay - ty) * 26, 5, PAL.orange, 24);
   }
 
   // HTML helpers for the card
@@ -130,11 +165,27 @@ export function makeModels(K) {
   // =========================================================================
   {
     const PICS = PIX8;
-    const MODES = ['как фото', 'как таблица чисел', 'как звуковая волна'];
+    const MODES = ['как фото', 'как таблица чисел', 'как звуковая волна', 'стопка картинок'];
+    const SX0 = 40, SY = [175, 315, 505, 645], SC = 15, SW = 132;
     const m = {
-      pic: 'ромашка', mode: 0, br: 0, sel: -1, dirty: true, playT: -1,
+      pic: 'ромашка', mode: 0, br: 0, sel: -1, ssel: 0, dirty: true, playT: -1,
       vals() { return pix8(this.pic).map((v) => clamp(Math.round(v + this.br), 0, 255)); },
       draw(g) {
+        if (this.mode === 3) {
+          txt(g, 'стопка: 28 картинок 8×8', 500, 80, 54, { a: 'center', serif: true, w: 700 });
+          txt(g, '14 ромашек', SX0 + 6 * SW + SC * 8, SY[0] - 18, 38, { a: 'right', w: 700, c: '#9A6A0A' });
+          txt(g, '14 васильков', SX0 + 6 * SW + SC * 8, SY[2] - 18, 38, { a: 'right', w: 700, c: F_CORN });
+          STACK.forEach((s, k) => {
+            const r = Math.floor(k / 7), c = k % 7, x = SX0 + c * SW, y = SY[r];
+            drawVals(g, s.v.map((u) => clamp(u + this.br, 0, 255)), x, y, SC, { frame: s.y > 0 ? F_DAISY : F_CORN, fw: 5 });
+            if (k === this.ssel) { g.lineWidth = 7; g.strokeStyle = PAL.orange; g.strokeRect(x - 8, y - 8, SC * 8 + 16, SC * 8 + 16); }
+          });
+          const s = STACK[this.ssel];
+          txt(g, this.ssel === 0 ? 'обведена наша ромашка' : this.ssel === 14 ? 'обведён наш василёк' : `обведена картинка ${this.ssel + 1}`, 500, 850, 42, { a: 'center', w: 700 });
+          txt(g, `у каждой свои 64 числа: ${s.v.slice(0, 4).join(', ')}, …`, 500, 910, 38, { a: 'center', c: PAL.inkSoft, maxW: 940 });
+          txt(g, 'дальше учим машину находить ромашки', 500, 965, 38, { a: 'center', c: PAL.inkSoft, maxW: 940 });
+          return;
+        }
         const v = this.vals();
         txt(g, `${this.pic} ${MODES[this.mode]}`, 500, 92, 56, { a: 'center', serif: true, w: 700, maxW: 900 });
         const x0 = 140, y0 = 130, c = 90;
@@ -166,6 +217,7 @@ export function makeModels(K) {
       },
       tick(dt) { if (this.playT >= 0) { this.playT += dt / 1.6; if (this.playT > 1) this.playT = -1; this.dirty = true; } },
       tap(x, y) {
+        if (this.mode === 3) { for (let k = 0; k < 28; k++) { const r = Math.floor(k / 7), c = k % 7, x0 = SX0 + c * SW, y0 = SY[r]; if (x >= x0 && x <= x0 + SC * 8 && y >= y0 && y <= y0 + SC * 8) { this.ssel = k; AUDIO.pluck(STACK[k].y * 0.5); this.sync && this.sync(); return true; } } return false; }
         if (this.mode < 2) { const j = Math.floor((x - 140) / 90), i = Math.floor((y - 130) / 90); if (i < 0 || j < 0 || i > 7 || j > 7) return false; this.sel = i * 8 + j; }
         else { const k = Math.floor((x - 80) / (840 / 64)); if (k < 0 || k > 63) return false; this.sel = k; }
         AUDIO.pluck(this.vals()[this.sel] / 128 - 1); this.sync && this.sync(); return true;
@@ -186,129 +238,124 @@ export function makeModels(K) {
       },
       get(k) { return this[k]; }, set(k, v) { this[k] = v; },
       press(k) {
-        if (k.startsWith('pic:')) this.pic = k.slice(4);
+        if (k.startsWith('pic:')) { this.pic = k.slice(4); if (this.mode === 3) this.mode = 0; }
         else if (k.startsWith('mode:')) this.mode = +k.slice(5);
         else if (k === 'play') this.play();
       },
       controls(box) {
         box.innerHTML = Object.keys(PICS).map((p) => bt(p, 'pic:' + p)).join('') + '<br>' +
-          MODES.map((s, i) => bt(['фото', 'таблица', 'звук'][i], 'mode:' + i)).join('') + bt('▶ послушать', 'play') +
+          MODES.map((s, i) => bt(['фото', 'таблица', 'звук', 'стопка'][i], 'mode:' + i)).join('') + bt('▶ послушать', 'play') +
           sl('яркость', 'br', -120, 120, 1, this.br) + '<div class="info"></div>';
         wire(box, this, (k, v) => (v > 0 ? '+' : '') + Math.round(v));
       },
-      syncExtra(box) { box.querySelectorAll('[data-b]').forEach((b) => b.classList.toggle('on', b.dataset.b === 'pic:' + this.pic || b.dataset.b === 'mode:' + this.mode)); },
-      infoText() { const v = this.vals(); const avg = Math.round(v.reduce((a, b) => a + b, 0) / 64); return this.sel >= 0 ? `клетка: ряд ${(this.sel >> 3) + 1}, место ${(this.sel & 7) + 1}, число <b>${v[this.sel]}</b>` : `средняя яркость <b>${avg}</b> из 255 · ткни клетку`; },
+      syncExtra(box) { box.querySelectorAll('[data-b]').forEach((b) => b.classList.toggle('on', (b.dataset.b === 'pic:' + this.pic && this.mode !== 3) || b.dataset.b === 'mode:' + this.mode)); },
+      infoText() {
+        if (this.mode === 3) { const s = STACK[this.ssel]; return `картинка ${this.ssel + 1} из 28, это ${s.name} · ткни любую картинку стопки`; }
+        const v = this.vals(); const avg = Math.round(v.reduce((a, b) => a + b, 0) / 64); return this.sel >= 0 ? `клетка: ряд ${(this.sel >> 3) + 1}, место ${(this.sel & 7) + 1}, число <b>${v[this.sel]}</b>` : `средняя яркость <b>${avg}</b> из 255 · ткни клетку`;
+      },
     };
     models.push(m);
   }
 
   // =========================================================================
-  // 2. Нейрон: взвешенная сумма и порог
+  // 2. Нейрон: 64 числа × 64 веса, потом два числа и забор
   // =========================================================================
+  const hero = (name) => STACK[name === 'василёк' ? 14 : 0];
   {
-    const pts = FLOWERS;
-    // вступление: пиксельная ромашка со стенда 1 → та же ромашка крупно с линейкой → точка на поле
-    function drawIntro(g) {
-      txt(g, 'ромашка со стенда 1', 50, 82, 40, { w: 700, maxW: 330 });
-      drawPix8(g, 50, 110, 40, 'ромашка');
-      txt(g, '64 числа', 210, 470, 40, { a: 'center', c: PAL.inkSoft, w: 700 });
-      arrow(g, 395, 270, 470, 270, 6, PAL.orange, 26);
-      txt(g, 'та же, крупно', 980, 82, 40, { a: 'right', w: 700 });
-      const cx = 640, cy = 270, r = 190;
-      daisy(g, cx, cy, r, { n: 12, rot: 0, hi: 0 });
-      // линейка вдоль правого лепестка: от серединки до кончика
-      const L0 = cx + r * 0.2, L1 = cx + r, ry = cy + 52;
-      g.fillStyle = '#F4D58A'; g.fillRect(L0 - 6, ry - 6, L1 - L0 + 12, 34); g.lineWidth = 3; g.strokeStyle = PAL.ink; g.strokeRect(L0 - 6, ry - 6, L1 - L0 + 12, 34);
-      for (let k = 0; k <= 6; k++) { const x = L0 + (L1 - L0) * k / 6; quickStroke(g, [[x, ry - 6], [x, ry + 12]], 3, PAL.ink); }
-      pill(g, 'длина 6', (L0 + L1) / 2 + 30, ry + 92, 40, { a: 'center', c: '#A8321F', border: '#A8321F' });
-      // ширина: поперёк того же лепестка
-      const wx = cx + r * 0.62, w2 = r * 0.15;
-      arrow(g, wx, cy - w2 - 70, wx, cy - w2 - 4, 5, '#A8321F', 18); arrow(g, wx, cy + w2 + 70, wx, cy + w2 + 4, 5, '#A8321F', 18);
-      pill(g, 'ширина 3', wx - 20, cy - w2 - 96, 40, { c: '#A8321F', border: '#A8321F' });
-      // поле: 6 вправо, 3 вверх
-      const PX0 = 130, PX1 = 560, PY0 = 560, PY1 = 930, px = (v) => PX0 + (PX1 - PX0) * v / 10, py = (v) => PY1 - (PY1 - PY0) * v / 10;
-      g.fillStyle = 'rgba(226,209,176,0.5)'; g.fillRect(PX0, PY0, PX1 - PX0, PY1 - PY0); inkRect(g, PX0, PY0, PX1 - PX0, PY1 - PY0, 4, PAL.ink, 4);
-      for (let k = 1; k < 10; k++) { quickStroke(g, [[px(k), PY0], [px(k), PY1]], 1.2, rgba(PAL.inkFaint, 0.4)); quickStroke(g, [[PX0, py(k)], [PX1, py(k)]], 1.2, rgba(PAL.inkFaint, 0.4)); }
-      quickStroke(g, [[PX0, py(3)], [px(6), py(3)]], 4, PAL.orange, 1, [12, 8]); quickStroke(g, [[px(6), PY1], [px(6), py(3)]], 4, PAL.orange, 1, [12, 8]);
-      txt(g, '6', px(6), PY1 + 44, 40, { a: 'center', w: 700, c: '#A8321F' }); txt(g, '3', PX0 - 30, py(3) + 14, 40, { a: 'center', w: 700, c: '#A8321F' });
-      txt(g, 'длина →', PX1, PY1 + 44, 34, { a: 'right', c: PAL.inkSoft });
-      g.save(); g.translate(PX0 - 60, (PY0 + PY1) / 2 - 40); g.rotate(-Math.PI / 2); txt(g, 'ширина →', 0, 0, 34, { a: 'center', c: PAL.inkSoft }); g.restore();
-      daisy(g, px(6), py(3), 30);
-      arrow(g, 700, 540, px(6) + 40, py(3) - 30, 6, PAL.orange, 26);
-      txt(g, 'один цветок', 620, 700, 44, { w: 700 }); txt(g, '= два числа', 620, 760, 44, { w: 700 }); txt(g, '= одна точка', 620, 820, 44, { w: 700 });
-      txt(g, '6 вправо, 3 вверх', 620, 890, 38, { c: PAL.inkSoft, w: 700 });
-    }
-    const X0 = 120, X1 = 950, Y0 = 70, Y1 = 860, sx = (v) => X0 + (X1 - X0) * v / 10, sy = (v) => Y1 - (Y1 - Y0) * v / 10;
+    const P = P2, F = { X0: 140, Y0: 60, X1: 950, Y1: 845 };
+    const DEMO = [0, 1, CC, CP];
     const m = {
-      w1: 0.3, w2: 0.6, th: 4, sel: -1, auto: false, t: 0, intro: 1, dirty: true,
+      scene: 'sum', pic: 'ромашка', w1: 0.3, w2: 0.6, th: 200, sel: -1, auto: false, t: 0, rev: 28, dirty: true,
       s(p) { return this.w1 * p[0] + this.w2 * p[1] - this.th; },
-      errs() { return pts.filter((p) => Math.sign(this.s(p) || -1) !== p[2]); },
+      errs() { return P.filter((p) => Math.sign(this.s(p) || -1) !== p[2]); },
+      drawSum(g) {
+        const v = hero(this.pic).v, C = 54, AX = 30, BX = 540, Y = 120;
+        txt(g, `${this.pic}: 64 числа × 64 веса`, 500, 72, 50, { a: 'center', serif: true, w: 700, maxW: 940 });
+        drawVals(g, v, AX, Y, C, { grid: true, nums: 22, fw: 5, mark: DEMO.map((p) => [p, PAL.orange]) });
+        txt(g, '×', 505, Y + 4 * C + 24, 76, { a: 'center', w: 700 });
+        for (let p = 0; p < 64; p++) { const i = p >> 3, j = p & 7, x = BX + j * C, y = Y + i * C; g.fillStyle = W64[p] ? '#F6D77A' : '#F3EBDA'; g.fillRect(x, y, C, C); g.strokeStyle = rgba(PAL.inkFaint, 0.55); g.lineWidth = 1.2; g.strokeRect(x, y, C, C); txt(g, String(W64[p]), x + C / 2, y + C / 2 + 1, 26, { a: 'center', b: 'middle', w: 700, c: W64[p] ? PAL.ink : PAL.inkFaint }); }
+        g.lineWidth = 5; g.strokeStyle = PAL.ink; g.strokeRect(BX, Y, C * 8, C * 8);
+        DEMO.forEach((p) => { g.lineWidth = 5; g.strokeStyle = PAL.orange; g.strokeRect(BX + (p & 7) * C + 2.5, Y + (p >> 3) * C + 2.5, C - 5, C - 5); });
+        txt(g, 'числа картинки', AX + 4 * C, Y + 8 * C + 40, 34, { a: 'center', c: PAL.inkSoft, w: 700 });
+        txt(g, 'вес у каждого числа', BX + 4 * C, Y + 8 * C + 40, 34, { a: 'center', c: PAL.inkSoft, w: 700 });
+        const ch = PIX8[this.pic].join('');
+        DEMO.forEach((p, k) => txt(g, `клетка ${cellRC(p)} (${CHN[ch[p]]}): ${v[p]} × ${W64[p]} = ${v[p] * W64[p]}`, 40, 650 + k * 50, 36, { w: 600, maxW: 920 }));
+        txt(g, 'и так ещё 60 клеток, всё складываем', 40, 850, 36, { c: PAL.inkSoft, w: 600 });
+        const s = sum64(v), ok = s > TH64;
+        txt(g, `сумма ${big(s)} ${ok ? '>' : '<'} порог ${big(TH64)} → ${ok ? 'ромашка' : 'василёк'}`, 500, 935, 46, { a: 'center', w: 700, c: ok ? '#9A6A0A' : F_CORN, maxW: 940 });
+      },
+      drawPick(g) {
+        const v = hero('ромашка').v, C = 56, X = 30, Y = 110;
+        txt(g, 'из 64 чисел берём два', 500, 72, 50, { a: 'center', serif: true, w: 700 });
+        drawVals(g, v, X, Y, C, { grid: true, nums: 22, fw: 5, mark: [[CC, C_MID], [CP, C_PET]] });
+        txt(g, 'серединка', 520, 170, 44, { w: 700, c: C_MID }); txt(g, `клетка 3·4 = ${v[CC]}`, 520, 222, 38, { w: 700 }); txt(g, 'откладываем вправо', 520, 268, 34, { c: PAL.inkSoft });
+        txt(g, 'лепесток', 520, 350, 44, { w: 700, c: C_PET }); txt(g, `клетка 4·1 = ${v[CP]}`, 520, 402, 38, { w: 700 }); txt(g, 'откладываем вверх', 520, 448, 34, { c: PAL.inkSoft });
+        const F2 = { X0: 170, Y0: 590, X1: 560, Y1: 910 };
+        const { sx, sy } = field(g, F2, { pts: [STACK[0]], size: 46, fs: 30 });
+        const px = sx(v[CC]), py = sy(v[CP]);
+        quickStroke(g, [[F2.X0, py], [px - 26, py]], 4, C_PET, 1, [10, 8]); quickStroke(g, [[px, F2.Y1], [px, py + 26]], 4, C_MID, 1, [10, 8]);
+        txt(g, String(v[CP]), F2.X0 + 50, py - 12, 34, { a: 'center', w: 700, c: C_PET }); txt(g, String(v[CC]), px + 40, F2.Y1 - 14, 34, { a: 'center', w: 700, c: C_MID });
+        arrow(g, X + 4 * C, Y + 8 * C + 6, px - 30, py - 30, 6, PAL.orange, 26);
+        txt(g, 'картинка', 640, 690, 44, { w: 700 }); txt(g, '= два числа', 640, 745, 44, { w: 700 }); txt(g, '= одна точка', 640, 800, 44, { w: 700 });
+        txt(g, '64 числа не нарисуешь', 610, 870, 30, { c: PAL.inkSoft, maxW: 330 }); txt(g, 'на плоскости, два можно', 610, 908, 30, { c: PAL.inkSoft, maxW: 330 });
+      },
+      drawStack(g) {
+        const n = Math.min(28, Math.floor(this.rev) + 1), cur = n >= 28 && this.rev >= 28 ? 0 : n - 1;
+        const { sx, sy } = field(g, F, { n, size: 40 });
+        const s = STACK[cur];
+        callout(g, s.v, s.y, 175, 95, 13, sx(s.v[CC]), sy(s.v[CP]), [[`серединка ${s.v[CC]}`, C_MID], [`лепесток ${s.v[CP]}`, C_PET]]);
+        pill(g, `точек на поле: ${n} из 28`, F.X1 - 20, F.Y1 - 30, 38, { a: 'right' });
+      },
       draw(g) {
-        if (this.intro) { drawIntro(g); return; }
-        const n = 28;
-        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-          const a = (j + 0.5) / n * 10, b = 10 - (i + 0.5) / n * 10, s = this.w1 * a + this.w2 * b - this.th;
-          g.fillStyle = s > 0 ? 'rgba(241,191,74,0.30)' : 'rgba(62,143,196,0.20)';
-          g.fillRect(X0 + (X1 - X0) * j / n, Y0 + (Y1 - Y0) * i / n, (X1 - X0) / n + 1, (Y1 - Y0) / n + 1);
-        }
-        inkRect(g, X0, Y0, X1 - X0, Y1 - Y0, 4, PAL.ink, 2);
-        txt(g, 'длина лепестка →', (X0 + X1) / 2, 935, 42, { a: 'center', c: PAL.inkSoft });
-        g.save(); g.translate(62, (Y0 + Y1) / 2); g.rotate(-Math.PI / 2); txt(g, 'ширина лепестка →', 0, 0, 42, { a: 'center', c: PAL.inkSoft }); g.restore();
-        // the fence: w1·x + w2·y = порог
-        const seg = [];
-        const { w1, w2, th } = this;
-        if (Math.abs(w2) > 1e-6) { for (const a of [0, 10]) { const b = (th - w1 * a) / w2; seg.push([a, b]); } }
-        else if (Math.abs(w1) > 1e-6) { const a = th / w1; seg.push([a, 0], [a, 10]); }
-        if (seg.length === 2) {
-          // clip to the box
-          let [[ax, ay], [bx, by]] = seg; const cl = [];
-          const pts2 = [[ax, ay], [bx, by]];
-          const inside = (p) => p[0] >= -1e-9 && p[0] <= 10 + 1e-9 && p[1] >= -1e-9 && p[1] <= 10 + 1e-9;
-          for (const e of [0, 10]) { if (Math.abs(by - ay) > 1e-9) { const t = (e - ay) / (by - ay); const p = [ax + (bx - ax) * t, e]; if (inside(p)) cl.push(p); } }
-          for (const p of pts2) if (inside(p)) cl.push(p);
-          if (cl.length >= 2) { cl.sort((p, q) => p[0] - q[0] || p[1] - q[1]); const a = cl[0], b = cl[cl.length - 1]; inkStroke(g, [[sx(a[0]), sy(a[1])], [sx(b[0]), sy(b[1])]], 9, PAL.wood, { seed: 3 }); inkStroke(g, [[sx(a[0]), sy(a[1])], [sx(b[0]), sy(b[1])]], 3, PAL.ink, { seed: 5, double: false }); }
-        }
-        const bad = new Set(this.errs());
-        pts.forEach((p, k) => {
-          const x = sx(p[0]), y = sy(p[1]);
-          flower(g, x, y, 30, p[2] > 0, { rot: k });
-          if (bad.has(p)) { g.lineWidth = 6; g.strokeStyle = PAL.red; g.beginPath(); g.arc(x, y, 36, 0, TAU); g.stroke(); }
-          if (k === this.sel) { g.lineWidth = 6; g.strokeStyle = PAL.orange; g.beginPath(); g.arc(x, y, 45, 0, TAU); g.stroke(); }
-        });
-        const e = bad.size;
-        pill(g, e ? `ошибок: ${e} из 28` : 'ошибок нет!', X0 + 20, Y0 + 70, 46, { bg: e ? PAL.paper : PAL.sun, c: e ? PAL.red : PAL.ink });
-        pill(g, 'ромашка', X1 - 20, Y1 - 30, 36, { a: 'right', bg: '#F8E7B0' });
-        pill(g, 'василёк', X0 + 20, Y0 + 160, 36, { bg: '#C9DDF2' });
+        if (this.scene === 'sum') return this.drawSum(g);
+        if (this.scene === 'pick') return this.drawPick(g);
+        if (this.scene === 'stack') return this.drawStack(g);
+        const { bad } = field(g, F, { w1: this.w1, w2: this.w2, th: this.th, size: 40, sel: this.sel });
+        pill(g, bad ? `ошибок: ${bad} из 28` : 'ошибок нет!', F.X0 + 20, F.Y0 + 70, 46, { bg: bad ? PAL.paper : PAL.sun, c: bad ? PAL.red : PAL.ink });
+        pill(g, 'ромашки', F.X1 - 20, F.Y1 - 30, 36, { a: 'right', bg: '#F8E7B0', border: F_DAISY });
+        pill(g, 'васильки', F.X0 + 20, F.Y1 - 30, 36, { bg: '#C9DDF2', border: F_CORN });
       },
       tick(dt) {
+        if (this.scene === 'stack' && this.rev < 28) { this.rev = Math.min(28, this.rev + dt / 0.16); this.dirty = true; if (this.rev >= 28) this.sync(); }
         if (!this.auto) return;
-        this.t += dt; if (this.t < 0.22) return; this.t = 0;
+        this.t += dt; if (this.t < 0.3) return; this.t = 0;
         const bad = this.errs();
         if (!bad.length) { this.auto = false; AUDIO.chime(true); this.sync(); return; }
-        const p = bad[Math.floor(Math.random() * bad.length)], eta = 0.06;
-        this.w1 += eta * p[2] * p[0] / 5; this.w2 += eta * p[2] * p[1] / 5; this.th -= eta * p[2] * 1.2;
-        this.w1 = clamp(this.w1, -1.5, 1.5); this.w2 = clamp(this.w2, -1.5, 1.5); this.th = clamp(this.th, -10, 10);
+        const p = bad[Math.floor(Math.random() * bad.length)], eta = 0.03;
+        this.w1 += eta * p[2] * p[0] / 127.5; this.w2 += eta * p[2] * p[1] / 127.5; this.th -= eta * p[2] * 30;
+        this.w1 = clamp(this.w1, -1.5, 1.5); this.w2 = clamp(this.w2, -1.5, 1.5); this.th = clamp(this.th, -300, 600);
         AUDIO.pluck(-0.3); this.sync();
       },
       tap(x, y) {
-        if (this.intro) { this.intro = 0; this.sync(); return true; }
+        if (this.scene === 'sum') { this.pic = this.pic === 'ромашка' ? 'василёк' : 'ромашка'; this.sync(); return true; }
+        if (this.scene !== 'field') { this.scene = 'field'; this.sync(); return true; }
+        const sx = (v) => F.X0 + (F.X1 - F.X0) * v / VMAX, sy = (v) => F.Y1 - (F.Y1 - F.Y0) * v / VMAX;
         let b = -1, bd = 50;
-        pts.forEach((p, k) => { const d = Math.hypot(sx(p[0]) - x, sy(p[1]) - y); if (d < bd) { bd = d; b = k; } });
-        if (b < 0) return false; this.sel = b; AUDIO.pluck(pts[b][2] * 0.6); this.sync(); return true;
+        P.forEach((p, k) => { const d = Math.hypot(sx(p[0]) - x, sy(p[1]) - y); if (d < bd) { bd = d; b = k; } });
+        if (b < 0) return false; this.sel = b; AUDIO.pluck(P[b][2] * 0.6); this.sync(); return true;
       },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; this.auto = false; if (k !== 'intro') this.intro = 0; },
-      press(k) { if (k !== 'intro') this.intro = 0; if (k === 'intro') this.intro = 1; if (k === 'auto') this.auto = !this.auto; if (k === 'reset') { this.w1 = 0.3; this.w2 = 0.6; this.th = 4; this.auto = false; } },
+      get(k) { return this[k]; },
+      set(k, v) { this[k] = v; if (k === 'w1' || k === 'w2' || k === 'th') { this.auto = false; this.scene = 'field'; } },
+      press(k) {
+        if (k.startsWith('scene:')) { this.scene = k.slice(6); if (this.scene === 'stack') this.rev = 0; this.auto = false; return; }
+        if (k.startsWith('pic:')) { this.pic = k.slice(4); this.scene = 'sum'; return; }
+        this.scene = 'field';
+        if (k === 'auto') this.auto = !this.auto;
+        if (k === 'reset') { this.w1 = 0.3; this.w2 = 0.6; this.th = 200; this.auto = false; }
+      },
       controls(box) {
-        box.innerHTML = sl('вес длины w1', 'w1', -1.5, 1.5, 0.05, this.w1) + sl('вес ширины w2', 'w2', -1.5, 1.5, 0.05, this.w2) + sl('порог', 'th', -10, 10, 0.1, this.th) +
-          bt('▶ подобрать само', 'auto') + bt('сбросить', 'reset') + bt('откуда точки', 'intro') + '<div class="info"></div>';
-        wire(box, this, (k, v) => f2(v));
+        box.innerHTML = sl('вес серединки', 'w1', -1.5, 1.5, 0.05, this.w1) + sl('вес лепестка', 'w2', -1.5, 1.5, 0.05, this.w2) + sl('порог', 'th', -300, 600, 5, this.th) +
+          bt('▶ подобрать само', 'auto') + bt('сбросить', 'reset') + bt('64 числа', 'scene:sum') + bt('откуда точки', 'scene:stack') + '<div class="info"></div>';
+        wire(box, this, (k, v) => (k === 'th' ? String(Math.round(v)) : f2(v)));
       },
       syncExtra(box) { const b = box.querySelector('[data-b="auto"]'); b.classList.toggle('on', this.auto); b.textContent = this.auto ? '❚❚ стоп' : '▶ подобрать само'; },
       infoText() {
-        if (this.intro) return 'ромашку со стенда 1 измерили линейкой: длина лепестка 6, ширина 3. Эти два числа ставят её точкой на поле. Ткни доску, покажу все 28 цветков';
-        if (this.sel < 0) return `ошибок <b>${this.errs().length}</b> из 28 · ткни цветок, покажу счёт`;
-        const p = pts[this.sel], s = this.w1 * p[0] + this.w2 * p[1];
-        return `${f2(this.w1)}×${f1(p[0])} + ${f2(this.w2)}×${f1(p[1])} = <b>${f2(s)}</b> ${s > this.th ? '&gt;' : '&lt;'} ${f1(this.th)} → ${s > this.th ? 'ромашка' : 'василёк'}${(s > this.th ? 1 : -1) === p[2] ? ' ✓' : ' <b style="color:#BF3F2C">ошибка</b>'}`;
+        if (this.scene === 'sum') { const v = hero(this.pic).v; return `${this.pic}: сумма 64 произведений <b>${big(sum64(v))}</b>, порог ${big(TH64)} · ткни доску, покажу ${this.pic === 'ромашка' ? 'василёк' : 'ромашку'}`; }
+        if (this.scene === 'pick') return 'клетка серединки 172 идёт вправо, клетка лепестка 236 вверх · ткни доску';
+        if (this.scene === 'stack') return 'каждая картинка стопки встаёт на поле по своим двум числам · ткни доску, будет забор';
+        if (this.sel < 0) return `ошибок <b>${this.errs().length}</b> из 28 · ткни картинку на поле, покажу счёт`;
+        const p = P[this.sel], s = this.w1 * p[0] + this.w2 * p[1];
+        return `${f2(this.w1)}×${p[0]} + ${f2(this.w2)}×${p[1]} = <b>${fmt(s, 1)}</b> ${s > this.th ? '&gt;' : '&lt;'} ${Math.round(this.th)} → ${s > this.th ? 'ромашка' : 'василёк'}${(s > this.th ? 1 : -1) === p[2] ? ' ✓' : ' <b style="color:#BF3F2C">ошибка</b>'}`;
       },
     };
     models.push(m);
@@ -317,64 +364,79 @@ export function makeModels(K) {
   // =========================================================================
   // 3. Ошибка и градиентный спуск
   // =========================================================================
+  // Холм это ошибка нейрона-забора со стенда 2 на тех же 28 картинках. Вес серединки 1 и порог 300 закреплены,
+  // крутим только вес лепестка w. Сколько перепутал: лесенка. Штраф: гладкий холм, по нему и катится шарик.
+  const W1_3 = 1, TH_3 = 300, sp = (z) => (z > 30 ? z : Math.log1p(Math.exp(z))), sig = (z) => 1 / (1 + Math.exp(-z));
+  const sc3 = (w, p) => (W1_3 * p[0] + w * p[1] - TH_3) / 100;
+  const f3 = (w) => P2.reduce((s, p) => s + sp(-p[2] * sc3(w, p)), 0) / P2.length;
+  const df3 = (w) => P2.reduce((s, p) => s - p[2] * p[1] / 100 * sig(-p[2] * sc3(w, p)), 0) / P2.length;
+  const nerr3 = (w) => P2.filter((p) => (sc3(w, p) > 0 ? 1 : -1) !== p[2]).length;
+  // куда скатывается шарик со старта −0,4 шагом 0,5: этот вес лепестка унесёт с собой стенд 4
+  const W3 = (() => { let w = -0.4; for (let k = 0; k < 80 && !(Math.abs(df3(w)) < 0.01); k++) w -= 0.5 * df3(w); return Math.round(w * 100) / 100; })();
   {
-    // Холм это ошибка нейрона со стенда 2 на тех же 28 цветках. Вес ширины −1 и порог 1 закреплены,
-    // крутим только вес длины w. Сколько перепутал: лесенка. Штраф: гладкий холм, по нему и катится шарик.
-    const W2 = -1, TH = 1, sp = (z) => (z > 30 ? z : Math.log1p(Math.exp(z))), sig = (z) => 1 / (1 + Math.exp(-z));
-    const sc = (w, p) => w * p[0] + W2 * p[1] - TH;
-    const f = (w) => FLOWERS.reduce((s, p) => s + sp(-p[2] * sc(w, p)), 0) / FLOWERS.length;
-    const df = (w) => FLOWERS.reduce((s, p) => s - p[2] * p[0] * sig(-p[2] * sc(w, p)), 0) / FLOWERS.length;
-    const nerr = (w) => FLOWERS.filter((p) => (sc(w, p) > 0 ? 1 : -1) !== p[2]).length;
-    const WMIN = -1, WMAX = 3.5, FMAX = 6;
+    const f = f3, df = df3, nerr = nerr3;
+    const WMIN = -1, WMAX = 3.5, FMAX = 2.1;
     const X0 = 80, X1 = 950, Y0 = 60, Y1 = 500;
     const sx = (w) => X0 + (X1 - X0) * (w - WMIN) / (WMAX - WMIN), sy = (v) => Y1 - (Y1 - Y0) * v / FMAX;
+    const FB = { X0: 60, Y0: 600, X1: 420, Y1: 960 };
     const m = {
-      w: -0.4, lr: 0.25, steps: 0, trail: [], play: false, t: 0, hop: null, out: false, dirty: true,
+      w: -0.4, lr: 0.5, steps: 0, trail: [], play: false, t: 0, hop: null, out: false, intro: 0, build: -1, dirty: true,
       draw(g) {
-        const curve = []; for (let i = 0; i <= 200; i++) { const w = WMIN + (WMAX - WMIN) * i / 200; curve.push([sx(w), sy(Math.min(f(w), FMAX + 0.5))]); }
+        if (this.intro) {
+          const F = { X0: 140, Y0: 60, X1: 950, Y1: 845 };
+          const { bad } = field(g, F, { w1: W1_3, w2: this.w, th: TH_3, size: 40 });
+          pill(g, bad ? `ошибок: ${bad} из 28` : 'ошибок нет!', F.X0 + 20, F.Y0 + 70, 46, { bg: bad ? PAL.paper : PAL.sun, c: bad ? PAL.red : PAL.ink });
+          pill(g, `вес серединки 1, вес лепестка ${f2(this.w)}, порог 300`, F.X0 + 20, F.Y1 - 30, 34, { maxW: 780 });
+          return;
+        }
+        const bw0 = this.build >= 0 ? WMIN + (WMAX - WMIN) * Math.min(1, this.build) : WMAX;
+        const curve = []; for (let i = 0; i <= 200; i++) { const w = WMIN + (WMAX - WMIN) * i / 200; if (w > bw0 + 1e-9) break; curve.push([sx(w), sy(Math.min(f(w), FMAX + 0.3))]); }
         g.save(); g.beginPath(); g.rect(X0, Y0 - 10, X1 - X0, Y1 - Y0 + 10); g.clip();
-        g.beginPath(); curve.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.lineTo(X1, Y1); g.lineTo(X0, Y1); g.closePath();
-        g.fillStyle = 'rgba(148,164,127,0.45)'; g.fill();
-        // лесенка «сколько перепутал»: 28 перепутанных = верх доски
-        const st = []; for (let i = 0; i <= 400; i++) { const w = WMIN + (WMAX - WMIN) * i / 400; st.push([sx(w), sy(nerr(w) / 28 * FMAX * 0.9)]); }
-        quickStroke(g, st, 3, rgba(PAL.inkSoft, 0.75), 1, [7, 7]);
-        inkStroke(g, curve, 7, PAL.ink, { seed: 7 });
+        if (curve.length > 1) {
+          g.beginPath(); curve.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.lineTo(curve[curve.length - 1][0], Y1); g.lineTo(X0, Y1); g.closePath();
+          g.fillStyle = 'rgba(148,164,127,0.45)'; g.fill();
+          const st = []; for (let i = 0; i <= 400; i++) { const w = WMIN + (WMAX - WMIN) * i / 400; if (w > bw0 + 1e-9) break; st.push([sx(w), sy(nerr(w) / 28 * FMAX * 0.9)]); }
+          quickStroke(g, st, 3, rgba(PAL.inkSoft, 0.75), 1, [7, 7]);
+          inkStroke(g, curve, 7, PAL.ink, { seed: 7 });
+        }
         g.restore();
         quickStroke(g, [[X0, Y1], [X1, Y1]], 3, PAL.ink);
-        for (const w of [-1, 0, 1, 2]) { quickStroke(g, [[sx(w), Y1], [sx(w), Y1 + 12]], 3, PAL.ink); txt(g, String(w).replace('-', '−'), sx(w), Y1 + 46, 32, { a: 'center', c: PAL.inkSoft }); }
-        txt(g, 'вес длины →', X1, Y1 + 46, 34, { a: 'right', c: PAL.inkSoft });
+        for (const w of [-1, 0, 1, 2, 3]) { quickStroke(g, [[sx(w), Y1], [sx(w), Y1 + 12]], 3, PAL.ink); txt(g, String(w).replace('-', '−'), sx(w), Y1 + 46, 32, { a: 'center', c: PAL.inkSoft }); }
+        txt(g, 'вес лепестка →', X1 - 10, Y1 - 18, 34, { a: 'right', c: C_PET, w: 700 });
         txt(g, 'штраф за путаницу', X1 - 10, Y0 + 40, 38, { a: 'right', c: PAL.ink, w: 700 });
         txt(g, '- - - сколько перепутал', X1 - 10, Y0 + 84, 32, { a: 'right', c: PAL.inkSoft });
-        const tr = this.trail;
-        for (let i = 1; i < tr.length; i++) {
-          const a = tr[i - 1], b = tr[i], ax = sx(clamp(a, WMIN, WMAX)), bx = sx(clamp(b, WMIN, WMAX)), ay = sy(Math.min(FMAX, f(clamp(a, WMIN, WMAX)))), by = sy(Math.min(FMAX, f(clamp(b, WMIN, WMAX))));
-          const al = 0.25 + 0.6 * i / tr.length;
-          g.save(); g.globalAlpha = al; g.strokeStyle = PAL.orange; g.lineWidth = 4; g.setLineDash([10, 9]);
-          g.beginPath(); g.moveTo(ax, ay - 26); g.quadraticCurveTo((ax + bx) / 2, Math.min(ay, by) - 40 - Math.abs(bx - ax) * 0.25, bx, by - 26); g.stroke(); g.restore();
-          g.fillStyle = rgba(PAL.orange, al); g.beginPath(); g.arc(ax, ay - 26, 8, 0, TAU); g.fill();
+        let shown = this.w;
+        if (this.build >= 0 && this.build < 1) {
+          shown = bw0; const bx = sx(bw0), by = sy(Math.min(FMAX, f(bw0)));
+          quickStroke(g, [[bx, Y1], [bx, by]], 4, PAL.orange, 1, [8, 6]);
+          g.fillStyle = PAL.orange; g.beginPath(); g.arc(bx, by, 13, 0, TAU); g.fill();
+          pill(g, `вес ${f2(bw0)}: перепутал ${nerr(bw0)}`, clamp(bx, 300, 700), Y0 + 150, 36, { a: 'center' });
+        } else {
+          const tr = this.trail;
+          for (let i = 1; i < tr.length; i++) {
+            const a = tr[i - 1], b = tr[i], ax = sx(clamp(a, WMIN, WMAX)), bx = sx(clamp(b, WMIN, WMAX)), ay = sy(Math.min(FMAX, f(clamp(a, WMIN, WMAX)))), by = sy(Math.min(FMAX, f(clamp(b, WMIN, WMAX))));
+            const al = 0.25 + 0.6 * i / tr.length;
+            g.save(); g.globalAlpha = al; g.strokeStyle = PAL.orange; g.lineWidth = 4; g.setLineDash([10, 9]);
+            g.beginPath(); g.moveTo(ax, ay - 26); g.quadraticCurveTo((ax + bx) / 2, Math.min(ay, by) - 40 - Math.abs(bx - ax) * 0.25, bx, by - 26); g.stroke(); g.restore();
+            g.fillStyle = rgba(PAL.orange, al); g.beginPath(); g.arc(ax, ay - 26, 8, 0, TAU); g.fill();
+          }
+          let bw = this.w, lift = 0;
+          if (this.hop) { const k = this.hop.t; bw = lerp(this.hop.a, this.hop.b, k); lift = Math.sin(k * Math.PI) * (40 + Math.abs(this.hop.b - this.hop.a) * 40); }
+          const cw = clamp(bw, WMIN, WMAX), bx = sx(cw), by = sy(Math.min(f(cw), FMAX)) - 26 - lift;
+          if (!this.hop && !this.out) { const s = df(this.w), d = 0.35; quickStroke(g, [[sx(this.w - d), sy(f(this.w) - s * d) - 26], [sx(this.w + d), sy(f(this.w) + s * d) - 26]], 5, PAL.annBlue, 0.9); arrow(g, bx, by + 50, bx + clamp(-s * 110, -160, 160), by + 50, 6, PAL.red, 24); }
+          g.fillStyle = this.out ? PAL.red : PAL.sun; g.beginPath(); g.arc(bx, by, 26, 0, TAU); g.fill(); inkCircle(g, bx, by, 26, 4, PAL.ink, 5);
+          g.fillStyle = '#FFF7DD'; g.beginPath(); g.arc(bx - 8, by - 9, 7, 0, TAU); g.fill();
         }
-        let bw = this.w, lift = 0;
-        if (this.hop) { const k = this.hop.t; bw = lerp(this.hop.a, this.hop.b, k); lift = Math.sin(k * Math.PI) * (40 + Math.abs(this.hop.b - this.hop.a) * 40); }
-        const cw = clamp(bw, WMIN, WMAX), bx = sx(cw), by = sy(Math.min(f(cw), FMAX)) - 26 - lift;
-        if (!this.hop && !this.out) { const s = df(this.w), d = 0.35; quickStroke(g, [[sx(this.w - d), sy(f(this.w) - s * d) - 26], [sx(this.w + d), sy(f(this.w) + s * d) - 26]], 5, PAL.annBlue, 0.9); arrow(g, bx, by + 50, bx + clamp(-s * 50, -160, 160), by + 50, 6, PAL.red, 24); }
-        g.fillStyle = this.out ? PAL.red : PAL.sun; g.beginPath(); g.arc(bx, by, 26, 0, TAU); g.fill(); inkCircle(g, bx, by, 26, 4, PAL.ink, 5);
-        g.fillStyle = '#FFF7DD'; g.beginPath(); g.arc(bx - 8, by - 9, 7, 0, TAU); g.fill();
         // окошко внизу: поле стенда 2 и забор при текущем весе
-        const w = clamp(this.w, WMIN, WMAX), FX0 = 60, FY0 = 600, FS = 360, fx = (v) => FX0 + FS * v / 10, fy = (v) => FY0 + FS - FS * v / 10;
-        for (let i = 0; i < 18; i++) for (let j = 0; j < 18; j++) { const a = (j + 0.5) / 18 * 10, b = 10 - (i + 0.5) / 18 * 10; g.fillStyle = w * a + W2 * b - TH > 0 ? 'rgba(241,191,74,0.30)' : 'rgba(62,143,196,0.20)'; g.fillRect(FX0 + FS * j / 18, FY0 + FS * i / 18, FS / 18 + 1, FS / 18 + 1); }
-        g.save(); g.beginPath(); g.rect(FX0, FY0, FS, FS); g.clip();
-        const e0 = [0, TH / W2], e1 = [10, (TH - w * 10) / W2];
-        inkStroke(g, [[fx(e0[0]), fy(e0[1])], [fx(e1[0]), fy(e1[1])]], 8, PAL.wood, { seed: 3 });
-        g.restore();
-        inkRect(g, FX0, FY0, FS, FS, 4, PAL.ink, 2);
-        FLOWERS.forEach((p, k) => { const x = fx(p[0]), y = fy(p[1]); flower(g, x, y, 13, p[2] > 0, { rot: k }); if ((sc(w, p) > 0 ? 1 : -1) !== p[2]) { g.lineWidth = 4; g.strokeStyle = PAL.red; g.beginPath(); g.arc(x, y, 17, 0, TAU); g.stroke(); } });
-        txt(g, 'забор стенда 2', FX0, FY0 - 16, 34, { w: 700 });
+        const w = clamp(shown, WMIN, WMAX);
+        field(g, FB, { w1: W1_3, w2: w, th: TH_3, size: 22, lab: false, fenceW: 7 });
+        txt(g, 'забор стенда 2', FB.X0, FB.Y0 - 16, 34, { w: 700 });
         const ne = nerr(w);
-        txt(g, this.out ? 'улетел за край!' : `вес длины ${f2(this.w)}`, 450, 660, 46, { w: 700, c: this.out ? PAL.red : PAL.ink, maxW: 520 });
-        txt(g, this.out ? 'шаг слишком большой' : `перепутал ${ne} из 28`, 450, 730, 46, { w: 700, c: ne ? PAL.red : '#2F7A35', maxW: 520 });
-        if (!this.out) txt(g, `штраф ${f2(f(this.w))} · наклон ${f2(df(this.w))}`, 450, 795, 38, { c: PAL.inkSoft, maxW: 520 });
+        txt(g, this.out && this.build < 0 ? 'улетел за край!' : `вес лепестка ${f2(shown)}`, 450, 660, 46, { w: 700, c: this.out ? PAL.red : PAL.ink, maxW: 520 });
+        txt(g, this.out && this.build < 0 ? 'шаг слишком большой' : `перепутал ${ne} из 28`, 450, 730, 46, { w: 700, c: ne ? PAL.red : '#2F7A35', maxW: 520 });
+        if (!this.out) txt(g, `штраф ${f2(f(shown))} · наклон ${f2(df(shown))}`, 450, 795, 38, { c: PAL.inkSoft, maxW: 520 });
         txt(g, `шагов сделано: ${this.steps}`, 450, 855, 38, { c: PAL.inkSoft });
-        txt(g, 'вес ширины −1, порог 1', 450, 915, 34, { c: PAL.inkSoft });
+        txt(g, 'вес серединки 1, порог 300', 450, 915, 34, { c: PAL.inkSoft });
       },
       step() {
         if (this.out) return;
@@ -382,25 +444,27 @@ export function makeModels(K) {
         this.trail.push(a); if (this.trail.length > 14) this.trail.shift();
         this.w = b; this.steps++; this.hop = { a, b, t: 0 };
         if (b > WMAX || b < WMIN) { this.out = true; this.play = false; AUDIO.chime(false); }
-        else AUDIO.pluck(1 - f(b) / 2);
+        else AUDIO.pluck(1 - f(b));
         this.sync();
       },
       tick(dt) {
-        if (this.hop) { this.hop.t += dt / 0.32; if (this.hop.t >= 1) this.hop = null; this.dirty = true; }
+        if (this.build >= 0 && this.build < 1) { this.build = Math.min(1, this.build + dt / 3.5); this.dirty = true; if (this.build >= 1) { this.build = -1; this.sync(); } return; }
+        if (this.hop) { this.hop.t += dt / 0.25; if (this.hop.t >= 1) this.hop = null; this.dirty = true; }
         if (!this.play) return;
-        this.t += dt; if (this.t < 0.45) return; this.t = 0;
+        this.t += dt; if (this.t < 0.3) return; this.t = 0;
         if (Math.abs(df(this.w)) < 0.01 && this.steps > 0) { this.play = false; AUDIO.chime(true); this.sync(); return; }
         this.step();
         if (this.steps > 60) { this.play = false; this.sync(); }
       },
-      tap(x, y) { if (x < X0 || x > X1 || y > Y1 + 20) return false; this.w = clamp(WMIN + (x - X0) / (X1 - X0) * (WMAX - WMIN), WMIN + 0.05, WMAX - 0.05); this.reset(true); return true; },
-      reset(keep) { if (!keep) this.w = -0.4; this.steps = 0; this.trail = []; this.out = false; this.hop = null; this.play = false; this.sync(); },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; },
-      press(k) { if (k === 'play') { if (this.out) this.reset(); this.play = !this.play; } if (k === 'step') this.step(); if (k === 'reset') this.reset(); },
-      controls(box) { box.innerHTML = sl('размер шага', 'lr', 0.02, 1.6, 0.01, this.lr) + bt('▶ катиться', 'play') + bt('один шаг', 'step') + bt('шарик на старт', 'reset') + '<div class="info"></div>'; wire(box, this, (k, v) => f2(v)); },
+      tap(x, y) { if (this.intro) { this.intro = 0; this.sync(); return true; } if (x < X0 || x > X1 || y > Y1 + 20) return false; this.w = clamp(WMIN + (x - X0) / (X1 - X0) * (WMAX - WMIN), WMIN + 0.05, WMAX - 0.05); this.reset(true); return true; },
+      reset(keep) { if (!keep) this.w = -0.4; this.steps = 0; this.trail = []; this.out = false; this.hop = null; this.play = false; this.build = -1; this.sync(); },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k === 'lr') this.intro = 0; },
+      press(k) { this.intro = 0; if (k === 'play') { if (this.out) this.reset(); this.play = !this.play; } if (k === 'step') this.step(); if (k === 'reset') this.reset(); if (k === 'build') { this.reset(); this.build = 0; } },
+      controls(box) { box.innerHTML = sl('размер шага', 'lr', 0.05, 5, 0.05, this.lr) + bt('▶ катиться', 'play') + bt('один шаг', 'step') + bt('шарик на старт', 'reset') + bt('построить холм', 'build') + '<div class="info"></div>'; wire(box, this, (k, v) => f2(v)); },
       syncExtra(box) { const b = box.querySelector('[data-b="play"]'); b.classList.toggle('on', this.play); b.textContent = this.play ? '❚❚ пауза' : '▶ катиться'; },
       infoText() {
-        const v = this.lr > 1.0 ? 'шаг огромный: шарик прыгает через низину' : this.lr > 0.6 ? 'шаг большой: шарик скачет туда-сюда' : this.lr < 0.06 ? 'шаг крошечный: шарик ползёт' : 'нормальный шаг';
+        if (this.intro) return `забор стенда 2 при весе лепестка <b>${f2(this.w)}</b>: перепутал ${nerr(this.w)} из 28 · ткни доску, покажу холм`;
+        const v = this.lr > 3.5 ? 'шаг огромный: шарик прыгает через низину' : this.lr > 1.5 ? 'шаг большой: шарик скачет широко' : this.lr < 0.15 ? 'шаг крошечный: шарик ползёт' : 'нормальный шаг';
         return `${v} · ткни кривую, чтобы поставить шарик`;
       },
     };
@@ -412,19 +476,40 @@ export function makeModels(K) {
   // 4. Обратное распространение ошибки
   // =========================================================================
   {
-    // цветок (длина и ширина лепестка) → нейрон 1 (два веса, сплющиватель) → нейрон 2 (один вес) → ответ: +1 ромашка, −1 василёк
-    const FL = { 'ромашка': [6, 3, 1], 'василёк': [3, 6, -1] };
+    // та же картинка → нейрон 1 (забор стенда 3: вес серединки, вес лепестка, порог, сплющиватель) → нейрон 2 (один вес) → ответ: +1 ромашка, −1 василёк
+    // числа картинки делим на 100, чтобы сплющиватель не захлебнулся: 172 → 1,72; порог 300 → 3
+    const FL = { 'ромашка': [hero('ромашка').v[CC] / 100, hero('ромашка').v[CP] / 100, 1], 'василёк': [hero('василёк').v[CC] / 100, hero('василёк').v[CP] / 100, -1] };
+    const W0 = { wC: 1, wP: W3, w2: 0.2 };
     const m = {
-      fl: 'ромашка', wL: 0.1, wW: 0.1, w2: 0.5, lr: 0.1, steps: 0, hist: [], play: false, t: 0, ph: 0, flash: 0, dirty: true,
+      fl: 'ромашка', wC: W0.wC, wP: W0.wP, w2: W0.w2, lr: 0.3, steps: 0, hist: [], play: false, t: 0, ph: 0, flash: 0, intro: 0, dirty: true,
       fwd() {
-        const [a, b, tgt] = FL[this.fl], z = this.wL * a + this.wW * b, h = Math.tanh(z), y = this.w2 * h, L = 0.5 * (y - tgt) ** 2;
-        const dy = y - tgt, dw2 = dy * h, dh = dy * this.w2, dz = dh * (1 - h * h), dwL = dz * a, dwW = dz * b;
-        return { a, b, tgt, z, h, y, L, dy, dw2, dh, dz, dwL, dwW };
+        const [a, b, tgt] = FL[this.fl], z = this.wC * a + this.wP * b - 3, h = Math.tanh(z), y = this.w2 * h, L = 0.5 * (y - tgt) ** 2;
+        const dy = y - tgt, dw2 = dy * h, dh = dy * this.w2, dz = dh * (1 - h * h), dwC = dz * a, dwP = dz * b;
+        return { a, b, tgt, z, h, y, L, dy, dw2, dh, dz, dwC, dwP };
+      },
+      drawIntro(g) {
+        const F = { X0: 110, Y0: 70, X1: 520, Y1: 480 };
+        field(g, F, { w1: W0.wC, w2: W0.wP, th: 300, size: 24, fs: 30, sel: 0 });
+        txt(g, 'забор стенда 3', 110, 50, 34, { w: 700 });
+        txt(g, 'вес серединки 1', 545, 95, 30, { w: 700 }); txt(g, `вес лепестка ${f2(W0.wP)}`, 545, 132, 30, { w: 700 }); txt(g, 'порог 300, ошибок нет', 545, 169, 30, { w: 700 });
+        // нейрон 1 → нейрон 2 → ответ
+        const NY = 300, xs = [620, 760, 900];
+        quickStroke(g, [[xs[0] + 50, NY], [xs[1] - 50, NY]], 10, PAL.paperDeep); quickStroke(g, [[xs[1] + 50, NY], [xs[2] - 50, NY]], 10, PAL.paperDeep);
+        xs.forEach((x, k) => { g.fillStyle = k === 2 ? '#F3C9BC' : PAL.stripeYellow; g.beginPath(); g.arc(x, NY, 48, 0, TAU); g.fill(); inkCircle(g, x, NY, 48, 4, PAL.ink, k + 2); txt(g, ['1', '2', '?'][k], x, NY + 2, 44, { a: 'center', b: 'middle', w: 700 }); });
+        txt(g, 'нейрон 1 = этот забор', 560, 400, 32, { c: PAL.inkSoft, maxW: 420 }); txt(g, 'за ним ставим нейрон 2', 560, 440, 32, { c: PAL.inkSoft, maxW: 420 });
+        // наша ромашка: две клетки → два числа → в сотни
+        const v = hero(this.fl).v, PX = 60, PY = 600, C = 40;
+        drawVals(g, v, PX, PY, C, { grid: true, frame: F_DAISY, fw: 5, mark: [[CC, C_MID], [CP, C_PET]] });
+        txt(g, `наша ${this.fl}`, PX, PY - 16, 34, { w: 700 });
+        const rows = [[`серединка ${v[CC]}`, `${f2(v[CC] / 100)}`, C_MID], [`лепесток ${v[CP]}`, `${f2(v[CP] / 100)}`, C_PET]];
+        rows.forEach(([s, t, cl], k) => { const y = 690 + k * 120; txt(g, s, 420, y, 40, { w: 700, c: cl }); arrow(g, 720, y - 12, 800, y - 12, 5, PAL.orange, 20); txt(g, t, 820, y, 46, { w: 700, c: cl }); });
+        txt(g, 'делим на 100: те же числа в сотнях', 420, 905, 30, { c: PAL.inkSoft, maxW: 470 }); txt(g, 'порог 300 тоже становится 3', 420, 948, 30, { c: PAL.inkSoft, maxW: 470 });
       },
       draw(g) {
+        if (this.intro) return this.drawIntro(g);
         const F = this.fwd(), NY = 300, NX = [95, 390, 640, 895], R = 66;
-        const names = [this.fl, 'нейрон 1', 'нейрон 2', 'ошибка'], vals = [null, F.h, F.y, F.L];
-        const grads = [Math.abs(F.dwL) + Math.abs(F.dwW), Math.abs(F.dw2), Math.abs(F.dy)], gmax = Math.max(0.05, ...grads);
+        const names = ['картинка', 'нейрон 1', 'нейрон 2', 'ошибка'], vals = [null, F.h, F.y, F.L];
+        const grads = [Math.abs(F.dwC) + Math.abs(F.dwP), Math.abs(F.dw2), Math.abs(F.dy)], gmax = Math.max(0.05, ...grads);
         for (let k = 0; k < 3; k++) {
           const a = NX[k] + R, b = NX[k + 1] - R, th = 12 + 34 * grads[k] / gmax;
           g.fillStyle = PAL.paperDeep; g.fillRect(a, NY - th / 2, b - a, th);
@@ -436,11 +521,11 @@ export function makeModels(K) {
           }
           const cx = (a + b) / 2;
           if (k === 0) {
-            txt(g, `длины ${f2(this.wL)}`, cx, NY - 118, 34, { a: 'center', w: 700 });
-            txt(g, `ширины ${f2(this.wW)}`, cx, NY - 74, 34, { a: 'center', w: 700 });
+            txt(g, `серед. ${f2(this.wC)}`, cx, NY - 118, 32, { a: 'center', w: 700, c: C_MID });
+            txt(g, `лепест. ${f2(this.wP)}`, cx, NY - 74, 32, { a: 'center', w: 700, c: C_PET });
             txt(g, 'вина', cx, NY + 78, 34, { a: 'center', c: PAL.red, w: 700 });
-            txt(g, f2(F.dwL), cx, NY + 120, 38, { a: 'center', w: 700, c: PAL.red });
-            txt(g, f2(F.dwW), cx, NY + 162, 38, { a: 'center', w: 700, c: PAL.red });
+            txt(g, f2(F.dwC), cx, NY + 120, 38, { a: 'center', w: 700, c: PAL.red });
+            txt(g, f2(F.dwP), cx, NY + 162, 38, { a: 'center', w: 700, c: PAL.red });
           } else {
             txt(g, k === 1 ? 'вес' : 'цель', cx, NY - 118, 34, { a: 'center', c: PAL.inkSoft, w: 700 });
             txt(g, f2(k === 1 ? this.w2 : F.tgt), cx, NY - 74, 40, { a: 'center', w: 700 });
@@ -449,13 +534,13 @@ export function makeModels(K) {
           }
         }
         NX.forEach((x, k) => {
-          g.fillStyle = k === 3 ? (this.flash > 0 ? PAL.sun : '#F3C9BC') : k === 0 ? '#9FC08A' : PAL.stripeYellow;
+          g.fillStyle = k === 3 ? (this.flash > 0 ? PAL.sun : '#F3C9BC') : k === 0 ? '#E9DFC8' : PAL.stripeYellow;
           g.beginPath(); g.arc(x, NY, R, 0, TAU); g.fill(); inkCircle(g, x, NY, R, 5, PAL.ink, k + 3);
-          if (k === 0) flower(g, x, NY, R * 0.86, this.fl === 'ромашка');
+          if (k === 0) drawVals(g, hero(this.fl).v, x - 40, NY - 40, 10, { frame: this.fl === 'ромашка' ? F_DAISY : F_CORN, fw: 4, mark: [[CC, C_MID], [CP, C_PET]] });
           else txt(g, f2(vals[k]), x, NY + 2, 44, { a: 'center', b: 'middle', w: 700 });
           txt(g, names[k], x, 110, 36, { a: 'center', c: PAL.ink, w: 700 });
         });
-        txt(g, `длина ${F.a}`, NX[0], NY + 110, 30, { a: 'center', c: PAL.inkSoft, w: 700 }); txt(g, `ширина ${F.b}`, NX[0], NY + 148, 30, { a: 'center', c: PAL.inkSoft, w: 700 });
+        txt(g, `сер. ${f2(F.a)}`, NX[0], NY + 110, 30, { a: 'center', c: C_MID, w: 700 }); txt(g, `леп. ${f2(F.b)}`, NX[0], NY + 148, 30, { a: 'center', c: C_PET, w: 700 });
         txt(g, F.y > 0 ? '→ ромашка' : '→ василёк', NX[2], NY + 200, 40, { a: 'center', w: 700, c: (F.y > 0 ? 1 : -1) === F.tgt ? '#2F7A35' : PAL.red });
         const X0 = 110, X1 = 930, Y0 = 640, Y1 = 940;
         quickStroke(g, [[X0, Y0 - 10], [X0, Y1], [X1, Y1]], 3, PAL.ink);
@@ -468,329 +553,397 @@ export function makeModels(K) {
       },
       learn() {
         const F = this.fwd(); this.hist.push(F.L); if (this.hist.length > 60) this.hist.shift();
-        this.wL -= this.lr * F.dwL; this.wW -= this.lr * F.dwW; this.w2 -= this.lr * F.dw2; this.steps++; this.flash = 0.4;
+        this.wC -= this.lr * F.dwC; this.wP -= this.lr * F.dwP; this.w2 -= this.lr * F.dw2; this.steps++; this.flash = 0.4;
         AUDIO.pluck(1 - Math.min(2, F.L * 3)); this.sync();
       },
-      tick(dt) { this.ph = (this.ph + dt * 0.45) % 1; this.flash = Math.max(0, this.flash - dt); this.dirty = true; if (this.play) { this.t += dt; if (this.t > 0.5) { this.t = 0; this.learn(); if (this.fwd().L < 1e-3 || this.steps > 120) { this.play = false; this.sync(); } } } },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; },
+      tick(dt) { this.ph = (this.ph + dt * 0.45) % 1; this.flash = Math.max(0, this.flash - dt); this.dirty = true; if (this.play) { this.t += dt; if (this.t > 0.4) { this.t = 0; this.learn(); if (this.fwd().L < 1e-3 || this.steps > 120) { this.play = false; this.sync(); } } } },
+      tap() { if (this.intro) { this.intro = 0; this.sync(); return true; } return false; },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k !== 'intro') this.intro = 0; },
       press(k) {
+        if (k !== 'intro') this.intro = 0;
+        if (k === 'intro') this.intro = 1;
         if (k === 'step') this.learn(); if (k === 'play') this.play = !this.play;
-        if (k === 'reset') { this.wL = 0.1; this.wW = 0.1; this.w2 = 0.5; this.steps = 0; this.hist = []; this.play = false; }
+        if (k === 'reset') { Object.assign(this, W0); this.steps = 0; this.hist = []; this.play = false; }
         if (k === 'fl') { this.fl = this.fl === 'ромашка' ? 'василёк' : 'ромашка'; this.hist = []; AUDIO.chime(true); }
         if (k.startsWith('fl:')) { this.fl = k.slice(3); this.hist = []; }
       },
-      controls(box) { box.innerHTML = bt('шаг обучения', 'step') + bt('▶ само', 'play') + bt('заново', 'reset') + bt('показать василёк', 'fl') + '<div class="info"></div>'; wire(box, this, (k, v) => f2(v)); },
+      controls(box) { box.innerHTML = bt('шаг обучения', 'step') + bt('▶ само', 'play') + bt('заново', 'reset') + bt('показать василёк', 'fl') + bt('откуда цепочка', 'intro') + '<div class="info"></div>'; wire(box, this, (k, v) => f2(v)); },
       syncExtra(box) { const b = box.querySelector('[data-b="play"]'); b.classList.toggle('on', this.play); b.textContent = this.play ? '❚❚ пауза' : '▶ само'; box.querySelector('[data-b="fl"]').textContent = this.fl === 'ромашка' ? 'показать василёк' : 'показать ромашку'; },
-      infoText() { const F = this.fwd(); return `${this.fl}: длина ${F.a}, ширина ${F.b} · выход ${f2(F.y)}, цель ${F.tgt > 0 ? '+1 (ромашка)' : '−1 (василёк)'}, ошибка <b>${fmt(F.L, 3)}</b><br>вина веса длины = ${f2(F.dy)} × ${f2(this.w2)} × (1 − ${f2(F.h)}²) × ${F.a} = <b style="color:#BF3F2C">${fmt(F.dwL, 3)}</b>`; },
+      infoText() {
+        if (this.intro) return 'нейрон 1 это забор стенда 3, за ним встанет нейрон 2 · ткни доску, покажу цепочку';
+        const F = this.fwd(); return `${this.fl}: серединка ${f2(F.a)}, лепесток ${f2(F.b)} · выход ${f2(F.y)}, цель ${F.tgt > 0 ? '+1 (ромашка)' : '−1 (василёк)'}, ошибка <b>${fmt(F.L, 3)}</b><br>вина веса лепестка = ${f2(F.dy)} × ${f2(this.w2)} × (1 − ${f2(F.h)}²) × ${f2(F.b)} = <b style="color:#BF3F2C">${fmt(F.dwP, 3)}</b>`;
+      },
     };
     m._fwd = () => m.fwd();
     models.push(m);
   }
 
   // =========================================================================
-  // 5. Многослойная сеть на спиралях, учится прямо здесь
+  // Стопка стендов 5 и 6: 110 картинок 8×8, у которых серединка и лепесток лежат завитками.
+  // Точка (x, y) от −1,1 до 1,1 это яркость серединки и лепестка: 128 + 115 × x.
+  // Три картинки подписаны с ошибкой: так бывает в жизни, и это всплывёт на стенде 6.
+  // =========================================================================
+  const SPI = [];
+  const SPI_SPLIT = (() => { const r = mulberry(42 * 101), a = [...Array(110).keys()]; for (let i = 109; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; })();
+  {
+    const R = mulberry(17);
+    for (let c = 0; c < 2; c++) for (let i = 0; i < 55; i++) { const t = i / 55, r = 0.15 + 0.8 * t, a = t * 1.6 * Math.PI + c * Math.PI; SPI.push([r * Math.cos(a) + gauss(R) * 0.04, r * Math.sin(a) + gauss(R) * 0.04, c]); }
+    for (let k = 0; k < 3; k++) SPI[SPI_SPLIT[k]][2] = 1 - SPI[SPI_SPLIT[k]][2];
+  }
+  const SPI_FLIP = new Set(SPI_SPLIT.slice(0, 3));
+  const toB = (x) => clamp(Math.round(128 + 115 * x), 0, 255);
+  // картинка точки: шаблон ромашки или василька (по подписи), серединке и лепестку даём яркости точки
+  const spiPic = (k) => {
+    const s = SPI[k]; if (s.pic) return s.pic;
+    const rows = PIX8[s[2] ? 'ромашка' : 'василёк'], bC = toB(s[0]), bP = toB(s[1]), v = [];
+    for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { const ch = rows[i][j]; v.push(ch === 'Y' || ch === 'D' ? bC : ch === 'W' || ch === 'B' ? bP : GRAY8[ch]); }
+    s.pic = v; return v;
+  };
+  const PCAN = new Map();
+  function pcan(v) { let c = PCAN.get(v); if (c) return c; c = mkCanvas(8, 8); const g = c.getContext('2d'), id = g.createImageData(8, 8); for (let p = 0; p < 64; p++) { id.data[p * 4] = id.data[p * 4 + 1] = id.data[p * 4 + 2] = v[p]; id.data[p * 4 + 3] = 255; } g.putImageData(id, 0, 0); PCAN.set(v, c); return c; }
+  function mini(g, v, cx, cy, s, lab, o = {}) {
+    g.save(); g.globalAlpha = o.alpha ?? 1; g.imageSmoothingEnabled = false; g.drawImage(pcan(v), cx - s / 2, cy - s / 2, s, s); g.imageSmoothingEnabled = true;
+    g.lineWidth = 3; g.strokeStyle = lab ? F_DAISY : F_CORN; g.strokeRect(cx - s / 2, cy - s / 2, s, s); g.restore();
+  }
+  const spiNet = (H, seed) => {
+    const r = mulberry(seed), n = { H, W1: [], b1: [], W2: [], b2: 0 };
+    for (let h = 0; h < H; h++) { n.W1.push([gauss(r) * 2.2, gauss(r) * 2.2]); n.b1.push(gauss(r) * 0.6); n.W2.push(gauss(r) * 0.5); }
+    n.m = new Float64Array(H * 4 + 1); n.v = new Float64Array(H * 4 + 1); n.t = 0;
+    return n;
+  };
+  const spiFwd = (n, x, y, hid) => { let s = n.b2; for (let h = 0; h < n.H; h++) { const a = Math.tanh(n.W1[h][0] * x + n.W1[h][1] * y + n.b1[h]); if (hid) hid[h] = a; s += n.W2[h] * a; } return 1 / (1 + Math.exp(-s)); };
+  const spiTrain = (n, lr, DD) => {
+    const H = n.H, gr = new Float64Array(H * 4 + 1), hid = new Float64Array(H); let loss = 0, ok = 0;
+    for (const [x, y, c] of DD) {
+      const p = spiFwd(n, x, y, hid); loss -= Math.log(Math.max(1e-9, c ? p : 1 - p)); if ((p > 0.5) === !!c) ok++;
+      const d = p - c; gr[H * 4] += d;
+      for (let h = 0; h < H; h++) { gr[h * 4 + 3] += d * hid[h]; const dh = d * n.W2[h] * (1 - hid[h] * hid[h]); gr[h * 4] += dh * x; gr[h * 4 + 1] += dh * y; gr[h * 4 + 2] += dh; }
+    }
+    const N = DD.length; n.t++;
+    const b1 = 0.9, b2 = 0.999, bc1 = 1 - b1 ** n.t, bc2 = 1 - b2 ** n.t;
+    const upd = (i) => { const gg = gr[i] / N; n.m[i] = b1 * n.m[i] + (1 - b1) * gg; n.v[i] = b2 * n.v[i] + (1 - b2) * gg * gg; return lr * (n.m[i] / bc1) / (Math.sqrt(n.v[i] / bc2) + 1e-8); };
+    for (let h = 0; h < H; h++) { n.W1[h][0] -= upd(h * 4); n.W1[h][1] -= upd(h * 4 + 1); n.b1[h] -= upd(h * 4 + 2); n.W2[h] -= upd(h * 4 + 3); }
+    n.b2 -= upd(H * 4);
+    return { loss: loss / N, acc: ok / N };
+  };
+  const SS = 1.1;
+  // поле завитков: фон по сети, оси «яркость серединки / лепестка», подписи 13, 128, 243
+  function spiField(g, F, gridFn, o = {}) {
+    const { X0, Y0, X1, Y1 } = F, sx = (v) => X0 + (X1 - X0) * (v + SS) / (2 * SS), sy = (v) => Y1 - (Y1 - Y0) * (v + SS) / (2 * SS), fs = o.fs || 34;
+    if (gridFn) {
+      const n = o.res || 46, cw = (X1 - X0) / n, ch = (Y1 - Y0) / n;
+      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+        const p = gridFn(-SS + 2 * SS * (j + 0.5) / n, SS - 2 * SS * (i + 0.5) / n, i, j);
+        g.fillStyle = css(p > 0.5 ? mixc(C_PAPER, [0.96, 0.78, 0.30], Math.min(1, (p - 0.5) * 2.4)) : mixc(C_PAPER, [0.45, 0.62, 0.86], Math.min(1, (0.5 - p) * 2.4)));
+        g.fillRect(X0 + j * cw, Y0 + i * ch, cw + 1, ch + 1);
+      }
+    } else { g.fillStyle = 'rgba(226,209,176,0.45)'; g.fillRect(X0, Y0, X1 - X0, Y1 - Y0); }
+    inkRect(g, X0, Y0, X1 - X0, Y1 - Y0, 4, PAL.ink, 6);
+    if (o.lab !== false) {
+      for (const v of [-1, 0, 1]) { txt(g, String(toB(v)), sx(v), Y1 + fs * 0.9, fs * 0.75, { a: 'center', c: PAL.inkSoft }); }
+      txt(g, 'яркость серединки →', X1, Y1 + fs * 1.85, fs, { a: 'right', c: C_MID, w: 700 });
+      g.save(); g.translate(X0 - fs * 0.6, (Y0 + Y1) / 2); g.rotate(-Math.PI / 2); txt(g, 'яркость лепестка →', 0, 0, fs, { a: 'center', c: C_PET, w: 700 }); g.restore();
+    }
+    return { sx, sy };
+  }
+
+  // =========================================================================
+  // 5. Многослойная сеть на завитках, учится прямо здесь
   // =========================================================================
   {
-    const R = mulberry(17), D = [];
-    const NPC = 55;
-    for (let c = 0; c < 2; c++) for (let i = 0; i < NPC; i++) { const t = i / NPC, r = 0.1 + 0.85 * t, a = t * 2.6 * Math.PI + c * Math.PI; D.push([r * Math.cos(a) + gauss(R) * 0.025, r * Math.sin(a) + gauss(R) * 0.025, c]); }
-    const net = (H, seed) => {
-      const r = mulberry(seed), n = { H, W1: [], b1: [], W2: [], b2: 0 };
-      for (let h = 0; h < H; h++) { n.W1.push([gauss(r) * 2.2, gauss(r) * 2.2]); n.b1.push(gauss(r) * 0.6); n.W2.push(gauss(r) * 0.5); }
-      n.m = new Float64Array(H * 4 + 1); n.v = new Float64Array(H * 4 + 1); n.t = 0;
-      return n;
-    };
-    const fwd = (n, x, y, hid) => { let s = n.b2; for (let h = 0; h < n.H; h++) { const a = Math.tanh(n.W1[h][0] * x + n.W1[h][1] * y + n.b1[h]); if (hid) hid[h] = a; s += n.W2[h] * a; } return 1 / (1 + Math.exp(-s)); };
-    const trainStep = (n, lr) => {
-      const H = n.H, gr = new Float64Array(H * 4 + 1), hid = new Float64Array(H); let loss = 0, ok = 0;
-      for (const [x, y, c] of D) {
-        const p = fwd(n, x, y, hid); loss -= Math.log(Math.max(1e-9, c ? p : 1 - p)); if ((p > 0.5) === !!c) ok++;
-        const d = p - c; gr[H * 4] += d;
-        for (let h = 0; h < H; h++) { gr[h * 4 + 3] += d * hid[h]; const dh = d * n.W2[h] * (1 - hid[h] * hid[h]); gr[h * 4] += dh * x; gr[h * 4 + 1] += dh * y; gr[h * 4 + 2] += dh; }
-      }
-      const N = D.length; n.t++;
-      const b1 = 0.9, b2 = 0.999, bc1 = 1 - b1 ** n.t, bc2 = 1 - b2 ** n.t;
-      const upd = (i) => { const gg = gr[i] / N; n.m[i] = b1 * n.m[i] + (1 - b1) * gg; n.v[i] = b2 * n.v[i] + (1 - b2) * gg * gg; return lr * (n.m[i] / bc1) / (Math.sqrt(n.v[i] / bc2) + 1e-8); };
-      for (let h = 0; h < H; h++) { n.W1[h][0] -= upd(h * 4); n.W1[h][1] -= upd(h * 4 + 1); n.b1[h] -= upd(h * 4 + 2); n.W2[h] -= upd(h * 4 + 3); }
-      n.b2 -= upd(H * 4);
-      return { loss: loss / N, acc: ok / N };
-    };
-    const X0 = 70, X1 = 930, Y0 = 70, Y1 = 930, S = 1.1, sx = (v) => X0 + (X1 - X0) * (v + S) / (2 * S), sy = (v) => Y1 - (Y1 - Y0) * (v + S) / (2 * S);
+    const D = SPI;
+    const X0 = 70, X1 = 930, Y0 = 60, Y1 = 900;
+    const F = { X0, Y0, X1, Y1 };
+    // для сносок: самая дальняя ромашка завитка, самый дальний василёк, перепутанная подпись
+    const far = (c) => { let b = -1, bd = -1; D.forEach((s, k) => { if (s[2] === c && !SPI_FLIP.has(k)) { const d = Math.hypot(s[0], s[1]); if (d > bd) { bd = d; b = k; } } }); return b; };
+    const near = (c) => { let b = -1, bd = 9; D.forEach((s, k) => { if (s[2] === c && !SPI_FLIP.has(k)) { const d = Math.hypot(s[0], s[1]); if (d < bd) { bd = d; b = k; } } }); return b; };
+    const CALL = [far(1), far(0), near(0)];
     const m = {
-      H: 1, seed: 3, play: false, ep: 0, loss: 0.69, acc: 0.5, dirty: true,
-      quick(n = 600) { let r; for (let k = 0; k < n; k++) { r = trainStep(this.net, 0.03); this.ep++; } this.loss = r.loss; this.acc = r.acc; this.play = false; },
-      reset() { this.net = net(this.H, this.seed); this.ep = 0; const r = this.evalNow(); this.loss = r.loss; this.acc = r.acc; },
-      evalNow() { let loss = 0, ok = 0; for (const [x, y, c] of D) { const p = fwd(this.net, x, y); loss -= Math.log(Math.max(1e-9, c ? p : 1 - p)); if ((p > 0.5) === !!c) ok++; } return { loss: loss / D.length, acc: ok / D.length }; },
+      H: 1, seed: 3, play: false, ep: 0, loss: 0.69, acc: 0.5, intro: 0, dirty: true,
+      quick(n = 600) { let r; for (let k = 0; k < n; k++) { r = spiTrain(this.net, 0.03, D); this.ep++; } this.loss = r.loss; this.acc = r.acc; this.play = false; },
+      reset() { this.net = spiNet(this.H, this.seed); this.ep = 0; const r = this.evalNow(); this.loss = r.loss; this.acc = r.acc; },
+      evalNow() { let loss = 0, ok = 0; for (const [x, y, c] of D) { const p = spiFwd(this.net, x, y); loss -= Math.log(Math.max(1e-9, c ? p : 1 - p)); if ((p > 0.5) === !!c) ok++; } return { loss: loss / D.length, acc: ok / D.length }; },
       draw(g) {
-        const n = 46, cw = (X1 - X0) / n;
-        for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
-          const x = -S + 2 * S * (j + 0.5) / n, y = S - 2 * S * (i + 0.5) / n, p = fwd(this.net, x, y);
-          g.fillStyle = css(p > 0.5 ? mixc(C_PAPER, [0.96, 0.78, 0.30], Math.min(1, (p - 0.5) * 2.4)) : mixc(C_PAPER, [0.45, 0.62, 0.86], Math.min(1, (0.5 - p) * 2.4)));
-          g.fillRect(X0 + j * cw, Y0 + i * cw, cw + 1, cw + 1);
-        }
-        inkRect(g, X0, Y0, X1 - X0, Y1 - Y0, 4, PAL.ink, 6);
-        D.forEach(([x, y, c], k) => flower(g, sx(x), sy(y), 17, !!c, { rot: k }));
+        const { sx, sy } = spiField(g, F, (x, y) => spiFwd(this.net, x, y));
+        D.forEach((s, k) => mini(g, spiPic(k), sx(s[0]), sy(s[1]), 22, s[2]));
         pill(g, `эпоха ${this.ep} · верно ${pct(this.acc)}`, X0 + 18, Y0 + 66, 44, { bg: this.acc > 0.99 ? PAL.sun : PAL.paper });
         pill(g, `нейронов: ${this.H}${this.H === 1 ? ' (забор стенда 2)' : ''}`, X1 - 18, Y1 - 26, 40, { a: 'right' });
+        if (this.intro) {
+          const pos = [[90, 160], [690, 160], [90, 600]];
+          CALL.forEach((k, i) => { const s = D[k]; callout(g, spiPic(k), s[2] ? 1 : -1, pos[i][0], pos[i][1], 12, sx(s[0]), sy(s[1]), [[`серединка ${toB(s[0])}`, C_MID], [`лепесток ${toB(s[1])}`, C_PET]], 210); });
+        }
       },
       tick() {
         if (!this.play) return;
-        let r; for (let k = 0; k < 4; k++) { r = trainStep(this.net, 0.03); this.ep++; }
+        let r; for (let k = 0; k < 4; k++) { r = spiTrain(this.net, 0.03, D); this.ep++; }
         this.loss = r.loss; this.acc = r.acc; this.dirty = true;
         if ((this.acc >= 1 && this.loss < 0.03) || this.ep >= 8000) { this.play = false; AUDIO.chime(this.acc > 0.95); }
         if (this.ep % 40 === 0 || !this.play) this.sync();
       },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k === 'H') { this.play = false; this.reset(); } },
-      press(k) { if (k === 'play') this.play = !this.play; if (k === 'reset') { this.seed++; this.play = false; this.reset(); } if (k === 'quick') { this.reset(); this.quick(); } },
-      controls(box) { box.innerHTML = bt('▶ учиться', 'play') + bt('заново', 'reset') + sl('нейронов в скрытом слое', 'H', 1, 24, 1, this.H) + '<div class="info"></div>'; wire(box, this, (k, v) => String(v)); },
+      tap() { if (this.intro) { this.intro = 0; this.sync(); return true; } return false; },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k === 'H') { this.play = false; this.reset(); } if (k !== 'intro') this.intro = 0; },
+      press(k) { if (k === 'intro') { this.intro = 1; return; } this.intro = 0; if (k === 'play') this.play = !this.play; if (k === 'reset') { this.seed++; this.play = false; this.reset(); } if (k === 'quick') { this.reset(); this.quick(); } },
+      controls(box) { box.innerHTML = bt('▶ учиться', 'play') + bt('заново', 'reset') + bt('что за точки', 'intro') + sl('нейронов в скрытом слое', 'H', 1, 24, 1, this.H) + '<div class="info"></div>'; wire(box, this, (k, v) => String(v)); },
       syncExtra(box) { const b = box.querySelector('[data-b="play"]'); b.classList.toggle('on', this.play); b.textContent = this.play ? '❚❚ пауза' : '▶ учиться'; },
       infoText() { return `эпоха ${this.ep} · ошибка <b>${f2(this.loss)}</b> · верно <b>${pct(this.acc)}</b>${this.H === 1 ? ' · один нейрон: граница прямая, как забор стенда 2' : this.H <= 3 ? ' · мало нейронов, граница гнётся слабо' : ''}`; },
     };
     m.reset(); m.quick();
-    m._train = trainStep; m._fwd = fwd; m._D = D;
+    m._train = spiTrain; m._fwd = spiFwd; m._D = D;
     models.push(m);
   }
 
   // =========================================================================
-  // 6. Переобучение: две кривые ошибки
+  // 6. Переобучение: та же стопка, 70 картинок в кармане
   // =========================================================================
   {
-    const truth = (x) => Math.sin(3 * x) + 0.2 * x;
-    const make = (seed) => {
-      const R = mulberry(seed), tr = [], va = [];
-      for (let i = 0; i < 10; i++) { const x = -0.95 + 1.9 * (i + 0.2 + R() * 0.6) / 10; tr.push([x, truth(x) + gauss(R) * 0.15]); }
-      for (let i = 0; i < 10; i++) { const x = -0.95 + 1.9 * (i + R()) / 10; va.push([x, truth(x) + gauss(R) * 0.15]); }
-      return { tr, va };
-    };
-    function fit(pts, d) {
-      const n = d + 1, A = Array.from({ length: n }, () => new Float64Array(n + 1));
-      for (const [x, y] of pts) { const p = []; let v = 1; for (let k = 0; k < n; k++) { p.push(v); v *= x; } for (let a = 0; a < n; a++) { for (let b = 0; b < n; b++) A[a][b] += p[a] * p[b]; A[a][n] += p[a] * y; } }
-      for (let a = 0; a < n; a++) A[a][a] += 1e-9;
-      for (let c = 0; c < n; c++) { let piv = c; for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[piv][c])) piv = r; [A[c], A[piv]] = [A[piv], A[c]]; for (let r = 0; r < n; r++) { if (r === c) continue; const k = A[r][c] / A[c][c]; for (let q = c; q <= n; q++) A[r][q] -= k * A[c][q]; } }
-      return A.map((row, i) => row[n] / row[i]);
-    }
-    const poly = (c, x) => { let s = 0, v = 1; for (const k of c) { s += k * v; v *= x; } return s; };
-    const mse = (c, pts) => pts.reduce((s, [x, y]) => s + (poly(c, x) - y) ** 2, 0) / pts.length;
-    const DMAX = 9;
+    const D = SPI, NTR = 40, TR = SPI_SPLIT.slice(0, NTR), VA = SPI_SPLIT.slice(NTR), TRS = new Set(TR);
+    const HS = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32], RES = 40, EP = 3000;
+    const trD = TR.map((k) => D[k]), vaD = VA.map((k) => D[k]);
+    const errOf = (n, DD) => DD.filter(([x, y, c]) => (spiFwd(n, x, y) > 0.5) !== !!c).length / DD.length;
+    const gridOf = (n) => { const a = new Float32Array(RES * RES); for (let i = 0; i < RES; i++) for (let j = 0; j < RES; j++) a[i * RES + j] = spiFwd(n, -SS + 2 * SS * (j + 0.5) / RES, SS - 2 * SS * (i + 0.5) / RES); return a; };
+    const FB = { X0: 70, Y0: 60, X1: 930, Y1: 900 }, FM = { X0: 70, Y0: 60, X1: 500, Y1: 490 };
     const m = {
-      d: 3, seed: 10, dirty: true,
-      recompute() { const { tr, va } = make(this.seed); this.tr = tr; this.va = va; this.fits = []; this.etr = []; this.eva = []; for (let d = 1; d <= DMAX; d++) { const c = fit(tr, d); this.fits.push(c); this.etr.push(mse(c, tr)); this.eva.push(mse(c, va)); } this.best = this.eva.indexOf(Math.min(...this.eva)) + 1; },
-      verdict() { if (this.d < this.best - 1 || (this.d < this.best && this.eva[this.d - 1] > 2 * this.eva[this.best - 1])) return ['недоучка: форму не ловит', PAL.annBlue]; if (this.d > this.best + 1 && this.eva[this.d - 1] > 1.5 * this.eva[this.best - 1]) return ['зубрила: учебные наизусть, новые мимо', PAL.red]; return ['в самый раз', '#2F7A35']; },
+      d: 3, intro: 0, done: 0, dirty: true, nets: [], etr: [], eva: [], grids: [], all10: null,
+      // учим по одной сети за кадр, чтобы телефон не замирал
+      work() {
+        if (!this.all10) { const n = spiNet(10, 3); for (let e = 0; e < EP; e++) spiTrain(n, 0.03, D); this.all10 = gridOf(n); return; }
+        const k = this.nets.length; if (k >= HS.length) return;
+        const n = spiNet(HS[k], 3); for (let e = 0; e < EP; e++) spiTrain(n, 0.03, trD);
+        this.nets.push(n); this.etr.push(errOf(n, trD)); this.eva.push(errOf(n, vaD)); this.grids.push(gridOf(n));
+        if (this.nets.length === HS.length) { this.best = this.eva.indexOf(Math.min(...this.eva)) + 1; if (this.wantBest) { this.d = this.best; this.wantBest = false; } this.sync && this.sync(); }
+      },
+      ready() { return this.nets.length === HS.length; },
+      verdict() {
+        const i = this.d - 1, b = this.best - 1, E = this.eva;
+        if (i < b - 1 || (i < b && E[i] > 2 * E[b] + 0.02)) return ['недоучка: форму не ловит', PAL.annBlue];
+        if (i > b + 1 && E[i] > 1.5 * E[b] + 0.05) return ['зубрила: учебные наизусть, новые мимо', PAL.red];
+        return ['в самый раз', '#2F7A35'];
+      },
+      drawBig(g, mode) {
+        const grid = mode === 1 && this.all10 ? (x, y, i, j) => this.all10[Math.floor(i * RES / 46) * RES + Math.floor(j * RES / 46)] : null;
+        const { sx, sy } = spiField(g, FB, grid);
+        D.forEach((s, k) => {
+          const x = sx(s[0]), y = sy(s[1]), tr = TRS.has(k);
+          if (mode === 1) { mini(g, spiPic(k), x, y, 22, s[2]); return; }
+          mini(g, spiPic(k), x, y, 22, s[2], { alpha: tr ? 1 : 0.4 });
+          g.lineWidth = 4; g.strokeStyle = tr ? PAL.orange : '#2F6EB5'; g.setLineDash(tr ? [] : [6, 5]); g.beginPath(); g.arc(x, y, 20, 0, TAU); g.stroke(); g.setLineDash([]);
+        });
+        if (mode === 1) { pill(g, 'нейронов: 10, как в конце стенда 5', FB.X1 - 18, FB.Y1 - 26, 38, { a: 'right' }); if (!this.all10) pill(g, 'сеть учится…', 500, 480, 46, { a: 'center' }); }
+        else { pill(g, `учебных ${NTR}`, FB.X0 + 18, FB.Y0 + 66, 42, { border: PAL.orange, c: '#A8501A' }); pill(g, `в кармане ${D.length - NTR}`, FB.X1 - 18, FB.Y1 - 26, 42, { a: 'right', border: '#2F6EB5', c: '#2F6EB5' }); }
+      },
       draw(g) {
-        const X0 = 90, X1 = 940, Y0 = 50, Y1 = 470, sx = (x) => X0 + (X1 - X0) * (x + 1) / 2, sy = (y) => (Y0 + Y1) / 2 - (Y1 - Y0) / 2 * y / 1.7;
-        g.save(); g.beginPath(); g.rect(X0, Y0, X1 - X0, Y1 - Y0); g.clip();
-        g.fillStyle = 'rgba(226,209,176,0.45)'; g.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
-        const c = this.fits[this.d - 1], pts = [];
-        for (let i = 0; i <= 200; i++) { const x = -1 + 2 * i / 200; pts.push([sx(x), sy(clamp(poly(c, x), -3, 3))]); }
-        inkStroke(g, pts, 7, PAL.ink, { seed: 3, double: false });
-        g.restore();
-        inkRect(g, X0, Y0, X1 - X0, Y1 - Y0, 4, PAL.ink, 8);
-        txt(g, 'место на тропинке →', X1 - 12, Y1 - 14, 32, { a: 'right', c: PAL.inkSoft });
-        txt(g, '↑ высота ромашки', X0 + 12, Y0 + 36, 32, { c: PAL.inkSoft });
-        this.tr.forEach(([x, y], k) => { g.lineWidth = 6; g.strokeStyle = PAL.orange; g.beginPath(); g.arc(sx(x), sy(y), 24, 0, TAU); g.stroke(); daisy(g, sx(x), sy(y), 22, { rot: k }); });
-        this.va.forEach(([x, y], k) => { g.fillStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.arc(sx(x), sy(y), 24, 0, TAU); g.fill(); daisy(g, sx(x), sy(y), 20, { rot: k, alpha: 0.75 }); g.lineWidth = 6; g.strokeStyle = '#2F6EB5'; g.setLineDash([8, 6]); g.beginPath(); g.arc(sx(x), sy(y), 24, 0, TAU); g.stroke(); g.setLineDash([]); });
-        const [vt, vc] = this.verdict();
-        txt(g, vt, 500, 545, 46, { a: 'center', w: 700, c: vc, maxW: 900 });
-        // errors vs complexity
-        const B0 = 110, B1 = 930, C0 = 600, C1 = 900, CAP = 0.5, bx = (d) => B0 + (B1 - B0) * (d - 1) / (DMAX - 1), by = (e) => C1 - (C1 - C0) * Math.min(e, CAP) / CAP;
+        if (this.intro === 1 || this.intro === 2) return this.drawBig(g, this.intro);
+        if (!this.ready()) { const F0 = spiField(g, FM, null, { fs: 30 }); D.forEach((q, k) => mini(g, spiPic(k), F0.sx(q[0]), F0.sy(q[1]), 13, q[2], { alpha: TRS.has(k) ? 1 : 0.45 })); pill(g, `сеть учится: ${this.nets.length} из ${HS.length}`, 285, 290, 40, { a: 'center' }); return; }
+        const i = this.d - 1, G = this.grids[i];
+        const { sx, sy } = spiField(g, FM, (x, y, a, b) => G[Math.floor(a * RES / 40) * RES + Math.floor(b * RES / 40)], { res: 40, fs: 30 });
+        D.forEach((s, k) => {
+          const x = sx(s[0]), y = sy(s[1]), tr = TRS.has(k);
+          mini(g, spiPic(k), x, y, 13, s[2], { alpha: tr ? 1 : 0.45 });
+          g.lineWidth = 3; g.strokeStyle = tr ? PAL.orange : '#2F6EB5'; g.setLineDash(tr ? [] : [5, 4]); g.beginPath(); g.arc(x, y, 12, 0, TAU); g.stroke(); g.setLineDash([]);
+        });
+        if (this.intro !== 3) {
+        txt(g, `нейронов: ${HS[i]}`, 540, 110, 46, { w: 700 });
+        txt(g, 'ошибок на учебных', 540, 190, 34, { w: 700, c: '#A8501A' }); txt(g, pct(this.etr[i]), 540, 250, 58, { w: 700, c: '#A8501A', serif: true });
+        txt(g, 'ошибок на кармане', 540, 320, 34, { w: 700, c: '#2F6EB5' }); txt(g, pct(this.eva[i]), 540, 380, 58, { w: 700, c: '#2F6EB5', serif: true });
+        const [vt, vc] = this.verdict(); const parts = vt.split(': ');
+        txt(g, parts[0], 540, 450, 42, { w: 700, c: vc, maxW: 440 }); if (parts[1]) txt(g, parts[1], 540, 495, 30, { c: vc, maxW: 440 });
+        }
+        // ошибки против сложности
+        const B0 = 110, B1 = 930, C0 = 620, C1 = 880, CAP = 0.5, bx = (d) => B0 + (B1 - B0) * (d - 1) / (HS.length - 1), by = (e) => C1 - (C1 - C0) * Math.min(e, CAP) / CAP;
         quickStroke(g, [[B0, C0 - 10], [B0, C1], [B1, C1]], 3, PAL.ink);
+        txt(g, '50%', B0 - 10, C0 + 10, 28, { a: 'right', c: PAL.inkSoft }); txt(g, '0', B0 - 10, C1 + 8, 28, { a: 'right', c: PAL.inkSoft });
         quickStroke(g, [[bx(this.d), C0 - 10], [bx(this.d), C1]], 4, PAL.inkFaint, 1, [10, 8]);
-        inkStroke(g, this.etr.map((e, i) => [bx(i + 1), by(e)]), 6, PAL.orange, { seed: 2, double: false });
-        inkStroke(g, this.eva.map((e, i) => [bx(i + 1), by(e)]), 6, '#2F6EB5', { seed: 4, double: false });
-        this.eva.forEach((e, i) => { if (e > CAP) { txt(g, '↑', bx(i + 1), C0 + 10, 40, { a: 'center', w: 700, c: '#2F6EB5' }); } });
-        for (const [arr, col] of [[this.etr, PAL.orange], [this.eva, '#2F6EB5']]) { const e = arr[this.d - 1]; g.fillStyle = col; g.beginPath(); g.arc(bx(this.d), by(e), 13, 0, TAU); g.fill(); }
-        txt(g, 'ошибка на учебных', B1, by(this.etr[DMAX - 1]) - 18, 34, { a: 'right', w: 700, c: PAL.orange });
-        txt(g, 'ошибка на ромашках из кармана', B0 + 20, C0 + 46, 34, { w: 700, c: '#2F6EB5', maxW: 560 });
-        txt(g, 'сложность →', B1, C1 + 60, 40, { a: 'right', c: PAL.inkSoft });
-        txt(g, 'простая', B0, C1 + 60, 40, { c: PAL.inkSoft });
+        inkStroke(g, this.etr.map((e, k) => [bx(k + 1), by(e)]), 6, PAL.orange, { seed: 2, double: false });
+        inkStroke(g, this.eva.map((e, k) => [bx(k + 1), by(e)]), 6, '#2F6EB5', { seed: 4, double: false });
+        for (const [arr, cl] of [[this.etr, PAL.orange], [this.eva, '#2F6EB5']]) { const e = arr[i]; g.fillStyle = cl; g.beginPath(); g.arc(bx(this.d), by(e), 13, 0, TAU); g.fill(); }
+        HS.forEach((h, k) => txt(g, String(h), bx(k + 1), C1 + 36, 28, { a: 'center', c: PAL.inkSoft }));
+        txt(g, 'на учебных', B1, C1 - 18, 32, { a: 'right', w: 700, c: PAL.orange });
+        txt(g, 'на кармане', B1, C0 + 26, 32, { a: 'right', w: 700, c: '#2F6EB5' });
+        txt(g, 'нейронов в слое →', B1, C1 + 84, 36, { a: 'right', c: PAL.inkSoft });
+        if (this.intro === 3) { const k = VA[5], s = D[k]; callout(g, spiPic(k), s[2] ? 1 : -1, 560, 120, 12, sx(s[0]), sy(s[1]), [['картинка из кармана', '#2F6EB5'], ['8×8, 64 числа', PAL.ink]], 300); }
       },
-      tick() {},
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; AUDIO.pluck((v - 5) / 5); },
-      press(k) { if (k === 'new') { this.seed++; this.recompute(); } if (k === 'best') this.d = this.best; },
-      controls(box) { box.innerHTML = sl('сложность модели', 'd', 1, DMAX, 1, this.d) + bt('другие ромашки', 'new') + bt('лучшая сложность', 'best') + '<div class="info"></div>'; wire(box, this, (k, v) => String(v)); },
-      infoText() { return `<span style="color:#C25A1A">●</span> учебные ромашки, <span style="color:#2F6EB5">○</span> ромашки из кармана (проверочные) · ошибка: учебная <b>${fmt(this.etr[this.d - 1], 3)}</b>, проверочная <b>${fmt(this.eva[this.d - 1], 3)}</b>`; },
+      tick() { if (!this.ready()) { const t0 = performance.now(); do this.work(); while (!this.ready() && performance.now() - t0 < 120); this.dirty = true; } },
+      tap() { if (this.intro) { this.intro = 0; this.sync(); return true; } return false; },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k === 'd') { this.intro = 0; this.wantBest = false; AUDIO.pluck((v - 5) / 5); } },
+      press(k) { this.intro = 0; if (k === 'best') { if (this.best) this.d = this.best; else this.wantBest = true; } if (k === 'pocket') this.intro = 2; },
+      controls(box) { box.innerHTML = sl('нейронов в слое', 'd', 1, HS.length, 1, this.d) + bt('лучшая сложность', 'best') + bt('что в кармане', 'pocket') + '<div class="info"></div>'; wire(box, this, (k, v) => String(HS[v - 1])); },
+      infoText() {
+        if (!this.ready()) return `сеть учится на 40 учебных картинках: ${this.nets.length} из ${HS.length} вариантов готово`;
+        const i = this.d - 1;
+        return `<span style="color:#C25A1A">●</span> учебные картинки, <span style="color:#2F6EB5">○</span> картинки из кармана · ошибок: на учебных <b>${pct(this.etr[i])}</b>, на кармане <b>${pct(this.eva[i])}</b>`;
+      },
     };
-    m.recompute();
+    m.best = 0;
+    m._HS = HS;
     models.push(m);
   }
 
   // =========================================================================
-  // 7. Свёртка: окошко 3×3 ползёт по картинке
+  // 7. Свёртка: окошко 3×3 ездит по тем же 64 числам ромашки
   // =========================================================================
+  const KS = {
+    'стоячие края': [[1, 0, -1], [1, 0, -1], [1, 0, -1]],
+    'лежачие края': [[1, 1, 1], [0, 0, 0], [-1, -1, -1]],
+    'размытие': [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
+    'резкость': [[0, -1, 0], [-1, 5, -1], [0, -1, 0]],
+  };
+  const conv8 = (img, k) => { const out = []; for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) { let s = 0; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) s += k[a][b] * img[(i + a) * 8 + j + b]; out.push(s); } return out; };
+  const sgn = (v) => String(v).replace('-', '−');
+  function drawMap(g, out, x0, y0, c, o = {}) {
+    const mx = Math.max(1, ...out.map(Math.abs));
+    for (let p = 0; p < 36; p++) {
+      const i = Math.floor(p / 6), j = p % 6, x = x0 + j * c, y = y0 + i * c;
+      if (o.shown === undefined || p <= o.shown) { g.fillStyle = css(valRGB((o.relu ? Math.max(0, out[p]) : out[p]) / mx)); g.fillRect(x, y, c, c); if (o.nums) txt(g, sgn(out[p]), x + c / 2, y + c / 2 + 1, o.nums, { a: 'center', b: 'middle', w: 700, maxW: c - 4 }); }
+      else { g.fillStyle = 'rgba(226,209,176,0.5)'; g.fillRect(x, y, c, c); }
+      g.strokeStyle = rgba(PAL.inkFaint, 0.6); g.lineWidth = 1.5; g.strokeRect(x, y, c, c);
+    }
+    inkRect(g, x0, y0, 6 * c, 6 * c, 4, PAL.ink, 4);
+  }
+  const DAISY64 = pix8('ромашка');
   {
-    const KS = {
-      'вертикальные края': [[1, 0, -1], [1, 0, -1], [1, 0, -1]],
-      'горизонтальные края': [[1, 1, 1], [0, 0, 0], [-1, -1, -1]],
-      'размытие': [[1, 1, 1], [1, 1, 1], [1, 1, 1]],
-      'резкость': [[0, -1, 0], [-1, 5, -1], [0, -1, 0]],
-    };
-    // та же ромашка 8×8 со стенда 1: клетка цветка (лепесток, серединка, стебель) = 1, тёмный фон = 0
-    const PIC = PIX8['ромашка'], CELLC = { W: '#FBF6EA', Y: '#F2B824', G: '#7FAE5A' }, BG = '#2E2A22';
-    const col = PIC.map((r) => [...r]);
-    const cellCol = (i, j, v) => (v ? CELLC[col[i][j]] || CELLC.W : BG);
+    const IX = 30, IY = 110, C = 62, OX = 590, OY = 170, OC = 62;
     const m = {
-      img: PIC.map((r) => [...r].map((ch) => (ch === '.' ? 0 : 1))), kn: 'вертикальные края', pos: 0, shown: 0, play: true, t: 0, dirty: true,
-      conv() { const k = KS[this.kn], out = []; for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) { let s = 0; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) s += k[a][b] * this.img[i + a][j + b]; out.push(s); } return out; },
+      img: DAISY64.slice(), kn: 'стоячие края', pos: 0, shown: 0, play: true, t: 0, intro: 0, dirty: true,
+      conv() { return conv8(this.img, KS[this.kn]); },
       draw(g) {
-        const out = this.conv(), mx = Math.max(1, ...out.map(Math.abs)), k = KS[this.kn], pi = Math.floor(this.pos / 6), pj = this.pos % 6;
-        const IX = 40, IY = 110, C = 60;
-        txt(g, 'ромашка со стенда 1', IX, IY - 22, 40, { w: 700 });
-        for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { g.fillStyle = cellCol(i, j, this.img[i][j]); g.fillRect(IX + j * C, IY + i * C, C, C); g.strokeStyle = rgba(PAL.inkFaint, 0.6); g.lineWidth = 1.5; g.strokeRect(IX + j * C, IY + i * C, C, C); }
-        inkRect(g, IX, IY, 8 * C, 8 * C, 4, PAL.ink, 2);
-        g.fillStyle = 'rgba(241,191,74,0.35)'; g.fillRect(IX + pj * C, IY + pi * C, 3 * C, 3 * C);
+        const out = this.conv(), k = KS[this.kn], pi = Math.floor(this.pos / 6), pj = this.pos % 6;
+        txt(g, 'ромашка со стенда 1: те же 64 числа', IX, IY - 24, 38, { w: 700, maxW: 940 });
+        drawVals(g, this.img, IX, IY, C, { grid: true, nums: 24, fw: 5 });
+        g.fillStyle = 'rgba(241,191,74,0.30)'; g.fillRect(IX + pj * C, IY + pi * C, 3 * C, 3 * C);
         g.lineWidth = 9; g.strokeStyle = PAL.orange; g.strokeRect(IX + pj * C, IY + pi * C, 3 * C, 3 * C);
-        const OX = 590, OY = 170;
-        txt(g, 'новая грядка', OX, OY - 22, 40, { w: 700 });
-        for (let p = 0; p < 36; p++) {
-          const i = Math.floor(p / 6), j = p % 6, x = OX + j * C, y = OY + i * C;
-          if (p <= this.shown) { g.fillStyle = css(valRGB(out[p] / mx)); g.fillRect(x, y, C, C); txt(g, String(out[p]).replace('-', '−'), x + C / 2, y + C / 2 + 2, 32, { a: 'center', b: 'middle', w: 700 }); }
-          else { g.fillStyle = 'rgba(226,209,176,0.5)'; g.fillRect(x, y, C, C); }
-          g.strokeStyle = rgba(PAL.inkFaint, 0.6); g.lineWidth = 1.5; g.strokeRect(x, y, C, C);
+        if (this.intro) {
+          // стенд 2: у каждого из 64 чисел был свой вес
+          const WX = 590, WY = 150, WC = 46;
+          txt(g, 'стенд 2: 64 веса', WX, WY - 22, 36, { w: 700 });
+          for (let p = 0; p < 64; p++) { const i = p >> 3, j = p & 7, x = WX + j * WC, y = WY + i * WC; g.fillStyle = W64[p] ? '#F6D77A' : '#F3EBDA'; g.fillRect(x, y, WC, WC); g.strokeStyle = rgba(PAL.inkFaint, 0.55); g.lineWidth = 1.2; g.strokeRect(x, y, WC, WC); txt(g, String(W64[p]), x + WC / 2, y + WC / 2 + 1, 22, { a: 'center', b: 'middle', w: 700, c: W64[p] ? PAL.ink : PAL.inkFaint }); }
+          g.lineWidth = 4; g.strokeStyle = PAL.ink; g.strokeRect(WX, WY, WC * 8, WC * 8);
+          txt(g, 'сейчас: 9 весов', WX, 570, 36, { w: 700, c: '#A8501A' });
+        } else {
+          txt(g, 'новая грядка (6×6)', OX, OY - 22, 36, { w: 700 });
+          drawMap(g, out, OX, OY, OC, { shown: this.shown, nums: 20 });
+          g.lineWidth = 7; g.strokeStyle = PAL.orange; g.strokeRect(OX + pj * OC, OY + pi * OC, OC, OC);
+          quickStroke(g, [[IX + (pj + 3) * C, IY + (pi + 1.5) * C], [OX + pj * OC, OY + (pi + 0.5) * OC]], 4, PAL.orange, 0.8, [10, 8]);
         }
-        inkRect(g, OX, OY, 6 * C, 6 * C, 4, PAL.ink, 4);
-        g.lineWidth = 8; g.strokeStyle = PAL.orange; g.strokeRect(OX + pj * C, OY + pi * C, C, C);
-        quickStroke(g, [[IX + (pj + 3) * C, IY + (pi + 1.5) * C], [OX + pj * C, OY + (pi + 0.5) * C]], 4, PAL.orange, 0.8, [10, 8]);
-        // the arithmetic: kernel × patch = sum
-        const KY = 700, KC = 74;
-        txt(g, 'ядро', 40, KY - 24, 40, { w: 700 });
-        txt(g, 'под окошком', 330, KY - 24, 40, { w: 700 });
-        let s = 0;
-        for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) {
-          const v = k[a][b], pv = this.img[pi + a][pj + b]; s += v * pv;
-          g.fillStyle = css(valRGB(v / 5 * 1.6)); g.fillRect(40 + b * KC, KY + a * KC, KC, KC); g.strokeStyle = PAL.ink; g.lineWidth = 2; g.strokeRect(40 + b * KC, KY + a * KC, KC, KC);
-          txt(g, String(v).replace('-', '−'), 40 + b * KC + KC / 2, KY + a * KC + KC / 2 + 2, 42, { a: 'center', b: 'middle', w: 700 });
-          g.fillStyle = cellCol(pi + a, pj + b, pv); g.fillRect(330 + b * KC, KY + a * KC, KC, KC); g.strokeStyle = PAL.ink; g.strokeRect(330 + b * KC, KY + a * KC, KC, KC);
-          txt(g, String(pv), 330 + b * KC + KC / 2, KY + a * KC + KC / 2 + 2, 42, { a: 'center', b: 'middle', w: 700, c: pv ? PAL.ink : '#FBF6EA' });
+        // счёт: ядро × клетки под окошком, по рядам
+        const KY = 690, KC = 60, KX = 30, PX = 260;
+        txt(g, 'ядро: 9 весов', KX, KY - 22, 32, { w: 700, maxW: 220 });
+        txt(g, 'под окошком', PX, KY - 22, 32, { w: 700 });
+        let s = 0; const rows = [];
+        for (let a = 0; a < 3; a++) {
+          const pr = [];
+          for (let b = 0; b < 3; b++) {
+            const v = k[a][b], pv = this.img[(pi + a) * 8 + pj + b]; s += v * pv; pr.push(v * pv);
+            g.fillStyle = css(valRGB(v / 5 * 1.6)); g.fillRect(KX + b * KC, KY + a * KC, KC, KC); g.strokeStyle = PAL.ink; g.lineWidth = 2; g.strokeRect(KX + b * KC, KY + a * KC, KC, KC);
+            txt(g, sgn(v), KX + b * KC + KC / 2, KY + a * KC + KC / 2 + 2, 36, { a: 'center', b: 'middle', w: 700 });
+            g.fillStyle = `rgb(${pv},${pv},${pv})`; g.fillRect(PX + b * KC, KY + a * KC, KC, KC); g.strokeStyle = PAL.ink; g.strokeRect(PX + b * KC, KY + a * KC, KC, KC);
+            txt(g, String(pv), PX + b * KC + KC / 2, KY + a * KC + KC / 2 + 2, 24, { a: 'center', b: 'middle', w: 700, c: pv < 125 ? '#F4EBDD' : PAL.ink });
+          }
+          rows.push(pr);
         }
-        txt(g, '×', 288, KY + 125, 56, { a: 'center', w: 700 });
-        txt(g, '→', 600, KY + 125, 64, { a: 'center', w: 700 });
-        txt(g, 'сумма', 790, KY + 30, 40, { a: 'center', c: PAL.inkSoft });
-        txt(g, String(s).replace('-', '−'), 790, KY + 160, 110, { a: 'center', w: 700, serif: true, c: s > 0 ? '#B5541C' : s < 0 ? '#2F6EB5' : PAL.ink });
+        txt(g, '×', 225, KY + 105, 50, { a: 'center', w: 700 });
+        rows.forEach((pr, a) => { const rs = pr.reduce((x, y) => x + y, 0); txt(g, `ряд ${a + 1}: ${pr.map((x, q) => (q ? (x < 0 ? ' − ' + -x : ' + ' + x) : sgn(x))).join('')} = ${sgn(rs)}`, 460, KY + 26 + a * 56, 30, { w: 600, maxW: 520 }); });
+        txt(g, `сумма: ${sgn(s)}`, 460, KY + 230, 50, { w: 700, serif: true, c: s > 0 ? '#B5541C' : s < 0 ? '#2F6EB5' : PAL.ink });
       },
-      tick(dt) { if (!this.play) return; this.t += dt; if (this.t < 0.55) return; this.t = 0; this.pos = (this.pos + 1) % 36; if (this.pos === 0) this.shown = 0; this.shown = Math.max(this.shown, this.pos); AUDIO.pluck(this.conv()[this.pos] / 4); this.sync(); },
-      tap(x, y) { const j = Math.floor((x - 40) / 60), i = Math.floor((y - 110) / 60); if (i < 0 || j < 0 || i > 7 || j > 7) return false; this.img[i][j] ^= 1; if (this.img[i][j] && col[i][j] === '.') col[i][j] = 'W'; AUDIO.pluck(this.img[i][j] ? 0.5 : -0.5); this.sync(); return true; },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; },
-      press(k) { if (k.startsWith('k:')) { this.kn = k.slice(2); this.shown = this.pos; } if (k === 'play') this.play = !this.play; if (k === 'all') { this.shown = 35; this.play = false; } },
+      tick(dt) { if (!this.play || this.intro) return; this.t += dt; if (this.t < 0.55) return; this.t = 0; this.pos = (this.pos + 1) % 36; if (this.pos === 0) this.shown = 0; this.shown = Math.max(this.shown, this.pos); AUDIO.pluck(clamp(this.conv()[this.pos] / 500, -1, 1)); this.sync(); },
+      tap(x, y) { if (this.intro) { this.intro = 0; this.sync(); return true; } const j = Math.floor((x - IX) / C), i = Math.floor((y - IY) / C); if (i < 0 || j < 0 || i > 7 || j > 7) return false; const p = i * 8 + j; this.img[p] = this.img[p] > 136 ? 40 : 232; AUDIO.pluck(this.img[p] > 136 ? 0.5 : -0.5); this.sync(); return true; },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k !== 'intro') this.intro = 0; },
+      press(k) { if (k === 'intro') { this.intro = 1; return; } this.intro = 0; if (k.startsWith('k:')) { this.kn = k.slice(2); this.shown = this.pos; } if (k === 'play') this.play = !this.play; if (k === 'all') { this.shown = 35; this.play = false; } if (k === 'img') this.img = DAISY64.slice(); },
       controls(box) {
-        box.innerHTML = Object.keys(KS).map((n) => bt(n, 'k:' + n)).join('') + bt('❚❚ пауза', 'play') + bt('всё сразу', 'all') +
+        box.innerHTML = Object.keys(KS).map((n) => bt(n, 'k:' + n)).join('') + bt('❚❚ пауза', 'play') + bt('всё сразу', 'all') + bt('вернуть ромашку', 'img') +
           '<a class="btn big" href="../cnn-sad/">полный сад свёрточной сети →</a><div class="info"></div>';
         wire(box, this, () => '');
       },
       syncExtra(box) { box.querySelectorAll('[data-b^="k:"]').forEach((b) => b.classList.toggle('on', b.dataset.b === 'k:' + this.kn)); const b = box.querySelector('[data-b="play"]'); b.classList.toggle('on', this.play); b.textContent = this.play ? '❚❚ пауза' : '▶ ползти'; },
-      infoText() { const pi = Math.floor(this.pos / 6), pj = this.pos % 6; return `окошко на месте ${pi + 1}·${pj + 1}, сумма <b>${String(this.conv()[this.pos]).replace('-', '−')}</b> · ткни клетку картинки`; },
+      infoText() { const pi = Math.floor(this.pos / 6), pj = this.pos % 6; return `окошко на месте ${pi + 1}·${pj + 1}, сумма <b>${sgn(this.conv()[this.pos])}</b> · ткни клетку ромашки, она станет фоном или лепестком`; },
     };
     models.push(m);
   }
 
   // =========================================================================
-  // 8. Что видит сеть изнутри: фильтры первого слоя и карта внимания
+  // 8. Что видит сеть изнутри: окошки и «куда смотрел нейрон стенда 2»
   // =========================================================================
   {
-    const N = 48;
+    const FILT = [
+      { name: 'стоячие края', k: KS['стоячие края'] }, { name: 'лежачие края', k: KS['лежачие края'] },
+      { name: 'косые края /', k: [[0, 1, 1], [-1, 0, 1], [-1, -1, 0]] }, { name: 'косые края \\', k: [[1, 1, 0], [1, 0, -1], [0, -1, -1]] },
+      { name: 'светлая точка', k: [[-1, -1, -1], [-1, 8, -1], [-1, -1, -1]] }, { name: 'тёмная точка', k: [[1, 1, 1], [1, -8, 1], [1, 1, 1]] },
+      { name: 'размытие', k: KS['размытие'] }, { name: 'резкость', k: KS['резкость'] },
+    ];
+    const TS = 180, GX = 60, GY = 70, GAP = 50, PXX = 40, PY = 560, PC = 50, MX = 560, MC = 66;
+    // «куда смотрел нейрон»: кладём тёмный квадрат 3×3 (яркость фона 40) и смотрим, на сколько упала сумма нейрона стенда 2
+    const OCC = 40;
+    const covered = (v, p) => { const ci = p >> 3, cj = p & 7, u = v.slice(); for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const i = ci + a, j = cj + b; if (i >= 0 && j >= 0 && i < 8 && j < 8) u[i * 8 + j] = OCC; } return u; };
+    const drop = (v, p) => sum64(v) - sum64(covered(v, p));
     const m = {
-      sel: 0, mode: 'filter', dirty: true, ready: false,
-      init() {
-        // та же ромашка, только фото покрупнее: 48×48, цветное
-        const c = mkCanvas(N, N), g = c.getContext('2d');
-        const gr = g.createLinearGradient(0, 0, 0, N); gr.addColorStop(0, '#7FA9D6'); gr.addColorStop(1, '#A9C4A0'); g.fillStyle = gr; g.fillRect(0, 0, N, N);
-        g.fillStyle = '#5E8A45'; g.fillRect(0, 40, N, 8);
-        g.strokeStyle = '#4F7F3A'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(24, 26); g.quadraticCurveTo(26, 36, 23, 47); g.stroke();
-        g.fillStyle = '#5E9446'; g.beginPath(); g.ellipse(29, 38, 5, 2, -0.5, 0, TAU); g.fill();
-        g.fillStyle = '#FFFFFF';
-        for (let q = 0; q < 14; q++) { const a = q / 14 * TAU; g.beginPath(); g.ellipse(24 + Math.cos(a) * 9.5, 20 + Math.sin(a) * 9.5, 7, 2.6, a, 0, TAU); g.fill(); }
-        g.strokeStyle = 'rgba(150,150,160,0.8)'; g.lineWidth = 0.4; for (let q = 0; q < 14; q++) { const a = q / 14 * TAU; g.beginPath(); g.ellipse(24 + Math.cos(a) * 9.5, 20 + Math.sin(a) * 9.5, 7, 2.6, a, 0, TAU); g.stroke(); }
-        g.fillStyle = '#F2B824'; g.beginPath(); g.arc(24, 20, 4.6, 0, TAU); g.fill();
-        g.fillStyle = '#C98A12'; for (const [x, y] of [[23, 19], [25.5, 21], [24, 22.5], [22, 21]]) { g.fillRect(x - 0.6, y - 0.6, 1.2, 1.2); }
-        const d = g.getImageData(0, 0, N, N).data;
-        this.R = new Float32Array(N * N); this.G = new Float32Array(N * N); this.B = new Float32Array(N * N); this.L = new Float32Array(N * N);
-        for (let p = 0; p < N * N; p++) { this.R[p] = d[p * 4] / 255; this.G[p] = d[p * 4 + 1] / 255; this.B[p] = d[p * 4 + 2] / 255; this.L[p] = 0.3 * this.R[p] + 0.59 * this.G[p] + 0.11 * this.B[p]; }
-        this.picCanvas = c;
-        // first-layer style filters (7×7): oriented stripes, colour blobs, spots
-        const F = [];
-        const gab = (th) => { const k = []; for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) { const u = x * Math.cos(th) + y * Math.sin(th); k.push(Math.exp(-(x * x + y * y) / (2 * 2.0 * 2.0)) * Math.cos(TAU * u / 4.2)); } const mu = k.reduce((a, b) => a + b, 0) / 49; return k.map((v) => v - mu); };
-        const blob = (s) => { const k = []; for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) k.push(Math.exp(-(x * x + y * y) / (2 * s * s))); return k; };
-        const dog = (sign) => { const a = blob(1.0), b = blob(2.4), sa = a.reduce((p, q) => p + q, 0), sb = b.reduce((p, q) => p + q, 0); return a.map((v, i) => sign * (v / sa - b[i] / sb) * 20); };
-        F.push({ name: 'лежачие полоски', k: gab(Math.PI / 2), ch: 'L' }, { name: 'косые полоски /', k: gab(-Math.PI / 4), ch: 'L' }, { name: 'стоячие полоски', k: gab(0), ch: 'L' }, { name: 'косые полоски \\', k: gab(Math.PI / 4), ch: 'L' });
-        F.push({ name: 'жёлтое пятно', k: blob(1.6), ch: 'RB' }, { name: 'зелёное пятно', k: blob(1.6), ch: 'G' }, { name: 'тёмная точка', k: dog(-1), ch: 'L' }, { name: 'светлая точка', k: dog(1), ch: 'L' });
-        this.F = F;
-        this.ready = true;
-      },
-      chan(ch) { const n = N * N, o = new Float32Array(n); for (let p = 0; p < n; p++) o[p] = ch === 'L' ? this.L[p] - 0.5 : ch === 'RB' ? (this.R[p] + this.G[p]) / 2 - this.B[p] - 0.25 : this.G[p] - Math.max(this.R[p], this.B[p]) - 0.02; return o; },
-      respond(fi) {
-        const f = this.F[fi], src = this.chan(f.ch), out = new Float32Array(N * N);
-        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let s = 0; for (let a = -3; a <= 3; a++) for (let b = -3; b <= 3; b++) { const yy = clamp(y + a, 0, N - 1), xx = clamp(x + b, 0, N - 1); s += f.k[(a + 3) * 7 + b + 3] * src[yy * N + xx]; } out[y * N + x] = Math.max(0, s); }
-        return out;
-      },
-      occlusion() {
-        if (this.occ) return this.occ;
-        // «сеть» здесь это шаблон ромашки: размытая ромашка без среднего. Уверенность = сходство с ним.
-        const T = new Float32Array(N * N * 3), I = new Float32Array(N * N * 3);
-        const ch = [this.R, this.G, this.B];
-        for (let c = 0; c < 3; c++) for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let s = 0, n = 0; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const yy = clamp(y + a, 0, N - 1), xx = clamp(x + b, 0, N - 1); s += ch[c][yy * N + xx]; n++; } T[c * N * N + y * N + x] = s / n; I[c * N * N + y * N + x] = ch[c][y * N + x]; }
-        const mu = T.reduce((a, b) => a + b, 0) / T.length; for (let i = 0; i < T.length; i++) T[i] -= mu;
-        const tn = Math.sqrt(T.reduce((a, b) => a + b * b, 0));
-        const score = (img) => { let s = 0, nn = 0; const m2 = img.reduce((a, b) => a + b, 0) / img.length; for (let i = 0; i < img.length; i++) { const v = img[i] - m2; s += v * T[i]; nn += v * v; } return s / (Math.sqrt(nn) * tn + 1e-9); };
-        const s0 = score(I), map = new Float32Array(N * N), cnt = new Float32Array(N * N), P = 7;
-        for (let y0 = -4; y0 < N; y0 += 2) for (let x0 = -4; x0 < N; x0 += 2) {
-          const J = I.slice();
-          for (let c = 0; c < 3; c++) for (let y = Math.max(0, y0); y < Math.min(N, y0 + P); y++) for (let x = Math.max(0, x0); x < Math.min(N, x0 + P); x++) J[c * N * N + y * N + x] = 0.55;
-          const drop = Math.max(0, s0 - score(J));
-          for (let y = Math.max(0, y0); y < Math.min(N, y0 + P); y++) for (let x = Math.max(0, x0); x < Math.min(N, x0 + P); x++) { map[y * N + x] += drop; cnt[y * N + x]++; }
-        }
-        for (let i = 0; i < map.length; i++) map[i] /= Math.max(1, cnt[i]);
-        { const srt = Array.from(map).sort((a, b) => a - b), lo = srt[Math.floor(srt.length * 0.35)], hi = srt[srt.length - 1]; for (let i = 0; i < map.length; i++) map[i] = Math.pow(clamp((map[i] - lo) / (hi - lo + 1e-9), 0, 1), 1.4); }
-        this.s0 = s0; this.occ = map; return map;
-      },
+      mode: 'maps', sel: 0, cell: CC, dirty: true,
       draw(g) {
-        if (!this.ready) this.init();
-        // filter tiles
-        const TS = 196, GX = 52, GY = 60, GAP = 30;
-        this.F.forEach((f, i) => {
-          const x0 = GX + (i % 4) * (TS + GAP), y0 = GY + Math.floor(i / 4) * (TS + GAP), mx = Math.max(...f.k.map(Math.abs)), c = TS / 7;
-          for (let q = 0; q < 49; q++) {
-            const v = f.k[q] / mx; let col;
-            if (f.ch === 'L') col = [0.5 + 0.48 * v, 0.5 + 0.48 * v, 0.5 + 0.48 * v];
-            else if (f.ch === 'RB') col = [0.5 + 0.45 * v, 0.5 + 0.38 * v, 0.5 - 0.4 * v];
-            else col = [0.5 - 0.3 * v, 0.5 + 0.42 * v, 0.5 - 0.3 * v];
-            g.fillStyle = css(col); g.fillRect(x0 + (q % 7) * c, y0 + Math.floor(q / 7) * c, c + 0.5, c + 0.5);
-          }
-          g.lineWidth = this.mode === 'filter' && i === this.sel ? 10 : 3; g.strokeStyle = this.mode === 'filter' && i === this.sel ? PAL.orange : PAL.ink; g.strokeRect(x0, y0, TS, TS);
-          txt(g, String(i + 1), x0 + 10, y0 + 44, 38, { w: 700, c: '#FBF6EA' });
-        });
-        // picture and map
-        const PY = 540, PS = 400, PX1 = 50, PX2 = 550;
-        g.imageSmoothingEnabled = false; g.drawImage(this.picCanvas, PX1, PY, PS, PS); g.imageSmoothingEnabled = true;
-        inkRect(g, PX1, PY, PS, PS, 4, PAL.ink, 3);
-        txt(g, 'ромашка', PX1, PY - 18, 40, { w: 700 });
-        const map = this.mode === 'filter' ? this.respond(this.sel) : this.occlusion();
-        const mx = Math.max(1e-6, ...map), cs = PS / N;
-        for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-          const p = y * N + x, v = map[p] / mx, l = this.L[p] * 0.35 + 0.1;
-          const col = mixc([l, l, l * 1.1], v < 0.5 ? mixc([0.5, 0.15, 0.1], [0.95, 0.5, 0.15], v * 2) : mixc([0.95, 0.5, 0.15], [1, 0.95, 0.6], (v - 0.5) * 2), Math.min(1, v * 1.6));
-          g.fillStyle = css(col); g.fillRect(PX2 + x * cs, PY + y * cs, cs + 0.5, cs + 0.5);
+        const v = DAISY64;
+        if (this.mode === 'maps') {
+          txt(g, 'грядки стенда 7 для ромашки', 500, 70, 46, { a: 'center', serif: true, w: 700 });
+          Object.keys(KS).forEach((n, q) => { const x = 60 + (q % 2) * 470, y = 150 + Math.floor(q / 2) * 420; txt(g, n, x, y - 16, 36, { w: 700 }); drawMap(g, conv8(v, KS[n]), x, y, 58, { nums: 19 }); });
+          txt(g, 'у каждого окошка своя грядка', 500, 975, 36, { a: 'center', c: PAL.inkSoft });
+          return;
         }
-        inkRect(g, PX2, PY, PS, PS, 4, PAL.ink, 5);
-        txt(g, this.mode === 'filter' ? `где горит фильтр ${this.sel + 1}` : 'куда смотрела сеть', PX2, PY - 18, 40, { w: 700, maxW: PS + 20 });
+        // окошки-фильтры
+        FILT.forEach((f, i) => {
+          const x0 = GX + (i % 4) * (TS + GAP), y0 = GY + Math.floor(i / 4) * (TS + GAP + 20), c = TS / 3, mx = Math.max(...f.k.flat().map(Math.abs));
+          for (let q = 0; q < 9; q++) { const w = f.k[Math.floor(q / 3)][q % 3] / mx, l = 0.5 + 0.46 * w; g.fillStyle = css([l, l, l]); g.fillRect(x0 + (q % 3) * c, y0 + Math.floor(q / 3) * c, c + 0.5, c + 0.5); }
+          const on = this.mode === 'filter' && i === this.sel;
+          g.lineWidth = on ? 10 : 3; g.strokeStyle = on ? PAL.orange : PAL.ink; g.strokeRect(x0, y0, TS, TS);
+          g.fillStyle = 'rgba(46,42,34,0.85)'; g.beginPath(); g.arc(x0 + 26, y0 + 26, 21, 0, TAU); g.fill(); txt(g, String(i + 1), x0 + 26, y0 + 38, 32, { a: 'center', w: 700, c: '#FBF6EA' });
+        });
+        if (this.mode === 'filter') txt(g, 'ромашка, 64 числа', PXX, PY - 16, 34, { w: 700 });
+        if (this.mode === 'filter') {
+          drawVals(g, v, PXX, PY, PC, { grid: true, fw: 5 });
+          const out = conv8(v, FILT[this.sel].k);
+          g.fillStyle = 'rgba(46,42,34,0.85)'; g.fillRect(MX, PY, 8 * PC, 8 * PC); inkRect(g, MX, PY, 8 * PC, 8 * PC, 4, PAL.ink, 5);
+          drawMap(g, out, MX + PC, PY + PC, PC, { relu: true });
+          txt(g, `где горит окошко ${this.sel + 1}`, MX, PY - 16, 34, { w: 700, maxW: 420 });
+        } else {
+          const u = covered(v, this.cell), ci = this.cell >> 3, cj = this.cell & 7;
+          drawVals(g, u, PXX, PY, PC, { grid: true, fw: 5 });
+          g.lineWidth = 6; g.strokeStyle = PAL.orange; g.strokeRect(PXX + (cj - 1) * PC, PY + (ci - 1) * PC, 3 * PC, 3 * PC);
+          const dr = []; for (let p = 0; p < 64; p++) dr.push(drop(v, p)); const mx = Math.max(...dr);
+          for (let p = 0; p < 64; p++) { const i = p >> 3, j = p & 7, t = dr[p] / mx; g.fillStyle = css(mixc([0.18, 0.12, 0.1], [1, 0.9, 0.55], t)); g.fillRect(MX + j * PC, PY + i * PC, PC, PC); }
+          g.lineWidth = 6; g.strokeStyle = PAL.orange; g.strokeRect(MX + cj * PC, PY + ci * PC, PC, PC); inkRect(g, MX, PY, 8 * PC, 8 * PC, 4, PAL.ink, 5);
+          txt(g, 'куда смотрел нейрон', MX, PY - 16, 34, { w: 700, maxW: 420 });
+          const s0 = sum64(v), s1 = sum64(u);
+          txt(g, `сумма ${big(s0)} → ${big(s1)}`, PXX, PY - 16, 34, { w: 700, c: s1 > TH64 ? PAL.ink : PAL.red, maxW: 440 });
+        }
       },
       tick() {},
       tap(x, y) {
-        const TS = 196, GX = 52, GY = 60, GAP = 30;
-        for (let i = 0; i < 8; i++) { const x0 = GX + (i % 4) * (TS + GAP), y0 = GY + Math.floor(i / 4) * (TS + GAP); if (x >= x0 && x <= x0 + TS && y >= y0 && y <= y0 + TS) { this.sel = i; this.mode = 'filter'; AUDIO.pluck(i / 4 - 1); this.sync(); return true; } }
-        if (y > 520) { this.mode = this.mode === 'filter' ? 'occ' : 'filter'; this.sync(); return true; }
+        if (this.mode === 'maps') { this.mode = 'filter'; this.sync(); return true; }
+        for (let i = 0; i < 8; i++) { const x0 = GX + (i % 4) * (TS + GAP), y0 = GY + Math.floor(i / 4) * (TS + GAP + 20); if (x >= x0 && x <= x0 + TS && y >= y0 && y <= y0 + TS) { this.sel = i; this.mode = 'filter'; AUDIO.pluck(i / 4 - 1); this.sync(); return true; } }
+        const j = Math.floor((x - PXX) / PC), i = Math.floor((y - PY) / PC);
+        if (i >= 0 && j >= 0 && i < 8 && j < 8) { this.cell = i * 8 + j; this.mode = 'occ'; AUDIO.pluck(-0.3); this.sync(); return true; }
         return false;
       },
       get(k) { return this[k]; }, set(k, v) { this[k] = v; },
-      press(k) { if (k.startsWith('f:')) { this.sel = +k.slice(2); this.mode = 'filter'; } if (k === 'occ') this.mode = 'occ'; },
-      controls(box) { if (!this.ready) this.init(); box.innerHTML = this.F.map((f, i) => bt(String(i + 1), 'f:' + i)).join('') + bt('куда смотрела сеть', 'occ') + '<div class="info"></div>'; wire(box, this, () => ''); },
-      syncExtra(box) { box.querySelectorAll('[data-b]').forEach((b) => b.classList.toggle('on', this.mode === 'filter' ? b.dataset.b === 'f:' + this.sel : b.dataset.b === 'occ')); },
-      infoText() { return this.mode === 'filter' ? `фильтр ${this.sel + 1}: <b>${this.F[this.sel].name}</b>. Светлое справа: здесь он сработал сильнее всего` : 'закрываем серым квадратиком кусок за куском: где уверенность «это ромашка» падает сильнее, там светлее. Решают серединка и лепестки'; },
+      press(k) { if (k.startsWith('f:')) { this.sel = +k.slice(2); this.mode = 'filter'; } if (k === 'occ') this.mode = 'occ'; if (k === 'maps') this.mode = 'maps'; },
+      controls(box) { box.innerHTML = bt('грядки стенда 7', 'maps') + FILT.map((f, i) => bt(String(i + 1), 'f:' + i)).join('') + bt('куда смотрел нейрон', 'occ') + '<div class="info"></div>'; wire(box, this, () => ''); },
+      syncExtra(box) { box.querySelectorAll('[data-b]').forEach((b) => b.classList.toggle('on', this.mode === 'filter' ? b.dataset.b === 'f:' + this.sel : b.dataset.b === this.mode)); },
+      infoText() {
+        if (this.mode === 'maps') return 'четыре окошка стенда 7 проехали по ромашке, у каждого своя грядка · ткни доску';
+        if (this.mode === 'filter') return `окошко ${this.sel + 1}: <b>${FILT[this.sel].name}</b>. Справа его грядка, светлое и рыжее: здесь оно сработало сильнее всего`;
+        const ci = this.cell >> 3, cj = this.cell & 7;
+        return `тёмный квадрат на клетке ${ci + 1}·${cj + 1}: сумма нейрона стенда 2 упала на <b>${big(drop(DAISY64, this.cell))}</b> · ткни другую клетку ромашки`;
+      },
     };
+    m._drop = drop;
     models.push(m);
   }
-
   // =========================================================================
   // 9. Слова как векторы
   // =========================================================================
+  // числа слов стенда 9 нужны и стенду 10: та же «ромашка», те же 11 чисел
+  const GRAF = ['власть', 'женское', 'взрослый', 'человек', 'зверь', 'растение', 'белое', 'синее', 'красное', 'луговое', 'садовое'];
+  let WORDV = null;
+  function drawWordCol(g, w, x, y, o = {}) {
+    const v = WORDV[w], rh = o.rh || 56;
+    pill(g, w, x + 150, y, 46, { a: 'center', bg: '#FFE9A8' });
+    GRAF.forEach((n, k) => { const yy = y + 80 + k * rh, on = Math.abs(v[k]) > 0.5; txt(g, n, x + 170, yy, 32, { a: 'right', c: on ? PAL.ink : PAL.inkFaint, w: on ? 700 : 600 }); txt(g, f2(v[k]), x + 190, yy, 34, { w: 700, c: on ? '#A8321F' : PAL.inkFaint }); });
+  }
   {
     // 11 граф: власть, женское, взрослый, человек, зверь, растение, белое, синее, красное, луговое, садовое
     const RAW = {
@@ -805,6 +958,7 @@ export function makeModels(K) {
     };
     const R = mulberry(31), WORDS = Object.keys(RAW), V = {};
     for (const w of WORDS) V[w] = RAW[w].map((x) => x + (R() - 0.5) * 0.12);
+    WORDV = V;
     const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0), norm = (a) => Math.sqrt(dot(a, a)), cos = (a, b) => dot(a, b) / (norm(a) * norm(b) + 1e-9);
     // карта: 11 чисел слова рисуем на плоскости одной и той же линейной проекцией,
     // поэтому сложение и вычитание векторов видно на карте стрелками
@@ -836,7 +990,20 @@ export function makeModels(K) {
     const EQ = [['ромашка', 'снег', 'небо'], ['мак', 'луг', 'сад'], ['василёк', 'небо', 'снег'], ['король', 'мужчина', 'женщина']];
     const R2 = mulberry(77), stars = []; for (let i = 0; i < 160; i++) stars.push([R2() * 1000, R2() * 1000, R2()]);
     const m = {
-      eq: 0, sel: '', t: 0, dirty: true,
+      eq: 0, sel: '', t: 0, intro: 0, dirty: true,
+      drawIntro(g) {
+        txt(g, 'и картинку, и слово превращаем в числа', 500, 70, 42, { a: 'center', serif: true, w: 700, maxW: 940 });
+        txt(g, 'стенд 1: картинка', 50, 150, 32, { w: 700, maxW: 300 });
+        drawVals(g, DAISY64, 60, 180, 26, { frame: F_DAISY, fw: 5 });
+        arrow(g, 164, 400, 164, 450, 6, PAL.orange, 24);
+        DAISY64.slice(0, 6).forEach((n, k) => txt(g, String(n), 164, 500 + k * 52, 36, { a: 'center', w: 700 }));
+        txt(g, '…', 164, 800, 40, { a: 'center', w: 700 }); txt(g, 'всего 64 числа', 164, 860, 32, { a: 'center', c: PAL.inkSoft });
+        quickStroke(g, [[330, 130], [330, 960]], 3, rgba(PAL.inkFaint, 0.6), 1, [10, 10]);
+        txt(g, 'стенд 9: слово', 380, 150, 36, { w: 700 });
+        arrow(g, 530, 240, 530, 268, 5, PAL.orange, 20);
+        drawWordCol(g, 'ромашка', 380, 210, { rh: 62 });
+        txt(g, '11 чисел, по одному на графу', 380, 975, 32, { c: PAL.inkSoft, maxW: 600 });
+      },
       calc() {
         const [a, b, c] = EQ[this.eq], v = V[a].map((x, i) => x - V[b][i] + V[c][i]);
         const ranked = WORDS.filter((w) => w !== a && w !== b && w !== c).map((w) => [w, cos(v, V[w])]).sort((p, q) => q[1] - p[1]);
@@ -844,6 +1011,7 @@ export function makeModels(K) {
       },
       near(w) { return WORDS.filter((x) => x !== w).map((x) => [x, cos(V[w], V[x])]).sort((p, q) => q[1] - p[1]).slice(0, 3); },
       draw(g) {
+        if (this.intro) return this.drawIntro(g);
         g.fillStyle = '#1B2245'; g.fillRect(16, 16, 968, 968);
         for (const [x, y, s] of stars) { g.fillStyle = `rgba(255,246,220,${0.2 + 0.5 * s * (0.6 + 0.4 * Math.sin(this.t * (1 + s * 2) + s * 30))})`; g.beginPath(); g.arc(x, y, 1 + s * 2, 0, TAU); g.fill(); }
         const E = this.calc(), pa = P2[E.a], pb = P2[E.b], pc = P2[E.c], pr = proj(E.v);
@@ -870,12 +1038,12 @@ export function makeModels(K) {
         txt(g, `сходство ${f2(E.best[1])}`, 500, 940, 38, { a: 'center', c: PAL.inkSoft });
       },
       tick(dt) { this.t += dt; this.dirty = true; },
-      tap(x, y) { let b = '', bd = 60; for (const w of WORDS) { const l = LAB[w]; const d = Math.min(Math.hypot(sx(P2[w][0]) - x, sy(P2[w][1]) - y), x > l.x && x < l.x + l.wd && y > l.y && y < l.y + l.h ? 0 : 1e9); if (d < bd) { bd = d; b = w; } } if (!b) return false; this.sel = b; AUDIO.pluck(0.4); this.sync(); return true; },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; },
-      press(k) { if (k.startsWith('eq:')) { this.eq = +k.slice(3); AUDIO.chime(true); } },
-      controls(box) { box.innerHTML = EQ.map((e, i) => bt(`${e[0]} − ${e[1]} + ${e[2]}`, 'eq:' + i)).join('') + '<div class="info"></div>'; wire(box, this, () => ''); },
+      tap(x, y) { if (this.intro) { this.intro = 0; this.sync(); return true; } let b = '', bd = 60; for (const w of WORDS) { const l = LAB[w]; const d = Math.min(Math.hypot(sx(P2[w][0]) - x, sy(P2[w][1]) - y), x > l.x && x < l.x + l.wd && y > l.y && y < l.y + l.h ? 0 : 1e9); if (d < bd) { bd = d; b = w; } } if (!b) return false; this.sel = b; AUDIO.pluck(0.4); this.sync(); return true; },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k !== 'intro') this.intro = 0; },
+      press(k) { if (k === 'intro') { this.intro = 1; return; } this.intro = 0; if (k.startsWith('eq:')) { this.eq = +k.slice(3); AUDIO.chime(true); } },
+      controls(box) { box.innerHTML = EQ.map((e, i) => bt(`${e[0]} − ${e[1]} + ${e[2]}`, 'eq:' + i)).join('') + bt('слово → числа', 'intro') + '<div class="info"></div>'; wire(box, this, () => ''); },
       syncExtra(box) { box.querySelectorAll('[data-b]').forEach((b) => b.classList.toggle('on', b.dataset.b === 'eq:' + this.eq)); },
-      infoText() { if (!this.sel) return 'у каждого слова 11 чисел (растение, белое, синее, луговое, власть…). Карта рисует их на плоскости. Ткни слово'; return `ближе всего к «${this.sel}»: ` + this.near(this.sel).map(([w, s]) => `${w} <b>${f2(s)}</b>`).join(', '); },
+      infoText() { if (this.intro) return 'слева 64 числа картинки со стенда 1, справа 11 чисел слова «ромашка» · ткни доску, покажу небо слов'; if (!this.sel) return 'у каждого слова 11 чисел (растение, белое, синее, луговое, власть…). Карта рисует их на плоскости. Ткни слово'; return `ближе всего к «${this.sel}»: ` + this.near(this.sel).map(([w, s]) => `${w} <b>${f2(s)}</b>`).join(', '); },
     };
     m._calc = () => m.calc();
     models.push(m);
@@ -888,10 +1056,23 @@ export function makeModels(K) {
     // ключи (k) и вопросы (q) в 4 числах: [живое (растёт и вянет), предмет, действие, служебное]
     const K4 = { 'ромашка': [3, 0, 0.3, 0], 'стояла': [0.3, 0, 2.5, 0], 'в': [0, 0, 0, 1.5], 'вазе': [0, 3, 0, 0], 'и': [0, 0, 0, 1.5], 'она': [0, 0, 0, 0.8], 'завяла': [0.5, 0, 1.6, 0], 'разбилась': [0, 0.5, 1.6, 0] };
     const Q4 = { 'ромашка': [0, 0, 2.2, 0], 'стояла': [1.6, 1.4, 0, 0], 'в': [0, 2.2, 0, 0], 'вазе': [0, 0, 1.6, 0.6], 'и': [0, 0, 1.6, 0.6], 'завяла': [2.0, 0, 0, 0], 'разбилась': [0, 2.0, 0, 0] };
+    // ключ и вопрос «ромашки» сеть делает из её 11 чисел стенда 9: живое = 3 × растение, действие = 0,3 × луговое; вопрос: действие = 2,2 × растение
+    const RV = WORDV['ромашка'];
+    K4['ромашка'] = [3 * RV[5], 0, 0.3 * RV[9], 0]; Q4['ромашка'] = [0, 0, 2.2 * RV[5], 0];
     const ABOUT = { 'завяла': [1, 0, 0, 0], 'разбилась': [0, 1, 0, 0] }; // о ком обычно бывает это слово
     const SEL = 5, OTHER = (e) => (e === 'завяла' ? 'разбилась' : 'завяла');
     const m = {
-      end: 'завяла', sel: SEL, t: 0, dirty: true,
+      end: 'завяла', sel: SEL, t: 0, intro: 0, dirty: true,
+      drawIntro(g) {
+        txt(g, 'те же 11 чисел «ромашки» со стенда 9', 500, 64, 40, { a: 'center', serif: true, w: 700, maxW: 940 });
+        drawWordCol(g, 'ромашка', 20, 140, { rh: 60 });
+        arrow(g, 400, 470, 470, 470, 7, PAL.orange, 28);
+        txt(g, '× веса', 435, 430, 34, { a: 'center', w: 700, c: '#A8501A' });
+        const NM = ['живое', 'предмет', 'действие', 'служебное'];
+        const box = (title, v, y) => { txt(g, title, 500, y, 40, { w: 700 }); NM.forEach((n, k) => { const yy = y + 56 + k * 52; txt(g, n, 700, yy, 32, { a: 'right', c: PAL.inkSoft }); txt(g, f2(v[k]), 720, yy, 36, { w: 700, c: '#A8321F' }); }); };
+        box('ключ: кто я', K4['ромашка'], 220); box('вопрос: кого ищу', Q4['ромашка'], 560);
+        txt(g, 'живое = 3 × растение', 500, 880, 30, { c: PAL.inkSoft }); txt(g, 'у других слов фразы так же', 500, 930, 30, { c: PAL.inkSoft });
+      },
       words() { return ['ромашка', 'стояла', 'в', 'вазе', 'и', 'она', this.end]; },
       query(w) { if (w === 'она') return ABOUT[this.end].map((x) => x * 2.2); return Q4[w]; },
       att(i) { const W = this.words(), q = this.query(W[i]); const sc = W.map((w) => K4[w].reduce((s, k, j) => s + k * q[j], 0) / 2); return { sc, p: softmax(sc) }; },
@@ -899,6 +1080,7 @@ export function makeModels(K) {
         for (const [row, y, off] of [[r1, 300, 0], [r2, 720, 4]]) { const ws = row.map((w) => c.measureText(w).width + 60), tot = ws.reduce((a, b) => a + b, 0) + (row.length - 1) * 30; let x = 500 - tot / 2; row.forEach((w, k) => { out[off + k] = [x + ws[k] / 2, y, ws[k]]; x += ws[k] + 30; }); }
         return out; },
       draw(g) {
+        if (this.intro) return this.drawIntro(g);
         g.fillStyle = '#2F2748'; g.fillRect(16, 16, 968, 968);
         const W = this.words(), P = this.pos(), { p, sc } = this.att(this.sel), src = P[this.sel];
         // threads
@@ -924,12 +1106,12 @@ export function makeModels(K) {
         void sc;
       },
       tick(dt) { this.t += dt; },
-      tap(x, y) { const P = this.pos(); let b = -1; P.forEach(([px, py, wd], j) => { if (Math.abs(x - px) < wd / 2 + 10 && Math.abs(y - py) < 60) b = j; }); if (b < 0) return false; this.sel = b; AUDIO.pluck(b / 4 - 1); this.sync(); return true; },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; },
-      press(k) { if (k.startsWith('w:')) this.sel = +k.slice(2); if (k === 'end') { this.end = OTHER(this.end); AUDIO.chime(true); } },
-      controls(box) { box.innerHTML = this.words().map((w, i) => bt(w, 'w:' + i)).join('') + bt('конец фразы: «' + OTHER(this.end) + '»', 'end') + '<div class="info"></div>'; wire(box, this, () => ''); },
+      tap(x, y) { if (this.intro) { this.intro = 0; this.sync(); return true; } const P = this.pos(); let b = -1; P.forEach(([px, py, wd], j) => { if (Math.abs(x - px) < wd / 2 + 10 && Math.abs(y - py) < 60) b = j; }); if (b < 0) return false; this.sel = b; AUDIO.pluck(b / 4 - 1); this.sync(); return true; },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k !== 'intro') this.intro = 0; },
+      press(k) { if (k === 'intro') { this.intro = 1; return; } this.intro = 0; if (k.startsWith('w:')) this.sel = +k.slice(2); if (k === 'end') { this.end = OTHER(this.end); AUDIO.chime(true); } },
+      controls(box) { box.innerHTML = this.words().map((w, i) => bt(w, 'w:' + i)).join('') + bt('конец фразы: «' + OTHER(this.end) + '»', 'end') + bt('откуда ключи', 'intro') + '<div class="info"></div>'; wire(box, this, () => ''); },
       syncExtra(box) { const W = this.words(); box.querySelectorAll('[data-b^="w:"]').forEach((b) => { const i = +b.dataset.b.slice(2); b.textContent = W[i]; b.classList.toggle('on', i === this.sel); }); box.querySelector('[data-b="end"]').textContent = 'конец фразы: «' + OTHER(this.end) + '»'; },
-      infoText() { const W = this.words(), { sc, p } = this.att(this.sel); const top = W.map((w, j) => [w, sc[j], p[j]]).filter((_, j) => j !== this.sel).sort((a, b) => b[2] - a[2]).slice(0, 2); return `сходство вопроса «${W[this.sel]}» с ключами: ` + top.map(([w, s, q]) => `${w} ${f1(s)} → <b>${pct(q)}</b>`).join(', ') + (W[this.sel] === 'она' ? `. Конец «${this.end}» подмешан в вопрос «она»: так делают прошлые слои` : ''); },
+      infoText() { if (this.intro) return 'из 11 чисел слова сеть делает ключ и вопрос · ткни доску, покажу фразу'; const W = this.words(), { sc, p } = this.att(this.sel); const top = W.map((w, j) => [w, sc[j], p[j]]).filter((_, j) => j !== this.sel).sort((a, b) => b[2] - a[2]).slice(0, 2); return `сходство вопроса «${W[this.sel]}» с ключами: ` + top.map(([w, s, q]) => `${w} ${f1(s)} → <b>${pct(q)}</b>`).join(', ') + (W[this.sel] === 'она' ? `. Конец «${this.end}» подмешан в вопрос «она»: так делают прошлые слои` : ''); },
     };
     m._att = (i) => m.att(i);
     models.push(m);
@@ -939,21 +1121,28 @@ export function makeModels(K) {
   // 11. Языковая модель: дерево продолжений и температура
   // =========================================================================
   {
-    const L1 = [['ромашка', 2.2], ['трава', 1.8], ['берёза', 1.3], ['малина', 1.0], ['ракета', -1.2]];
+    // та же фраза стенда 10, только конец спрятан: «Ромашка стояла в вазе, и она …»
+    const L1 = [['завяла', 2.2], ['засохла', 1.8], ['цвела', 1.3], ['разбилась', 1.0], ['улетела', -1.2]];
     const L2 = {
-      'ромашка': [['белая-белая', 1.8], ['у тропинки', 1.4], ['и цвела', 1.1], ['в шляпе', -0.6]],
-      'трава': [['по пояс', 2.0], ['густая', 1.4], ['и шелестела', 1.0], ['в галстуке', -0.9]],
-      'берёза': [['кудрявая', 1.6], ['у пруда', 1.2], ['одна', 0.8], ['с биноклем', -1.1]],
-      'малина': [['у забора', 1.6], ['сладкая', 1.5], ['и колола', 0.9], ['в позе йоги', -0.7]],
-      'ракета': [['из ромашек', 0.8], ['на старте', 0.6], ['и машет нам', 0.5], ['без визы', 0.2]],
+      'завяла': [['к утру', 1.8], ['без воды', 1.4], ['и поникла', 1.1], ['в шляпе', -0.6]],
+      'засохла': [['за неделю', 2.0], ['на окне', 1.4], ['и осыпалась', 1.0], ['в галстуке', -0.9]],
+      'цвела': [['всё лето', 1.6], ['и пахла', 1.2], ['для нас', 0.8], ['с биноклем', -1.1]],
+      'разбилась': [['на куски', 1.6], ['вместе с вазой', 1.5], ['о пол', 0.9], ['в позе йоги', -0.7]],
+      'улетела': [['на Луну', 0.8], ['в окно', 0.6], ['и машет нам', 0.5], ['без визы', 0.2]],
     };
+    const M10 = models[9], PRE = ['Ромашка', 'стояла', 'в вазе,', 'и она'];
     const m = {
-      T: 1.0, a: 0, b: -1, anim: null, phrase: '', count: 0, dirty: true,
+      T: 1.0, a: 0, b: -1, anim: null, phrase: '', count: 0, intro: 0, dirty: true,
       p1() { return softmax(L1.map(([, l]) => l / this.T)); },
       p2(a) { return softmax(L2[L1[a][0]].map(([, l]) => l / this.T)); },
       draw(g) {
+        if (this.intro) {
+          const keep = [M10.end, M10.sel, M10.intro]; M10.end = 'завяла'; M10.sel = 5; M10.intro = 0; M10.draw(g); [M10.end, M10.sel, M10.intro] = keep;
+          pill(g, 'фраза стенда 10: прячем «завяла»', 500, 80, 40, { a: 'center', bg: PAL.sun });
+          return;
+        }
         const p1 = this.p1(), a = this.a, p2 = this.p2(a), list = L2[L1[a][0]];
-        const RB = [28, 410, 214, 270], X1 = 280, W1 = 285, X2 = 610, W2 = 360;
+        const RB = [22, 330, 226, 360], X1 = 280, W1 = 285, X2 = 610, W2 = 360;
         const ys = L1.map((_, i) => 190 + i * 160), y2s = list.map((_, j) => 230 + j * 180);
         // branches first, boxes on top
         L1.forEach((_, i) => {
@@ -967,7 +1156,7 @@ export function makeModels(K) {
           g.beginPath(); g.moveTo(X1 + W1 - 10, ys[a]); g.bezierCurveTo(X2 - 30, ys[a], X2 - 40, y, X2 + 10, y); g.stroke(); g.restore();
         });
         g.fillStyle = PAL.sun; rr(g, ...RB, 18); g.fill(); g.lineWidth = 4; g.strokeStyle = PAL.ink; rr(g, ...RB, 18); g.stroke();
-        ['На', 'лугу', 'росла'].forEach((w, k) => txt(g, w, RB[0] + RB[2] / 2, RB[1] + 82 + k * 70, 50, { a: 'center', w: 700, serif: true, maxW: RB[2] - 20 }));
+        PRE.forEach((w, k) => txt(g, w, RB[0] + RB[2] / 2, RB[1] + 76 + k * 76, 44, { a: 'center', w: 700, serif: true, maxW: RB[2] - 20 }));
         L1.forEach(([w], i) => {
           const y = ys[i], hi = i === a;
           g.fillStyle = hi ? '#F8D990' : PAL.paper; rr(g, X1, y - 62, W1, 124, 16); g.fill(); g.lineWidth = hi ? 5 : 3; g.strokeStyle = PAL.ink; rr(g, X1, y - 62, W1, 124, 16); g.stroke();
@@ -990,95 +1179,83 @@ export function makeModels(K) {
         if (!this.anim) return;
         const A = this.anim; A.t += dt;
         if (A.stage === 0 && A.t > 0.12) { A.t = 0; A.spin++; this.a = A.spin < 8 ? Math.floor(Math.random() * L1.length) : A.a; this.b = -1; AUDIO.pluck(this.a / 3 - 0.7, 0.6); if (A.spin >= 8) { A.stage = 1; A.spin = 0; } this.dirty = true; }
-        else if (A.stage === 1 && A.t > 0.12) { A.t = 0; A.spin++; this.b = A.spin < 8 ? Math.floor(Math.random() * 4) : A.b; AUDIO.pluck(this.b / 3 - 0.3, 0.6); if (A.spin >= 8) { this.anim = null; this.count++; this.phrase = `На лугу росла ${L1[this.a][0]} ${L2[L1[this.a][0]][this.b][0]}`; AUDIO.chime(true); this.sync(); } this.dirty = true; }
+        else if (A.stage === 1 && A.t > 0.12) { A.t = 0; A.spin++; this.b = A.spin < 8 ? Math.floor(Math.random() * 4) : A.b; AUDIO.pluck(this.b / 3 - 0.3, 0.6); if (A.spin >= 8) { this.anim = null; this.count++; this.phrase = `…и она ${L1[this.a][0]} ${L2[L1[this.a][0]][this.b][0]}`; AUDIO.chime(true); this.sync(); } this.dirty = true; }
       },
       gen() { const a = this.sample(this.p1()), b = this.sample(this.p2(a)); this.anim = { stage: 0, t: 0, spin: 0, a, b }; this.phrase = ''; },
-      tap(x, y) { if (x > 260 && x < 570) { const i = Math.round((y - 190) / 160); if (i >= 0 && i < 5) { this.a = i; this.b = -1; this.phrase = ''; AUDIO.pluck(i / 3 - 0.7); this.sync(); return true; } } return false; },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; },
-      press(k) { if (k === 'gen' && !this.anim) this.gen(); },
+      tap(x, y) { if (this.intro) { this.intro = 0; this.sync(); return true; } if (x > 260 && x < 570) { const i = Math.round((y - 190) / 160); if (i >= 0 && i < 5) { this.a = i; this.b = -1; this.phrase = ''; AUDIO.pluck(i / 3 - 0.7); this.sync(); return true; } } return false; },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k !== 'intro') this.intro = 0; },
+      press(k) { if (k === 'intro') { this.intro = 1; return; } this.intro = 0; if (k === 'gen' && !this.anim) this.gen(); },
       controls(box) { box.innerHTML = sl('температура', 'T', 0.1, 2.5, 0.05, this.T) + bt('сгенерировать', 'gen') + '<div class="info"></div>'; wire(box, this, (k, v) => f2(v)); },
-      infoText() { const p = this.p1(); const t = this.T < 0.4 ? 'холодно: почти всегда «ромашка»' : this.T > 1.6 ? 'жарко: и ракету на лугу вырастит' : 'тепло: обычно разумно, иногда чудит'; return `${t} · «${L1[0][0]}» ${pct(p[0])}, «ракета» ${pct(p[4])}${this.phrase ? `<br>последняя фраза: <b>${this.phrase}</b>` : ''}`; },
+      infoText() { const p = this.p1(); if (this.intro) return 'это доска стенда 10: «она» смотрит на «ромашку» · ткни доску, покажу угадывание'; const t = this.T < 0.4 ? 'холодно: почти всегда «завяла»' : this.T > 1.6 ? 'жарко: и улететь может' : 'тепло: обычно разумно, иногда чудит'; return `${t} · «${L1[0][0]}» ${pct(p[0])}, «улетела» ${pct(p[4])}${this.phrase ? `<br>последняя фраза: <b>${this.phrase}</b>` : ''}`; },
     };
     models.push(m);
   }
 
   // =========================================================================
-  // 12. Диффузия: картинка тонет в шуме и проявляется обратно
+  // 12. Диффузия: те же 64 числа ромашки тонут в шуме и проявляются обратно
   // =========================================================================
   {
-    const N = 32, D3 = N * N * 3;
-    const draws = {
-      'ромашка': (g) => { g.fillStyle = '#6F9FD0'; g.fillRect(0, 0, N, N); g.fillStyle = '#5E8A45'; g.fillRect(0, 26, N, 6); g.strokeStyle = '#4F7F3A'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(16, 16); g.lineTo(16, 32); g.stroke(); g.fillStyle = '#FFFFFF'; for (let q = 0; q < 10; q++) { const a = q / 10 * TAU; g.beginPath(); g.ellipse(16 + Math.cos(a) * 6.5, 13 + Math.sin(a) * 6.5, 5, 2, a, 0, TAU); g.fill(); } g.fillStyle = '#F2B824'; g.beginPath(); g.arc(16, 13, 3.2, 0, TAU); g.fill(); },
-      'василёк': (g) => { g.fillStyle = '#E8DDB8'; g.fillRect(0, 0, N, N); g.fillStyle = '#9DB36A'; g.fillRect(0, 26, N, 6); g.strokeStyle = '#4F7F3A'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(16, 16); g.lineTo(16, 32); g.stroke(); g.fillStyle = '#3E6FC4'; for (let q = 0; q < 8; q++) { const a = q / 8 * TAU; g.beginPath(); g.moveTo(16 + Math.cos(a) * 2, 13 + Math.sin(a) * 2); g.lineTo(16 + Math.cos(a - 0.35) * 9, 13 + Math.sin(a - 0.35) * 9); g.lineTo(16 + Math.cos(a + 0.35) * 9, 13 + Math.sin(a + 0.35) * 9); g.fill(); } g.fillStyle = '#23336E'; g.beginPath(); g.arc(16, 13, 2.6, 0, TAU); g.fill(); },
-      'солнце': (g) => { g.fillStyle = '#4E3F6E'; g.fillRect(0, 0, N, N); g.fillStyle = '#E3B1A1'; g.fillRect(0, 20, N, 12); g.fillStyle = '#F1BF4A'; g.beginPath(); g.arc(16, 18, 8, 0, TAU); g.fill(); g.fillStyle = '#3C8783'; g.fillRect(0, 26, N, 6); },
-      'ёлка': (g) => { g.fillStyle = '#EFE3C9'; g.fillRect(0, 0, N, N); g.fillStyle = '#3F6E66'; for (let k = 0; k < 3; k++) { g.beginPath(); g.moveTo(16, 3 + k * 7); g.lineTo(6 - k * 1, 14 + k * 7); g.lineTo(26 + k * 1, 14 + k * 7); g.fill(); } g.fillStyle = '#A8784C'; g.fillRect(14, 27, 4, 5); g.fillStyle = '#BF3F2C'; g.fillRect(12, 15, 2, 2); g.fillRect(19, 21, 2, 2); },
-    };
-    const NAMES = Object.keys(draws);
+    // считаем от серого: число − 128, тогда шум прибавляется честно в обе стороны
+    const NAMES = ['ромашка', 'василёк', 'колокольчик'];
+    const GAL = {}; for (const n of NAMES) GAL[n] = pix8(n).map((b) => (b - 128) / 128);
+    const show = (u) => clamp(Math.round(128 + 128 * u), 0, 255);
     const abar = (t) => Math.max(1e-4, Math.cos(t * Math.PI / 2) ** 2);
+    const GX = 30, GY = 100, GC = 68;
     const m = {
-      src: 'ромашка', t: 0.6, x: null, guess: null, w: null, run: null, ready: false, seed: 1, dirty: true,
-      init() {
-        this.gal = {}; this.cv = mkCanvas(N, N); this.cv2 = mkCanvas(N, N); this.thumbs = {};
-        for (const n of NAMES) { const c = mkCanvas(N, N), g = c.getContext('2d'); draws[n](g); const d = g.getImageData(0, 0, N, N).data, v = new Float32Array(D3); for (let p = 0; p < N * N; p++) for (let ch = 0; ch < 3; ch++) v[ch * N * N + p] = d[p * 4 + ch] / 127.5 - 1; this.gal[n] = v; this.thumbs[n] = c; }
-        this.newNoise(); this.ready = true; this.forward();
-      },
-      newNoise() { const R = mulberry(this.seed++ * 7919), e = new Float32Array(D3); for (let i = 0; i < D3; i++) e[i] = gauss(R); this.eps = e; },
-      forward() { const a = abar(this.t), s = Math.sqrt(a), r = Math.sqrt(1 - a), x0 = this.gal[this.src], x = new Float32Array(D3); for (let i = 0; i < D3; i++) x[i] = s * x0[i] + r * this.eps[i]; this.x = x; this.denoise(); },
-      // denoiser that remembers four pictures: weights over the gallery (softened /30, so it doubts longer, like a real net), then the expected picture
+      src: 'ромашка', t: 0, x: null, guess: null, w: null, run: null, seed: 1, dirty: true,
+      newNoise() { const R = mulberry(this.seed++ * 7919), e = new Float32Array(64); for (let i = 0; i < 64; i++) e[i] = gauss(R); this.eps = e; },
+      forward() { const a = abar(this.t), s = Math.sqrt(a), r = Math.sqrt(1 - a), x0 = GAL[this.src], x = new Float32Array(64); for (let i = 0; i < 64; i++) x[i] = s * x0[i] + r * this.eps[i]; this.x = x; this.denoise(); },
+      // сеть, которая помнит три картинки стенда 1: веса по сходству с каждой (смягчены, чтобы сомневалась дольше), потом ожидаемая картинка
       denoise() {
-        const a = abar(this.t), s = Math.sqrt(a), x = this.x, lg = NAMES.map((n) => { const g0 = this.gal[n]; let d = 0; for (let i = 0; i < D3; i++) { const u = x[i] - s * g0[i]; d += u * u; } return -d / (2 * Math.max(1e-4, 1 - a)) / 30; });
-        if (this.run && this.cond) { const k = NAMES.indexOf(this.cond); if (k >= 0) lg[k] += 4; } // подсказка словом: каждый шаг чуть тянет к названной картинке
-        this.w = softmax(lg); const gs = new Float32Array(D3); NAMES.forEach((n, k) => { const g0 = this.gal[n], wk = this.w[k]; for (let i = 0; i < D3; i++) gs[i] += wk * g0[i]; }); this.guess = gs;
+        const a = abar(this.t), s = Math.sqrt(a), x = this.x, lg = NAMES.map((n) => { const g0 = GAL[n]; let d = 0; for (let i = 0; i < 64; i++) { const u = x[i] - s * g0[i]; d += u * u; } return -d / (2 * Math.max(1e-4, 1 - a)) / 3; });
+        if (this.run && this.cond) { const k = NAMES.indexOf(this.cond); if (k >= 0) lg[k] += 3; } // подсказка словом: каждый шаг чуть тянет к названной картинке
+        this.w = softmax(lg); const gs = new Float32Array(64); NAMES.forEach((n, k) => { const g0 = GAL[n], wk = this.w[k]; for (let i = 0; i < 64; i++) gs[i] += wk * g0[i]; }); this.guess = gs;
       },
-      paint(cv, v) { const g = cv.getContext('2d'), id = g.createImageData(N, N); for (let p = 0; p < N * N; p++) { for (let ch = 0; ch < 3; ch++) id.data[p * 4 + ch] = clamp((v[ch * N * N + p] + 1) * 127.5, 0, 255); id.data[p * 4 + 3] = 255; } g.putImageData(id, 0, 0); },
+      init() { if (!this.eps) { this.newNoise(); this.forward(); } },
       draw(g) {
-        if (!this.ready) this.init();
-        this.paint(this.cv, this.x); this.paint(this.cv2, this.guess);
-        g.imageSmoothingEnabled = false;
-        g.drawImage(this.cv, 40, 90, 580, 580); inkRect(g, 40, 90, 580, 580, 5, PAL.ink, 3);
-        txt(g, this.run ? 'проявляем из шума' : 'картинка в шуме', 40, 68, 42, { w: 700 });
-        g.drawImage(this.cv2, 660, 130, 300, 300); inkRect(g, 660, 130, 300, 300, 4, PAL.ink, 4);
-        g.imageSmoothingEnabled = true;
-        txt(g, 'догадка сети', 660, 112, 40, { w: 700, c: PAL.inkSoft });
-        const nz = 1 - abar(this.t);
-        txt(g, 'шум', 660, 510, 42, { w: 700 });
-        g.fillStyle = PAL.paperShade; g.fillRect(660, 530, 300, 40); g.fillStyle = PAL.inkSoft; g.fillRect(660, 530, 300 * nz, 40); g.lineWidth = 3; g.strokeStyle = PAL.ink; g.strokeRect(660, 530, 300, 40);
-        txt(g, pct(nz), 960, 510, 44, { a: 'right', w: 700 });
-        txt(g, 'на что похоже:', 40, 735, 40, { w: 700, c: PAL.inkSoft });
+        this.init();
+        const v = Array.from(this.x, show), nz = 1 - abar(this.t);
+        txt(g, this.run ? 'проявляем из шума' : nz < 0.005 ? `${this.src} со стенда 1: те же 64 числа` : `${this.src} в шуме`, GX, GY - 24, 38, { w: 700, maxW: 600 });
+        drawVals(g, v, GX, GY, GC, { grid: true, nums: 25, fw: 5 });
+        txt(g, 'догадка сети', 640, 110, 36, { w: 700, c: PAL.inkSoft });
+        drawVals(g, Array.from(this.guess, show), 640, 130, 40, { fw: 4 });
+        txt(g, 'шум', 640, 520, 40, { w: 700 });
+        g.fillStyle = PAL.paperShade; g.fillRect(640, 540, 320, 40); g.fillStyle = PAL.inkSoft; g.fillRect(640, 540, 320 * nz, 40); g.lineWidth = 3; g.strokeStyle = PAL.ink; g.strokeRect(640, 540, 320, 40);
+        txt(g, pct(nz), 960, 520, 42, { a: 'right', w: 700 });
+        txt(g, 'на что похоже:', GX, 690, 38, { w: 700, c: PAL.inkSoft });
         NAMES.forEach((n, k) => {
-          const x = 40 + k * 235, y = 760, TS = 124;
-          g.imageSmoothingEnabled = false; g.drawImage(this.thumbs[n], x, y, TS, TS); g.imageSmoothingEnabled = true;
-          g.lineWidth = n === this.src && !this.run ? 8 : 3; g.strokeStyle = n === this.src && !this.run ? PAL.orange : PAL.ink; g.strokeRect(x, y, TS, TS);
-          txt(g, pct(this.w[k]), x + TS + 6, y + 56, 38, { w: 700, c: this.w[k] > 0.5 ? '#A8321F' : PAL.ink, maxW: 98 });
-          txt(g, n, x, y + TS + 48, 38, { c: PAL.ink, w: 600 });
-          g.fillStyle = rgba(PAL.orange, 0.8); g.fillRect(x + TS + 6, y + 76, 90 * this.w[k], 14);
+          const x = GX + k * 320, y = 715, TS = 120, on = n === this.src && !this.run;
+          drawVals(g, pix8(n), x, y, TS / 8, { frame: on ? PAL.orange : PAL.ink, fw: on ? 8 : 3 });
+          txt(g, pct(this.w[k]), x + TS + 12, y + 56, 40, { w: 700, c: this.w[k] > 0.5 ? '#A8321F' : PAL.ink, maxW: 160 });
+          g.fillStyle = rgba(PAL.orange, 0.8); g.fillRect(x + TS + 12, y + 76, 150 * this.w[k], 14);
+          txt(g, n, x, y + TS + 46, 36, { c: PAL.ink, w: 600 });
         });
       },
       tick(dt) {
         if (!this.run) return;
         this.run.t += dt; if (this.run.t < 0.07) return; this.run.t = 0;
-        // one DDIM step from t to t − 1/40, using the denoiser's guess
+        // один шаг очистки (DDIM) от t к t − 1/40 по догадке сети
         const t0 = this.t, t1 = Math.max(0, t0 - 1 / 40), a0 = abar(t0), a1 = t1 <= 0 ? 1 : abar(t1);
         this.denoise();
-        const x = this.x, x0 = this.guess, nx = new Float32Array(D3), s0 = Math.sqrt(a0), r0 = Math.sqrt(Math.max(1e-6, 1 - a0));
-        for (let i = 0; i < D3; i++) { const e = (x[i] - s0 * x0[i]) / r0; nx[i] = Math.sqrt(a1) * x0[i] + Math.sqrt(1 - a1) * e; }
+        const x = this.x, x0 = this.guess, nx = new Float32Array(64), s0 = Math.sqrt(a0), r0 = Math.sqrt(Math.max(1e-6, 1 - a0));
+        for (let i = 0; i < 64; i++) { const e = (x[i] - s0 * x0[i]) / r0; nx[i] = Math.sqrt(a1) * x0[i] + Math.sqrt(1 - a1) * e; }
         this.x = nx; this.t = t1; this.denoise();
         if (this.t <= 0) { this.run = null; this.src = NAMES[this.w.indexOf(Math.max(...this.w))]; AUDIO.chime(true); this.sync(); }
         else { AUDIO.pluck(1 - this.t * 2, 0.4); if (Math.round(this.t * 40) % 5 === 0) this.sync(); }
         this.dirty = true;
       },
-      tap(x, y) { if (y > 750 && y < 960) { const k = Math.floor((x - 40) / 235); if (k >= 0 && k < 4) { this.src = NAMES[k]; this.run = null; this.forward(); this.sync(); return true; } } return false; },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k === 't') { this.run = null; this.forward(); } },
+      tap(x, y) { if (y > 700 && y < 900) { const k = Math.floor((x - GX) / 320); if (k >= 0 && k < 3) { this.src = NAMES[k]; this.run = null; this.init(); this.forward(); this.sync(); return true; } } return false; },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k === 't') { this.run = null; this.init(); this.forward(); } },
       press(k) {
-        if (!this.ready) this.init();
+        this.init();
         if (k === 'gen' || k.startsWith('gen:')) { this.cond = k.startsWith('gen:') ? k.slice(4) : null; this.newNoise(); this.t = 1; this.x = this.eps.slice(); this.run = { t: 0 }; this.denoise(); }
         if (k.startsWith('p:')) { this.src = k.slice(2); this.run = null; this.forward(); }
       },
       controls(box) { box.innerHTML = sl('утопить в шуме', 't', 0, 1, 0.01, this.t) + bt('проявить из чистого шума', 'gen') + bt('проявить «ромашку»', 'gen:ромашка') + NAMES.map((n) => bt(n, 'p:' + n)).join('') + '<div class="info"></div>'; wire(box, this, (k, v) => pct(1 - abar(v))); },
       syncExtra(box) { box.querySelectorAll('[data-b^="p:"]').forEach((b) => b.classList.toggle('on', b.dataset.b === 'p:' + this.src && !this.run)); },
-      infoText() { return this.run ? `шаг ${40 - Math.round(this.t * 40)} из 40: каждый шаг чуть чистит шум по догадке сети${this.cond ? `, а слово «${this.cond}» подталкивает догадку` : ''}` : 'сеть здесь выучила четыре картинки: ромашку, василёк, солнце и ёлку. Из чистого шума она каждый раз проявит одну из них, какую, решает случай'; },
+      infoText() { return this.run ? `шаг ${40 - Math.round(this.t * 40)} из 40: каждый шаг чуть чистит шум по догадке сети${this.cond ? `, а слово «${this.cond}» подталкивает догадку` : ''}` : 'сеть здесь выучила три картинки стенда 1: ромашку, василёк и колокольчик. Из чистого шума она проявит одну из них, какую, решает случай'; },
     };
-    m._init = () => m.init();
+    m._init = () => m.init(); m._GAL = GAL;
     models.push(m);
   }
 
@@ -1089,7 +1266,7 @@ export function makeModels(K) {
     const MAP = ['S...#.', '##.#..', '...#.#', '.#....', '.###L.', '.....B'];
     const NR = 6, NC = 6, A = [[-1, 0], [0, 1], [1, 0], [0, -1]];
     const m = {
-      Q: null, eps: 0.2, ep: 0, lastLen: 0, pos: [0, 0], steps: 0, play: false, fast: 0, t: 0, trail: [], dirty: true, bestLen: null,
+      intro: 0, Q: null, eps: 0.2, ep: 0, lastLen: 0, pos: [0, 0], steps: 0, play: false, fast: 0, t: 0, trail: [], dirty: true, bestLen: null,
       reset() { this.Q = Array.from({ length: NR * NC }, () => [0, 0, 0, 0]); this.ep = 0; this.lastLen = 0; this.pos = [0, 0]; this.steps = 0; this.play = false; this.fast = 0; this.trail = []; this.bestLen = null; },
       cell(r, c) { return MAP[r][c]; },
       stepOnce() {
@@ -1114,7 +1291,7 @@ export function makeModels(K) {
           if (ch === '#') { g.fillStyle = '#6A5A86'; g.fillRect(x, y, C, C); g.strokeStyle = 'rgba(42,28,19,0.4)'; g.lineWidth = 2; for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(x, y + k * C / 4); g.lineTo(x + C, y + k * C / 4); g.stroke(); } continue; }
           g.fillStyle = css(v > 0 ? mixc(C_PAPER, [0.58, 0.72, 0.45], Math.min(1, v / vmax)) : v < 0 ? mixc(C_PAPER, [0.85, 0.6, 0.55], Math.min(1, -v * 2)) : C_PAPER); g.fillRect(x, y, C, C);
           if (ch === 'L') { g.save(); g.strokeStyle = 'rgba(70,60,80,0.75)'; g.lineWidth = 2.5; const cx = x + C / 2, cy = y + C / 2 - 8; for (let k = 0; k < 8; k++) { const a = k / 8 * TAU; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * 58, cy + Math.sin(a) * 50); g.stroke(); } for (const rr0 of [16, 32, 48]) { g.beginPath(); for (let k = 0; k <= 8; k++) { const a = k / 8 * TAU; const px = cx + Math.cos(a) * rr0 * 1.15, py = cy + Math.sin(a) * rr0; k ? g.lineTo(px, py) : g.moveTo(px, py); } g.stroke(); } g.restore(); txt(g, 'паутина', x + C / 2, y + C - 10, 30, { a: 'center', c: '#3A2E4A', w: 700 }); }
-          if (ch === 'B') { daisy(g, x + C / 2, y + C / 2, 62); continue; }
+          if (ch === 'B') { drawVals(g, DAISY64, x + 11, y + 11, 16, { frame: F_DAISY, fw: 5 }); continue; }
           if (ch !== 'B' && (q[0] || q[1] || q[2] || q[3])) {
             const a = q.indexOf(Math.max(...q)), conf = Math.min(1, Math.max(0, v) / vmax), L = 30 + 30 * conf;
             arrow(g, x + C / 2 - A[a][1] * L * 0.6, y + C / 2 - A[a][0] * L * 0.6, x + C / 2 + A[a][1] * L, y + C / 2 + A[a][0] * L, 6 + 4 * conf, v > 0 ? '#2F5F2A' : '#9A4A3A', 26);
@@ -1133,6 +1310,14 @@ export function makeModels(K) {
         g.save(); g.beginPath(); g.ellipse(dx, dy, 40, 27, 0, 0, TAU); g.clip(); g.fillStyle = '#2A1C13'; for (const sx0 of [-14, 4, 22]) g.fillRect(dx + sx0 - 5, dy - 30, 10, 60); g.restore();
         g.lineWidth = 4; g.strokeStyle = PAL.ink; g.beginPath(); g.ellipse(dx, dy, 40, 27, 0, 0, TAU); g.stroke();
         g.fillStyle = PAL.ink; g.beginPath(); g.arc(dx - 28, dy - 6, 4, 0, TAU); g.fill();
+        if (this.intro) {
+          g.fillStyle = 'rgba(239,227,201,0.96)'; rr(g, 60, 110, 470, 520, 20); g.fill(); g.lineWidth = 4; g.strokeStyle = PAL.ink; rr(g, 60, 110, 470, 520, 20); g.stroke();
+          txt(g, 'ромашка со стенда 1', 295, 170, 38, { a: 'center', w: 700 });
+          drawVals(g, DAISY64, 175, 200, 30, { frame: F_DAISY, fw: 6 });
+          pill(g, 'награда +1', 295, 500, 46, { a: 'center', bg: PAL.sun });
+          txt(g, 'те же 64 числа', 295, 585, 34, { a: 'center', c: PAL.inkSoft });
+          arrow(g, 530, 520, X0 + 5 * C + 20, Y0 + 5 * C + 20, 7, PAL.orange, 30);
+        }
         txt(g, `полётов ${this.ep}${this.lastLen ? ` · последний ${this.lastLen} шагов` : ''}`, 500, 62, 42, { a: 'center', w: 700, maxW: 900 });
       },
       tick(dt) {
@@ -1142,16 +1327,18 @@ export function makeModels(K) {
         const e = this.stepOnce(); this.dirty = true;
         if (e === 'found') { AUDIO.chime(true); this.sync(); } else if (e === 'splash') AUDIO.pluck(-1); else AUDIO.pluck(0.2, 0.3);
       },
-      get(k) { return this[k]; }, set(k, v) { this[k] = v; },
-      press(k) { if (k === 'play') this.play = !this.play; if (k === 'fast') { this.fast = 20; this.play = false; } if (k === 'reset') this.reset(); },
-      controls(box) { box.innerHTML = bt('▶ летать', 'play') + bt('▶▶ 20 полётов', 'fast') + bt('заново', 'reset') + sl('любопытство', 'eps', 0, 0.6, 0.05, this.eps) + '<div class="info"></div>'; wire(box, this, (k, v) => pct(v)); },
+      tap() { if (this.intro) { this.intro = 0; this.dirty = true; this.sync(); return true; } return false; },
+      get(k) { return this[k]; }, set(k, v) { this[k] = v; if (k !== 'intro') this.intro = 0; },
+      press(k) { if (k !== 'intro') this.intro = 0; if (k === 'intro') this.intro = 1; if (k === 'play') this.play = !this.play; if (k === 'fast') { this.fast = 20; this.play = false; } if (k === 'reset') this.reset(); },
+      controls(box) { box.innerHTML = bt('▶ летать', 'play') + bt('▶▶ 20 полётов', 'fast') + bt('заново', 'reset') + bt('где награда', 'intro') + sl('любопытство', 'eps', 0, 0.6, 0.05, this.eps) + '<div class="info"></div>'; wire(box, this, (k, v) => pct(v)); },
       syncExtra(box) { const b = box.querySelector('[data-b="play"]'); b.classList.toggle('on', this.play); b.textContent = this.play ? '❚❚ пауза' : '▶ летать'; },
-      infoText() { const gl = this.greedyLen(); return `полётов <b>${this.ep}</b>${gl ? ` · по стрелкам до ромашки <b>${gl}</b> шагов` : ' · стрелки пока не довели до ромашки'} · ромашка +1, паутина −0,5, шаг −0,04`; },
+      infoText() { if (this.intro) return 'награда это ромашка со стенда 1 в правом нижнем углу · ткни доску'; const gl = this.greedyLen(); return `полётов <b>${this.ep}</b>${gl ? ` · по стрелкам до ромашки <b>${gl}</b> шагов` : ' · стрелки пока не довели до ромашки'} · ромашка +1, паутина −0,5, шаг −0,04`; },
     };
     m.reset();
     models.push(m);
   }
 
+  models.drawHero = (g, x, y, c) => drawVals(g, DAISY64, x, y, c, { frame: F_DAISY, fw: 5 });
   models.forEach((m, i) => { m.n = i + 1; if (!m.sync) m.sync = () => { m.dirty = true; }; });
   return models;
 }
