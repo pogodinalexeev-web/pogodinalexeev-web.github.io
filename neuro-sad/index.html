@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2F2748">
 <link rel="icon" href="data:,">
-<title>Курс нейросетей — 13 станков по тропе</title>
+<title>Курс нейросетей — 13 стендов по тропе</title>
 <style>
   :root{
     --paper:#EFE3C9; --paperShade:#E2D1B0; --ink:#2A1C13; --inkSoft:#4A3526; --inkFaint:#7A6550;
@@ -157,10 +157,10 @@
   </div>
   <div class="body hidden" id="lnav"><button id="lprev">← назад</button><button id="lnext">дальше →</button></div>
 </div>
-<div id="dock"><button class="btn" id="dmic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z" fill="currentColor"/></svg>спросить</button><button class="btn" id="reopen" style="display:none">💬</button><button class="btn" id="snd">♪</button><button class="btn" id="next">станок 1 →</button></div>
+<div id="dock"><button class="btn" id="dmic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z" fill="currentColor"/></svg>спросить</button><button class="btn" id="reopen" style="display:none">💬</button><button class="btn" id="snd">♪</button><button class="btn" id="next">стенд 1 →</button></div>
 <div id="chat" class="paper hidden">
   <div class="chead"><b>Прохор</b><span id="cwhere"></span><button id="cmin">свернуть ▾</button></div>
-  <div id="clog"><div class="msg hello">Спроси голосом или текстом что угодно про станок, у которого стоишь. Отвечаю коротко и по-простому.</div></div>
+  <div id="clog"><div class="msg hello">Спроси голосом или текстом что угодно про стенд, у которого стоишь. Отвечаю коротко и по-простому.</div></div>
   <div id="cstat"></div>
   <div class="crow"><input id="cin" type="text" maxlength="600" placeholder="или напиши вопрос…" enterkeyhint="send" autocomplete="off"><button id="csend" aria-label="отправить">➤</button></div>
   <button id="cmic" class="btn"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z" fill="currentColor"/></svg>нажми и говори</button>
@@ -852,7 +852,7 @@ function lantern(x, z, h = 2.6, parent = scene) {
   const gg = c.getContext('2d');
   inkRect(gg, 18, 18, W - 36, H - 36, 5, PAL.ink, 5);
   gg.fillStyle = PAL.ink; gg.textAlign = 'center'; gg.font = `700 78px ${SERIF}`; gg.fillText('Курс нейросетей', W / 2, 160);
-  gg.font = `italic 44px ${SERIF}`; gg.fillStyle = PAL.inkSoft; gg.fillText('13 станков по одной тропе', W / 2, 240);
+  gg.font = `italic 44px ${SERIF}`; gg.fillStyle = PAL.inkSoft; gg.fillText('13 стендов по одной тропе', W / 2, 240);
   { const kk = [[1, 0, -1], [2, 0, -2], [1, 0, -1]]; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) { gg.fillStyle = [PAL.stripeApricot, PAL.paper, PAL.waterLight][kk[a][b] > 0 ? 0 : kk[a][b] < 0 ? 2 : 1]; gg.fillRect(70 + b * 46, 80 + a * 46, 44, 44); gg.fillStyle = PAL.ink; gg.font = `600 26px ${SANS}`; gg.fillText(String(kk[a][b]).replace('-', '−'), 92 + b * 46, 112 + a * 46); }
     inkRect(gg, 70, 80, 138, 138, 4, PAL.ink, 8); }
   { const R = mulberry(4); for (let q = 0; q < 16; q++) { const hh = 20 + R() * 110; gg.fillStyle = q % 4 === 1 ? PAL.orange : q % 3 ? PAL.teal : PAL.sun; gg.fillRect(W - 250 + q * 12, 220 - hh, 9, hh); } inkStroke(gg, [[W - 256, 222], [W - 50, 222]], 4, PAL.ink, { seed: 9 }); }
@@ -930,7 +930,7 @@ const AUDIO = (() => {
 
 
 // ===========================================================================
-// THE COURSE: 13 станков по прямой тропе
+// THE COURSE: 13 стендов по прямой тропе
 // ===========================================================================
 const COURSE = await fetch('./course.json', { cache: 'no-cache' }).then((r) => r.json());
 const NST = COURSE.length; // 13
@@ -1261,7 +1261,7 @@ function paperURL(color, seed, grain = 1) { return paperCanvas(256, 256, color, 
   for (let i = 0; i < im.data.length; i += 4) { const v = 128 + (R() - 0.5) * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
   g.putImageData(im, 0, 0);
   $('grain').style.backgroundImage = `url(${c.toDataURL()})`;
-  $('dots').innerHTML = COURSE.map((c, k) => `<button class="dot" data-go="${k}" aria-label="станок ${k + 1}"></button>`).join('');
+  $('dots').innerHTML = COURSE.map((c, k) => `<button class="dot" data-go="${k}" aria-label="стенд ${k + 1}"></button>`).join('');
   $('dots').querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click', () => flyTo(+b.dataset.go)));
 }
 let active = -2, userMin = Q.has('min');
@@ -1278,12 +1278,12 @@ function setActive(i, open) {
   if (i < 0) {
     $('cnum').textContent = '✦'; $('cnum').style.background = PAL.sun;
     $('ctitle').textContent = 'Курс нейросетей';
-    $('ctext').textContent = 'Тринадцать станков по одной тропе: от «всё есть числа» до обучения наградой. На каждом живая модель, все числа считаются по-настоящему. Жми «станок 1 →» и иди вперёд. Непонятно, жми «спросить» внизу и задай вопрос Прохору голосом.';
+    $('ctext').textContent = 'Тринадцать стендов по одной тропе: от «всё есть числа» до обучения наградой. На каждом живая модель, все числа считаются по-настоящему. Жми «стенд 1 →» и иди вперёд. Непонятно, жми «спросить» внизу и задай вопрос Прохору голосом.';
     $('cformula').textContent = '';
   } else if (i === FINAL_I) {
     $('cnum').textContent = '✦'; $('cnum').style.background = PAL.sun;
     $('ctitle').textContent = 'Весь путь';
-    $('ctext').textContent = `Ты прошёл тропу: числа, нейрон, спуск, обратный ход ошибки, слои, свёртки, векторы слов, внимание, языковые модели, диффузия и награда. Отмечено станков: ${visited.size} из ${NST}. Ткни номер, чтобы вернуться к любому.`;
+    $('ctext').textContent = `Ты прошёл тропу: числа, нейрон, спуск, обратный ход ошибки, слои, свёртки, векторы слов, внимание, языковые модели, диффузия и награда. Отмечено стендов: ${visited.size} из ${NST}. Ткни номер, чтобы вернуться к любому.`;
     $('cformula').textContent = '';
     const d = document.createElement('div'); d.style.display = 'contents';
     d.innerHTML = COURSE.map((c, k) => `<button class="btn" data-go="${k}">${k + 1}</button>`).join('') + '<button class="btn on big" data-go="-1">↺ в начало тропы</button>';
@@ -1307,7 +1307,7 @@ function setActive(i, open) {
   requestAnimationFrame(() => applyView());
 }
 // ---------------------------------------------------------------------------
-// LESSON: 10 шагов на станок, листаются внутри карточки; шаги «покрути сам» ведут доску
+// LESSON: 10 шагов на стенд, листаются внутри карточки; шаги «покрути сам» ведут доску
 // ---------------------------------------------------------------------------
 const LSTEP = {}, QUIZ = {};
 const lessonOf = (i) => (i >= 0 && i < NST ? COURSE[i].lessons || [] : []);
@@ -1354,7 +1354,7 @@ function renderLesson(apply) {
   if (apply && s.do) applyDo(MODELS[i], s.do);
   pulseCtrl(s.hlc);
   $('lprev').disabled = k === 0;
-  $('lnext').textContent = k < L.length - 1 ? 'дальше →' : i < NST - 1 ? `станок ${i + 2} →` : 'финал →';
+  $('lnext').textContent = k < L.length - 1 ? 'дальше →' : i < NST - 1 ? `стенд ${i + 2} →` : 'финал →';
   stations[i].board.dirty = true;
   updateNav();
 }
@@ -1374,11 +1374,11 @@ window.__lesson = { go: lessonGo, step: () => LSTEP[active] || 0, len: () => les
 
 function updateNav() {
   const cur = cam.fly ? cam.fly.i : active;
-  $('next').textContent = cur < 0 ? 'станок 1 →' : cur < NST - 1 ? `станок ${cur + 2} →` : cur === NST - 1 ? 'финал →' : '↺ в начало';
-  $('ptext').textContent = cur < 0 ? 'начало тропы' : cur === FINAL_I ? 'финал · весь путь' : `станок ${cur + 1} из ${NST}`;
+  $('next').textContent = cur < 0 ? 'стенд 1 →' : cur < NST - 1 ? `стенд ${cur + 2} →` : cur === NST - 1 ? 'финал →' : '↺ в начало';
+  $('ptext').textContent = cur < 0 ? 'начало тропы' : cur === FINAL_I ? 'финал · весь путь' : `стенд ${cur + 1} из ${NST}`;
   $('back').style.visibility = cur < 0 ? 'hidden' : 'visible';
   $('dots').querySelectorAll('.dot').forEach((b, k) => { b.classList.toggle('on', k === cur); b.classList.toggle('seen', visited.has(k)); });
-  $('cwhere').textContent = cur >= 0 && cur < NST ? `у станка ${cur + 1} · шаг ${(LSTEP[cur] || 0) + 1}` : cur === FINAL_I ? 'на финале' : 'в начале тропы';
+  $('cwhere').textContent = cur >= 0 && cur < NST ? `у стенда ${cur + 1} · шаг ${(LSTEP[cur] || 0) + 1}` : cur === FINAL_I ? 'на финале' : 'в начале тропы';
 }
 function nextStation() { const cur = cam.fly ? cam.fly.i : active; flyTo(cur < 0 ? 0 : cur >= FINAL_I ? -1 : cur + 1); }
 function prevStation() { const cur = cam.fly ? cam.fly.i : active; flyTo(cur <= 0 ? -1 : cur - 1); }
@@ -1389,8 +1389,8 @@ function toggleSound() { const on = AUDIO.toggle(); $('snd').textContent = on ? 
 $('snd').addEventListener('click', toggleSound);
 let hintShown = true;
 $('hint').innerHTML = IS_TOUCH
-  ? '<span>«станок →» внизу: идти по тропе</span><span>палец по экрану: осмотреться</span><span>тап по доске: потрогать модель</span>'
-  : '<span>N или «станок →»: дальше</span><span>WASD: гулять</span><span>мышь: осмотреться</span><span>клик по доске: потрогать модель</span>';
+  ? '<span>«стенд →» внизу: идти по тропе</span><span>палец по экрану: осмотреться</span><span>тап по доске: потрогать модель</span>'
+  : '<span>N или «стенд →»: дальше</span><span>WASD: гулять</span><span>мышь: осмотреться</span><span>клик по доске: потрогать модель</span>';
 function hideHint() { if (!hintShown) return; hintShown = false; $('hint').style.opacity = 0; }
 setTimeout(hideHint, 14000);
 if (Q.has('shot')) $('hint').style.display = 'none';
