@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2F2748">
 <link rel="icon" href="data:,">
-<title>Курс нейросетей — 13 стендов по тропе</title>
+<title>Курс нейросетей: 13 стендов по тропе</title>
 <style>
   :root{
     --paper:#EFE3C9; --paperShade:#E2D1B0; --ink:#2A1C13; --inkSoft:#4A3526; --inkFaint:#7A6550;
@@ -170,7 +170,7 @@
 <div id="fps"></div>
 <script type="module">
 import * as THREE from './lib/three.module.js';
-import { makeModels } from './models.js';
+import { makeModels } from './models.js?v=20261003b';
 THREE.ColorManagement.enabled = false;
 // ---------------------------------------------------------------------------
 // palette (procedural-film house palette + subject tints)
@@ -1049,12 +1049,12 @@ for (let i = 0; i <= NST; i++) makeStation(i);
 // the final board: the whole path at a glance
 const visited = new Set();
 function drawFinal(g) {
-  g.fillStyle = PAL.ink; g.textAlign = 'center'; g.font = `700 62px ${SERIF}`; g.fillText('Весь путь', 500, 108);
+  g.fillStyle = PAL.ink; g.textAlign = 'center'; g.font = `700 58px ${SERIF}`; g.fillText('Путь ромашки', 500, 108);
   COURSE.forEach((c, k) => {
     const y = 180 + k * 61;
     g.fillStyle = CARD_COL[k % CARD_COL.length]; g.beginPath(); g.arc(92, y - 14, 25, 0, TAU); g.fill(); inkCircle(g, 92, y - 14, 25, 2.5, PAL.ink, k + 2);
     g.fillStyle = PAL.ink; g.textAlign = 'center'; g.font = `700 30px ${SERIF}`; g.fillText(String(k + 1), 92, y - 4);
-    g.textAlign = 'left'; g.font = `600 40px ${SANS}`; let s = c.title; while (g.measureText(s).width > 720) s = s.slice(0, -2); g.fillText(s === c.title ? s : s + '…', 136, y);
+    const t0 = c.path || c.title; g.textAlign = 'left'; g.font = `600 34px ${SANS}`; let s = t0; while (g.measureText(s).width > 790) s = s.slice(0, -2); g.fillText(s === t0 ? s : s + '…', 136, y);
     if (visited.has(k)) { g.fillStyle = '#2F7A35'; g.font = `700 42px ${SANS}`; g.textAlign = 'right'; g.fillText('✓', 940, y); }
   });
 }
@@ -1278,12 +1278,12 @@ function setActive(i, open) {
   if (i < 0) {
     $('cnum').textContent = '✦'; $('cnum').style.background = PAL.sun;
     $('ctitle').textContent = 'Курс нейросетей';
-    $('ctext').textContent = 'Тринадцать стендов по одной тропе: от «всё есть числа» до обучения наградой. На каждом живая модель, все числа считаются по-настоящему. Жми «стенд 1 →» и иди вперёд. Непонятно, жми «спросить» внизу и задай вопрос Прохору голосом.';
+    $('ctext').textContent = 'Тринадцать стендов по одной тропе, и по всей тропе с тобой идёт одна ромашка: от «фото ромашки это 64 числа» до «пчела сама нашла ромашку в лабиринте». На каждом живая модель, все числа считаются по-настоящему. Жми «стенд 1 →» и иди вперёд. Непонятно, жми «спросить» внизу и задай вопрос Прохору голосом.';
     $('cformula').textContent = '';
   } else if (i === FINAL_I) {
     $('cnum').textContent = '✦'; $('cnum').style.background = PAL.sun;
     $('ctitle').textContent = 'Весь путь';
-    $('ctext').textContent = `Ты прошёл тропу: числа, нейрон, спуск, обратный ход ошибки, слои, свёртки, векторы слов, внимание, языковые модели, диффузия и награда. Отмечено стендов: ${visited.size} из ${NST}. Ткни номер, чтобы вернуться к любому.`;
+    $('ctext').textContent = `Ты прошёл тропу вместе с ромашкой. Сначала она стала 64 числами, потом нейрон отличил её от василька, спуск и обратный ход ошибки научили сеть сами, слои и свёртки нашли её лепестки, слово «ромашка» стало вектором, языковая модель дописала её во фразу, диффузия проявила её из шума, а пчела нашла её в лабиринте по одной награде. Отмечено стендов: ${visited.size} из ${NST}. Ткни номер, чтобы вернуться к любому.`;
     $('cformula').textContent = '';
     const d = document.createElement('div'); d.style.display = 'contents';
     d.innerHTML = COURSE.map((c, k) => `<button class="btn" data-go="${k}">${k + 1}</button>`).join('') + '<button class="btn on big" data-go="-1">↺ в начало тропы</button>';
@@ -1301,7 +1301,7 @@ function setActive(i, open) {
   const hasLesson = i >= 0 && i < NST && COURSE[i].lessons && COURSE[i].lessons.length;
   $('card').classList.toggle('lesson', !!hasLesson);
   $('lesson').classList.toggle('hidden', !hasLesson); $('lnav').classList.toggle('hidden', !hasLesson);
-  if (hasLesson) renderLesson(false); else clearPulse();
+  if (hasLesson) renderLesson(!(i in LSTEP)); else clearPulse(); // первый заход на стенд: доска сразу показывает первый шаг урока
   $('cscroll').scrollTop = 0; updHint();
   updateNav();
   requestAnimationFrame(() => applyView());
@@ -1497,8 +1497,8 @@ resize();
 // start pose (for links and screenshots): ?st=1..13, ?st=14 = финал
 {
   const s = parseInt(Q.get('st') || '0', 10);
-  if (s >= 1 && s <= NST && Q.has('step')) LSTEP[s - 1] = clamp(parseInt(Q.get('step'), 10) - 1 || 0, 0, 9);
-  if (s >= 1 && s <= NST + 1) { setActive(s - 1, true); if (Q.has('step')) renderLesson(true); applyView(); const v = viewPose(s - 1); cam.pos.copy(v.pos); cam.eye = v.pos.y; cam.yaw = cam.tyaw = v.yaw; cam.pitch = cam.tpitch = v.pitch; }
+  if (s >= 1 && s <= NST && Q.has('step')) LSTEP[s - 1] = clamp(parseInt(Q.get('step'), 10) - 1 || 0, 0, Math.max(0, lessonOf(s - 1).length - 1));
+  if (s >= 1 && s <= NST + 1) { setActive(s - 1, true); if (Q.has('step')) { const L = lessonOf(s - 1), k = LSTEP[s - 1] || 0; for (let j = 0; j < k; j++) if (L[j].do) applyDo(MODELS[s - 1], L[j].do); renderLesson(true); } applyView(); const v = viewPose(s - 1); cam.pos.copy(v.pos); cam.eye = v.pos.y; cam.yaw = cam.tyaw = v.yaw; cam.pitch = cam.tpitch = v.pitch; }
   else setActive(-1);
 }
 let last = performance.now(), T = 0, frames = 0, fpsAcc = 0, fpsN = 0;
