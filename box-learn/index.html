@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Бесконечный бокс — обучалка, главы 1–5</title>
+<!--
+  Обучалка бесконечного бокса, этап 1 (29.09.2026, слово Влада 01:43: «первый этап это без 1 и 2 струн в миноре
+  одна палка дальше та которая выше или ниже»; 05:41: «убери всё лишнее и делай обучалку как договорились»).
+  Только струны 6-3, только натуральный минор. Палки: R ●·●● (пара справа), W ●·●·● (широкая), L ●●·● (пара слева); слово Влада 05:55 «давай английские l r», W за широкую предложил ассистент.
+  Номер и цвет относительно дома (Влад 06:03, 06:05): дом это минорная тоника, палка 1 красная, дальше по стенке вверх (по квартам) 2..7 радугой;
+  в параллельном мажоре имена НЕ переопределяются, дом остаётся минорной тоникой (в до мажоре от ля палка 1, от до палка 4).
+  Этап 2 (слово Влада 05:51 «давай второй этап»): к стенке от тоники пристраиваются соседки вправо и влево на тех же четырёх струнах.
+  Главы (слово Влада 01.10.2026 17:34 «давай добавим главу… вправо теперь влево и теперь трансформация а дальше сдвиг перед каждой главой обучалка своя»;
+  17:35 «сдвиг типа 5 стрелка по диагонали вверх 6… отдельно глава сдвиг с пометкой gh», «Транс последняя сдвиг перед ней»):
+  1 Стенка, 2 Вправо, 3 Влево, 4 Трансформация (рамка палки едет на одну ноту вбок, палка становится другой),
+  5 Исключения (5 → 6 вверх уезжает на лад вправо; стык 3-й и 2-й струны, метка GB, всё уезжает на лад вправо). Перед каждой главой своё вступление.
+  17:46 «Отдельно блок про исключения там оба сдвига в конце и вот и вся метода»: глава сдвигов стала последней.
+  Переделка 02.10.2026 («Да» Влада 09:06 на пакет из реплик 01.10 18:31, 18:33, 18:36, 20:00):
+  · номер палки не вход, а выход: задание «продолжай гамму» / «три ноты назад», номер и форму гриф называет сам (20:00 «выеби ты эту методологию»);
+  · струна и порядок любые, вместо «на 6-й струне» пишется «осталось N» (18:31 «на любой, на какой человек хочет, он такой ставит»);
+  · кнопок R/W/L нет, под заданием постоянная таблица семи палок и кнопка «Подсказка» (18:31 «должна быть вот эта табличка… подсказка одной кнопкой»);
+  · трансформация прокруткой: рамку тащишь по струне, она липнет к нотам гаммы и только к нужной, прилипла = засчитано (18:36);
+  · знак трансформации «равно со стрелкой»: 1 ⇒ 6 и 3 ⇐ 1, результат с той стороны, куда уехала рамка (18:33);
+  · у «Влево» свой ролик, зеркальный «Вправо», и призрачная 7-я струна под 6-й, чтобы «та, что под ней» была видна и внизу.
+  Большой бокс с библиотекой ладов живёт отдельно: /demo/box/.
+-->
+<style>
+:root{--bg:#101218;--pan:#1a1d26;--ink:#e9e6df;--dim:#8d90a0;--line:#3a3e4c;--ok:#4cc38a;--bad:#ef5b5b;--home:#f2b134;
+  --P:#5aa9ff;--Sh:#b58cff;--L:#ff8a5c}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,system-ui,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:12px 12px 28px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:16px;margin:0;font-weight:650;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.key{white-space:nowrap}
+.key{font-size:15px;color:var(--home);font-weight:650}
+.lv{display:flex;gap:6px;margin:8px 0 0;overflow-x:auto}
+#lv1{margin-top:12px}#lv2{margin-bottom:10px}
+.lv button{flex:1;min-width:0;padding:7px 2px;border-radius:10px;border:1px solid var(--line);background:var(--pan);color:var(--ink);font-size:11px;line-height:1.2}
+.lv button.on{border-color:var(--home);background:#2a2415}
+.lv button:disabled{opacity:.35}
+.lv b{display:block;font-size:13px}
+.task{background:var(--pan);border-radius:14px;padding:12px 14px;min-height:74px}
+.task .q{font-size:17px;font-weight:600}
+.task .rule{color:var(--dim);font-size:14px;margin-top:4px}
+.task .rule.good{color:var(--ok)}
+.task .rule.warn{color:var(--bad)}
+/* таблица семи палок: номер, цвет, форма точками. Всегда на виду, угадывать форму не надо (слово Влада 01.10.2026 18:31) */
+.tbl{display:flex;gap:4px;margin-top:8px}
+.tbl div{flex:1;text-align:center;border-radius:10px;padding:4px 0 3px;border:2px solid transparent;background:var(--pan);transition:border-color .2s}
+.tbl b{display:block;font-size:19px;line-height:1.1}
+.tbl small{font-size:10px;letter-spacing:1px;color:var(--dim);white-space:nowrap}
+.tbl div.hl{border-color:#fff;background:#2a2d38}
+svg{width:100%;height:auto;display:block;margin:10px 0 6px;touch-action:manipulation;user-select:none}
+.fret{stroke:#5a5f70;stroke-width:3}
+.str{stroke:#b9b2a3}
+.str.g7{stroke-dasharray:7 7;opacity:.45}
+.fnum{fill:var(--dim);font-size:19px;text-anchor:middle}
+.snum{fill:var(--dim);font-size:19px;text-anchor:middle}
+.snum.g7{opacity:.5}
+.lane{fill:rgba(242,177,52,.07);stroke:rgba(242,177,52,.3);stroke-dasharray:6 5}
+.lane.hl{fill:rgba(242,177,52,.18);stroke:rgba(242,177,52,.9)}
+.cap{stroke-width:2.5}
+.capname{font-size:24px;font-weight:700;text-anchor:middle}
+.n circle{stroke:#000;stroke-width:1.5}
+.n text{font-size:17px;font-weight:700;text-anchor:middle;fill:#111}
+.n.ok circle{fill:var(--ok)}
+.n.home circle{fill:var(--home)}
+.n.built circle{fill:#d8d3c7}
+.n.bad circle{fill:var(--bad)}
+.n.scale circle{fill:#2b2e3a;stroke:#5a5f70}
+.n.g7 circle{opacity:.5}
+.cell{fill:transparent;cursor:pointer}
+.row{display:flex;gap:8px;margin-top:10px;align-items:center}
+.row button{padding:11px 14px;border-radius:12px;border:0;background:var(--home);color:#1a1405;font-weight:700;font-size:16px}
+.row button.ghost{background:var(--pan);color:var(--ink);border:1px solid var(--line)}
+.stat{color:var(--dim);font-size:13px;margin-left:auto;text-align:right}
+.hide{display:none!important}
+
+/* онбординг (слово Влада 06:10: «вот я открыл нихуя не знаю что за палке») */
+.ob{position:fixed;inset:0;background:rgba(10,12,18,.96);z-index:9;display:flex;flex-direction:column;justify-content:center;padding:20px}
+.ob .card{background:var(--pan);border-radius:18px;padding:18px 18px 14px;max-width:520px;margin:0 auto;width:100%;max-height:92vh;overflow-y:auto}
+.ob h2{margin:0 0 10px;font-size:20px}
+.ob p{margin:8px 0;font-size:16px;line-height:1.45}
+.ob .pic{font-size:26px;letter-spacing:4px;margin:4px 0 2px}
+.ob .pic b{display:inline-block;width:52px;letter-spacing:0;font-size:22px}
+.ob .rb{display:flex;gap:6px;margin:8px 0}
+.ob .rb span{flex:1;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#111;font-size:13px}
+.ob .nav{display:flex;gap:8px;margin-top:14px;align-items:center}
+.ob .nav button{padding:11px 18px;border-radius:12px;border:0;background:var(--home);color:#1a1405;font-weight:700;font-size:16px}
+.ob .nav button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+.ob .dots{margin-left:auto;color:var(--dim);font-size:14px}
+.ob .map{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:8px -6px;padding:0 6px;border-radius:12px;background:#12141b}
+.ob .map svg{height:auto;display:block;margin:0}
+.ob .map.wide svg{width:1300px}
+.ob .map.mid svg{width:640px}
+.ob .plane{height:330px;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none;overscroll-behavior:contain;cursor:grab;position:relative}
+.ob .plane svg{width:100%;height:100%;display:block}
+.ob .plane .badge{position:absolute;right:8px;top:6px;color:var(--dim);font-size:13px;background:rgba(0,0,0,.4);padding:2px 8px;border-radius:8px}
+.ob .map.small svg{width:100%}
+.ob .scrl{color:var(--dim);font-size:13px;margin:0 0 4px}
+/* ролик соседки: копия палки съезжает по диагонали на соседнюю струну и встаёт рядом (вправо: сверху вниз-вправо; влево: снизу вверх-влево) */
+.ob .mv{animation:slide 3.2s ease-in-out infinite}
+@keyframes slide{0%,14%{transform:translate(0,0);opacity:0}24%{opacity:1;transform:translate(0,0)}68%,88%{transform:translate(var(--dx),var(--dy));opacity:1}100%{transform:translate(var(--dx),var(--dy));opacity:0}}
+.help{flex:none;border:1px solid var(--line);background:var(--pan);color:var(--dim);border-radius:50%;width:30px;height:30px;font-size:16px;font-weight:700}
+/* вспышка и подсветка свежей палки, перенесены из большого бокса (слово Влада 06:23: «хайлайты как в старой версии») */
+#flash{position:fixed;inset:0;z-index:8;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(3,5,8,.6);opacity:0;transition:opacity .25s}
+#flash.on{opacity:1}
+#flash .t{font-size:min(22vw,170px);font-weight:800;letter-spacing:.04em;color:#fff;text-shadow:0 0 40px rgba(255,255,255,.35);transform:scale(.6);transition:transform .35s cubic-bezier(.2,1.5,.4,1);white-space:nowrap;text-align:center}
+#flash.on .t{transform:scale(1)}
+#flash .d{font-size:min(5vw,26px);color:var(--dim);text-align:center;margin-top:6px}
+.cap.new{animation:grow .5s ease-out}
+.n.new circle{animation:pop .45s ease-out}
+@keyframes grow{0%{opacity:0;stroke-width:9}100%{opacity:1}}
+@keyframes pop{0%{r:5}60%{r:26}100%{r:21}}
+.row button.ghost.off{opacity:.45}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.shake{animation:shake .25s 2}
+.cap.ghost{stroke-dasharray:6 6;opacity:.55;fill:none!important}
+.cap.drag{stroke-width:4;fill:rgba(255,255,255,.12)!important}
+.gb{fill:var(--home);font-size:15px;font-weight:800;text-anchor:middle}
+.gbl{stroke:rgba(242,177,52,.55);stroke-dasharray:4 7;stroke-width:2}
+.ob .chain{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0;font-size:18px;color:var(--dim)}
+.ob .chain span{width:34px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;color:#111}
+</style>
+</head>
+<body>
+<div id="flash"><div><div class="t" id="flashT"></div><div class="d" id="flashD"></div></div></div>
+<div class="ob hide" id="ob"><div class="card" id="obc"></div></div>
+<div class="wrap">
+  <header><h1 id="ttl">Бесконечный бокс · этап 1</h1><div class="key" id="key"></div><button class="help" id="help">?</button></header>
+  <div class="lv" id="lv1"></div>
+  <div class="lv" id="lv2"></div>
+  <div class="task"><div class="q" id="q"></div><div class="rule" id="rule"></div></div>
+  <div class="tbl" id="tbl"></div>
+  <svg id="fb"></svg>
+  <div class="row">
+    <button id="next" class="hide">Ещё круг</button>
+    <button id="hint" class="ghost">💡 Подсказка</button>
+    <button id="play" class="ghost" title="сыграть всё, что стоит">▶</button>
+    <button id="fl" class="ghost" title="вспышка на весь экран при верном ходе">✨</button>
+    <div class="stat" id="stat"></div>
+  </div>
+</div>
+<script>
+'use strict';
+// --- музыка -------------------------------------------------------------
+var OPEN=[40,45,50,55,59,64];          // струны 6,5,4,3,2,1 (индекс 0 = 6-я, самая толстая); главы 1–4 берут первые четыре, «GB» все шесть
+var OPEN7=35;                           // призрачная 7-я струна под 6-й: си, как на семиструнке, та же нота, что 2-я, на две октавы ниже
+var MINOR=[0,2,3,5,7,8,10];             // натуральный минор от тоники
+var NAMES=['до','до♯','ре','ре♯','ми','фа','фа♯','соль','соль♯','ля','ля♯','си'];
+var MINOR_NAME=['до минор','до-диез минор','ре минор','ми-бемоль минор','ми минор','фа минор','фа-диез минор','соль минор','соль-диез минор','ля минор','си-бемоль минор','си минор'];
+function midi(s,f){return (s<0?OPEN7:OPEN[s])+f}
+function mod12(x){return((x%12)+12)%12}
+function inScale(m){return MINOR.indexOf(mod12(m-R.tonicPc))>=0}
+// палка: три соседние ноты гаммы на струне s, начиная с лада a
+function palka(s,a){var fr=[a],f=a;while(fr.length<3){f++;if(inScale(midi(s,f)))fr.push(f)}return fr}
+function shapeOf(fr){var d=(fr[1]-fr[0])+''+(fr[2]-fr[1]);return d==='21'?'R':d==='22'?'W':'L'}
+var DOTS={R:'●·●●',W:'●·●·●',L:'●●·●'};
+function shapeByNum(n){return n<=2?'R':n<=5?'W':'L'}   // проверено перебором 12 тональностей: 1 и 2 R, 3 4 5 W, 6 и 7 L
+// имя палки относительно дома (слово Влада 29.09.2026 06:03: «от ля в миноре палка красная, а дальше оранжевая и т.д., индикация от ля один, от ре два, относительно»):
+// номер = место в стенке от тоники вверх по струнам, то есть по квартам (ля 1, ре 2, соль 3, до 4, фа 5, си 6, ми 7); цвет радуги по номеру
+var RAINBOW=['#ff5a5a','#ff9a3c','#ffd93c','#5fdc7a','#4fb8ff','#7c8cff','#c77dff'];
+function degOf(s,f){return MINOR.indexOf(mod12(midi(s,f)-R.tonicPc))}
+function pnum(s,f){return (degOf(s,f)*5)%7+1}
+function pname(s,f){return String(pnum(s,f))}   // только цифра (слово Влада 06:23: «убери из названий палок буквы, только цифры оставь»)
+function pcol(s,f){return RAINBOW[pnum(s,f)-1]}
+
+// --- звук (как в большом боксе: айфон будится касанием) ----------------------------------------
+var AC=null,KEEP=null;
+function ac(){AC=AC||new(window.AudioContext||window.webkitAudioContext)();return AC}
+function silentWav(){var sr=8000,n=sr/2,buf=new ArrayBuffer(44+n),v=new DataView(buf),i;
+  function w(o,s){for(i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))}
+  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVEfmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);
+  for(i=0;i<n;i++)v.setUint8(44+i,128);return URL.createObjectURL(new Blob([buf],{type:'audio/wav'}))}
+function unlock(){
+  try{if(navigator.audioSession)navigator.audioSession.type='playback'}catch(e){}
+  try{var c=ac();if(c.state!=='running')c.resume()}catch(e){}
+  try{if(!KEEP){KEEP=document.createElement('audio');KEEP.src=silentWav();KEEP.loop=true;KEEP.setAttribute('playsinline','');KEEP.volume=0.01}
+    if(KEEP.paused){var p=KEEP.play();if(p&&p.catch)p.catch(function(){})}}catch(e){}}
+['touchstart','pointerdown','mousedown','keydown'].forEach(function(ev){document.addEventListener(ev,unlock,{capture:true,passive:true})});
+function pluck(m,when){try{var c=ac(),t=c.currentTime+(when||0)+.01,f0=440*Math.pow(2,(m-69)/12);
+  var o=c.createOscillator(),o2=c.createOscillator(),lp=c.createBiquadFilter(),g=c.createGain();
+  o.type='sawtooth';o.frequency.value=f0;o2.type='triangle';o2.frequency.value=f0*2.003;
+  lp.type='lowpass';lp.frequency.setValueAtTime(Math.min(9000,f0*9),t);lp.frequency.exponentialRampToValueAtTime(Math.max(300,f0*1.5),t+.6);
+  g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(.35,t+.006);g.gain.exponentialRampToValueAtTime(.001,t+1.3);
+  o.connect(lp);o2.connect(lp);lp.connect(g);g.connect(c.destination);o.start(t);o2.start(t);o.stop(t+1.4);o2.stop(t+1.4)}catch(e){}}
+
+// --- уроки ---------------------------------------------------------------
+// главы (ch); st это механика урока: 1 стенка от тоники, 2 соседка вбок, 4 лесенка вверх со сдвигами, 5 рамка на ноту вбок (тащится пальцем).
+// w: номер урока стенки; dir: +1 вправо, -1 влево, 0 случайно; blind: без цифр, таблицы и подсказки; ns: сколько струн
+var CH=[{t:'Стенка',f:'Стенка',m:'↑↓'},{t:'Вправо',f:'Вправо',m:'→'},{t:'Влево',f:'Влево',m:'←'},{t:'Транс',f:'Трансформация',m:'⇒ нота'},{t:'Искл.',f:'Исключения',m:'5↗6 GB'}];
+var LEVELS=[
+  {id:'dom',ch:0,st:1,w:0,t:'Дом',     sub:'палка тоники'},
+  {id:'sv', ch:0,st:1,w:1,t:'Сверху',  sub:'сосед выше'},
+  {id:'sn', ch:0,st:1,w:2,t:'Снизу',   sub:'сосед ниже'},
+  {id:'st', ch:0,st:1,w:3,t:'Стенка',  sub:'4 струны'},
+  {id:'sb', ch:0,st:1,w:4,t:'Вслепую', sub:'без подсказок',blind:true},
+  {id:'r',  ch:1,st:2,t:'Справа',  sub:'соседи вправо',dir:1},
+  {id:'rb', ch:1,st:2,t:'Вслепую', sub:'только вправо',dir:1,blind:true},
+  {id:'l',  ch:2,st:2,t:'Слева',   sub:'соседи влево',dir:-1},
+  {id:'lb', ch:2,st:2,t:'Вслепую', sub:'обе стороны',dir:0,blind:true},
+  {id:'tr', ch:3,st:5,t:'⇒ нота',  sub:'рамка вправо',dir:1},
+  {id:'tl', ch:3,st:5,t:'⇐ нота',  sub:'рамка влево',dir:-1},
+  {id:'tb', ch:3,st:5,t:'Вслепую', sub:'обе стороны',dir:0,blind:true},
+  {id:'s56',ch:4,st:4,t:'5 ↗ 6',   sub:'4 струны'},
+  {id:'gb', ch:4,st:4,t:'GB',      sub:'6 струн',ns:6},
+  {id:'s4b',ch:4,st:4,t:'Вслепую', sub:'6 струн',ns:6,blind:true}];
+var OLD_IDS=['dom','sv','sn','st','sb','r','l','lb'];   // порядок уроков до глав: прогресс из boxLearn1 переезжает по этим именам
+var NEED=3;  // чистых кругов (без ошибок и без подсказки), чтобы открыть следующий урок
+var P=load();
+function load(){var d=null,i;try{d=JSON.parse(localStorage.getItem('boxLearn2'))}catch(e){}
+  if(!d){d={clean:{},open:{}};var o=null;try{o=JSON.parse(localStorage.getItem('boxLearn1'))}catch(e){}
+    if(o){(o.clean||[]).forEach(function(n,j){if(OLD_IDS[j])d.clean[OLD_IDS[j]]=n});for(i=0;i<(o.open||1)&&i<OLD_IDS.length;i++)d.open[OLD_IDS[i]]=1}}
+  d.clean=d.clean||{};d.open=d.open||{};d.open.dom=1;
+  for(i=1;i<LEVELS.length;i++)if((d.clean[LEVELS[i-1].id]||0)>=NEED)d.open[LEVELS[i].id]=1;
+  // ?all открывает все уроки разом и запоминает (слово Влада 01.10.2026 17:59: «Открой все главы сразу мне»)
+  if(/[?&]all\b/.test(location.search)){LEVELS.forEach(function(L){d.open[L.id]=1});try{localStorage.setItem('boxLearn2',JSON.stringify(d))}catch(e){}}
+  return d}
+function save(){try{localStorage.setItem('boxLearn2',JSON.stringify(P))}catch(e){}}
+function isOpen(i){return!!P.open[LEVELS[i].id]}
+function cleanOf(i){return P.clean[LEVELS[i].id]||0}
+function firstOf(c){for(var i=0;i<LEVELS.length;i++)if(LEVELS[i].ch===c)return i}
+function lastOpenIn(c){var r=firstOf(c);LEVELS.forEach(function(L,i){if(L.ch===c&&isOpen(i))r=i});return r}
+var R={};
+function rnd(a){return a[Math.floor(Math.random()*a.length)]}
+function nextIn(s,f){do{f++}while(!inScale(midi(s,f)));return f}
+function prevIn(s,f){do{f--}while(!inScale(midi(s,f)));return f}
+// соседка на той же струне: справа начинается со следующей ноты гаммы, слева на три ноты гаммы ниже
+function neighbour(s,fr,dir){if(dir>0)return palka(s,nextIn(s,fr[2]));var f=fr[0],i;for(i=0;i<3;i++)f=prevIn(s,f);return palka(s,f)}
+// палка струной выше: начинается со следующей ноты гаммы после последней ноты нижней. Струны по квартам дают тот же лад,
+// кроме 5 → 6 (тритон, на лад вправо) и стыка 3-й и 2-й струны (терция вместо кварты, всё на лад вправо, 5 → 6 там на два).
+function up(s,fr){var p=midi(s,fr[2]);do{p++}while(!inScale(p));return palka(s+1,p-OPEN[s+1])}
+// палка струной ниже: три ноты гаммы перед первой нотой верхней. Под 6-й струной это призрачная 7-я (си); её лады = соседка слева на 6-й плюс 5
+function down(s,fr){var p=midi(s,fr[0]),o=s>0?OPEN[s-1]:OPEN7,out=[],i;for(i=0;i<3;i++){do{p--}while(!inScale(p));out.unshift(p-o)}return out}
+// трансформация: рамка из трёх нот едет на одну ноту гаммы, вправо номер минус 2, влево плюс 2
+function shift1(s,fr,dir){return palka(s,dir>0?nextIn(s,fr[0]):prevIn(s,fr[0]))}
+function put(s,fr){R.built[s+':'+fr[0]]=fr}
+
+function newRound(lv){
+  var L=LEVELS[lv];NS=L.ns||4;
+  if(L.st>=4)return newRoundX(lv,L);
+  // тоника на любой из четырёх струн (слово Влада 06:07: «очень редко от ре струны и никогда от соль… не должно так быть»)
+  var w=L.w,ts=w===1?rnd([0,1,2]):w===2?rnd([1,2,3]):rnd([0,1,2,3]),dir=L.st===2?(L.dir||rnd([1,-1])):0,s;
+  var f=dir<0?7+Math.floor(Math.random()*7):2+Math.floor(Math.random()*10);  // лад тоники: влево нужно до 7 ладов запаса (три ноты гаммы вниз плюс сдвиг)
+  R={lv:lv,L:L,st:L.st,w:w,dir:dir,ts:ts,f:f,tonicPc:mod12(midi(ts,f)),built:{},ghost:[],fresh:null,picks:{},bad:{},err:0,hinted:false,hint:null,step:0,done:false,blind:!!L.blind,plan:null,drag:null};
+  if(L.st===2){R.order=[0,1,2,3];for(s=0;s<4;s++)put(s,wallAt(s))}   // стенка от тоники уже стоит, соседки строятся в любом порядке
+  else if(w===0){R.order=[ts];R.picks[ts+':'+f]=true}                     // в «Доме» дана только сама тоника
+  else{R.order=w===1?[ts+1]:w===2?[ts-1]:[0,1,2,3].filter(function(x){return x!==ts});put(ts,palka(ts,f))}
+  R.rem=R.order.slice();R.g7=(L.st===2&&dir<0);R.win=win();
+  render();
+}
+// главы 4 и 5: заранее считается цепочка палок R.plan, первая палка R.start уже стоит.
+function newRoundX(lv,L){
+  var dir=L.st===5?(L.dir||rnd([1,-1])):0,tries=0,a,i,cand,cur;
+  while(true){tries++;
+    R={lv:lv,L:L,st:L.st,dir:dir,tonicPc:Math.floor(Math.random()*12),built:{},ghost:[],fresh:null,picks:{},bad:{},err:0,hinted:false,hint:null,hintT:false,step:0,done:false,blind:!!L.blind,plan:[],drag:null,g7:false};
+    cand=[];
+    if(L.st===4){for(a=1;a<=9;a++)if(inScale(midi(0,a))){var n=pnum(0,a);if(L.id!=='s56'||(n>=3&&n<=5))cand.push(a)}   // в «5 ↗ 6» лесенка обязана пройти 5 → 6
+      cur=palka(0,rnd(cand));R.start=[0,cur];for(i=1;i<NS;i++){cur=up(i-1,cur);R.plan.push([i,cur])}}
+    else{var s0=rnd([0,1,2,3]),lo=dir>0?2:8,hi=dir>0?9:13;for(a=lo;a<=hi;a++)if(inScale(midi(s0,a)))cand.push(a);
+      cur=palka(s0,rnd(cand));R.start=[s0,cur];for(i=0;i<3;i++){cur=shift1(s0,cur,dir);R.plan.push([s0,cur])}}
+    var mx=0,mn=99;R.plan.concat([R.start]).forEach(function(p){mx=Math.max(mx,p[1][2]);mn=Math.min(mn,p[1][0])});
+    if((mx<=17&&mn>=1)||tries>30)break}
+  put(R.start[0],R.start[1]);R.order=R.plan.map(function(p){return p[0]});R.rem=R.order.slice();R.ts=R.start[0];R.f=R.start[1][0];R.cur=R.start;
+  R.win=win();render()}
+function prevStick(){return R.step===0?R.start:R.plan[Math.min(R.step,R.plan.length)-1]}
+function shiftOf(k){var a=k===0?R.start:R.plan[k-1];return R.plan[k][1][0]-a[1][0]}
+function lad(n){return n===1?'лад':'лада'}
+// столбик от тоники: с того же лада, но если на этой струне лад тоники вне гаммы (тоника на 3-й струне, на 6-й выходит повышенная 6-я ступень),
+// палка уезжает на лад влево: тот самый единственный сдвиг минора на переходе 2→6 вниз
+function wallAt(s){var f=R.f;if(!inScale(midi(s,f)))f=prevIn(s,f);return palka(s,f)}
+// куда сейчас можно ставить: главы 1–3 любая из оставшихся струн, лесенка только струна над последней, трансформация тащится, не ставится
+function targets(){if(R.done)return[];if(R.st===4)return[R.plan[R.step][0]];if(R.st===5)return[];return R.rem}
+function wantAt(s){if(R.st>=4)return R.plan[Math.min(R.step,R.plan.length-1)][1];return R.st===2?neighbour(s,wallAt(s),R.dir):wallAt(s)}
+function hintStr(){var t=targets();return t.length?Math.min.apply(null,t):null}
+function builtList(){return Object.keys(R.built).map(function(k){var p=k.split(':');return{s:+p[0],fr:R.built[k]}}).sort(function(a,b){return a.s-b.s||a.fr[0]-b.fr[0]})}
+function side(){return R.dir>0?'справа':'слева'}
+// зазор между палкой и соседкой на той же струне: пустой лад есть везде, кроме полутонов гаммы (2→3 и 5→6 ступень).
+// В номерах: 4 вплотную с обеих сторон, 3 вплотную справа, 5 вплотную слева, остальные через лад (слово Влада 30.09.2026 10:56: «не хватает матчасти, где есть зазор, где нет»)
+function gapRule(){return R.dir>0?'Справа вплотную только к 3 и 4, к остальным через пустой лад.':'Слева вплотную только к 4 и 5, к остальным через пустой лад.'}
+function left(){var n=R.rem.length;return 'Осталось '+n+(n===1?' палка.':n<5?' палки.':' палок.')}
+
+function question(){
+  if(R.st===4){if(R.done)return 'Готово. Сыграй лесенку на гитаре снизу вверх и обратно.';
+    var pv=prevStick();return 'Палка над '+(R.blind?'последней':pname(pv[0],pv[1][0]))+': продолжай гамму на струне выше.'}
+  if(R.st===5){if(R.done)return 'Готово. Сыграй все четыре рамки подряд на гитаре.';
+    return 'Тащи рамку на одну ноту '+(R.dir>0?'вправо':'влево')+'. Шаг '+(R.step+1)+' из 3.'}
+  if(R.done)return R.st===2?'Готово. Сыграй обе стенки на гитаре, туда и обратно.':R.w===4||R.w===3?'Стенка готова. Сыграй её на гитаре снизу вверх и обратно.':'Готово.';
+  if(R.st===2)return 'Соседка '+side()+' к каждой палке: '+(R.dir>0?'следующие три ноты гаммы.':'три ноты гаммы назад.')+' '+left();
+  if(R.w===0)return 'Тоника горит. Дострой её палку: ещё две ноты гаммы.';
+  if(R.w===1)return 'Поставь палку над тоникой: продолжай гамму на струне выше.';
+  if(R.w===2)return 'Поставь палку под тоникой: три ноты гаммы перед ней.';
+  return 'Дострой стенку с лада тоники. Любая струна, любой порядок. '+left();
+}
+function chainText(){var nm=[R.start].concat(R.plan).map(function(p){return pname(p[0],p[1][0])});return R.dir>0?nm.join(' ⇒ '):nm.slice().reverse().join(' ⇐ ')}
+function ruleText(){
+  if(R.st===4){if(R.blind&&!R.done)return 'Ни цифр, ни подсказок. Сам помни, где 5 → 6 и где GB.';
+    if(R.done){var nm=[R.start].concat(R.plan).map(function(p){return pname(p[0],p[1][0])}),tot=R.plan[R.plan.length-1][1][0]-R.start[1][0],why=[];
+      R.plan.forEach(function(p,k){var a=k===0?R.start:R.plan[k-1];if(pname(a[0],a[1][0])==='5')why.push('5 → 6');if(p[0]===4)why.push('GB')});
+      return 'Снизу вверх: '+nm.join(' ')+'. '+(tot?'Уехали вправо на '+tot+' '+lad(tot)+': '+why.join(' и ')+'.':'Все с одного лада.')}
+    var sh=shiftOf(R.step);
+    return 'Вверх номер +1 с того же лада. Исключения: 5 → 6 уезжает на лад вправо'+(NS>4?', с 3-й на 2-ю (GB) всё уезжает на лад вправо':'')+'. Сейчас: '+(sh===0?'тот же лад.':'вправо на '+sh+' '+lad(sh)+'.')}
+  if(R.st===5){if(R.blind&&!R.done)return 'Ни цифр, ни подсказок. Рамка едет на одну ноту гаммы и липнет к ней.';
+    if(R.done)return 'Цепочка: '+chainText()+'. Три ноты сдвига, и рамка встала на соседку '+(R.dir>0?'справа: номер на один больше.':'слева: номер на один меньше.');
+    return (R.dir>0?'Рамка вправо на ноту: номер минус 2, пишется 1 ⇒ 6.':'Рамка влево на ноту: номер плюс 2, пишется 3 ⇐ 1.')+' Две ноты остаются общими, одна новая.'}
+  if(R.blind&&!R.done)return 'Ни цифр, ни подсказок. Только дом и лад.';
+  if(R.st===2){if(!R.done)return gapRule()+(R.dir>0?' Справа стоит та же палка, что струной выше, на 5 ладов правее.':' Слева стоит та же палка, что струной ниже; под 6-й это призрачная 7-я.');
+    var ns=builtList().filter(function(b){return b.fr[0]!==R.f}).map(function(b){return pname(b.s,b.fr[0])});
+    return 'Снизу вверх '+side()+': '+ns.join(' ')+'. Номер '+(R.dir>0?'растёт':'падает')+' на один: соседка '+side()+' это палка струной '+(R.dir>0?'выше, на 5 ладов правее.':'ниже, на 5 ладов левее.')+' '+gapRule()}
+  if(R.w===0)return R.done?'Палка дома всегда 1, красная, форма R: тоника, пропуск лада, две ноты подряд.':'Тоника это дом. От неё палка из трёх нот гаммы.';
+  if(R.w===1)return R.done?'Над палкой всегда следующий номер и цвет радуги, с того же лада.':'Тоника на месте, её палка стоит.';
+  if(R.w===2)return R.done?'Под палкой номер на один меньше (под 1 идёт 7), с того же лада.':'Что лежит под тоникой? Три ноты гаммы перед ней.';
+  if(R.done){var sh=builtList().some(function(b){return b.fr[0]!==R.f});
+    return 'Снизу вверх: '+builtList().map(function(b){return pname(b.s,b.fr[0])}).join(' ')+(sh?'. Нижняя уехала на лад влево: единственный сдвиг минора, между 2 и 6.':'. Все с одного лада, рука не двигается.')}
+  return 'Палки стоят с лада тоники (одна может уехать на лад влево). Номер и форму гриф назовёт сам.';
+}
+
+// --- гриф ----------------------------------------------------------------
+var SW=92,PADL=40,TOP=58,GAP=76,NS=4;
+// окно ладов считается от содержимого круга: все поставленные палки плюс все, что предстоит поставить, с ладом запаса по краям.
+function win(){var fs=[R.f];builtList().forEach(function(b){fs.push(b.fr[0],b.fr[2])});
+  if(R.plan){R.plan.forEach(function(p){fs.push(p[1][0],p[1][2])});
+    if(R.st===5){var s=R.start[0],a=R.start[1];fs.push(prevIn(s,a[0]),nextIn(s,a[2]))}}   // запас на шаг рамки в обе стороны
+  else R.order.forEach(function(s){var w=wantAt(s);fs.push(w[0],w[2])});
+  if(R.g7){var d=down(0,wallAt(0));if(d[0]>=0)fs.push(d[0],d[2])}
+  var lo=Math.max(0,Math.min.apply(null,fs)-1),hi=Math.max.apply(null,fs)+1;return{x0:lo,sl:hi-lo+1}}
+function slots(){return R.win.sl}
+function x0(){return R.win.x0}   // первый видимый лад
+function cx(f){return PADL+(f-x0())*SW+SW/2}
+function sy(s){return TOP+(NS-1-s)*GAP}
+function el(n,a,t){var e=document.createElementNS('http://www.w3.org/2000/svg',n);for(var k in a)if(a[k]!=null)e.setAttribute(k,a[k]);if(t!=null)e.textContent=t;return e}
+function arrowFor(s){if(R.st===4)return shiftOf(R.step)>0?'↗':'↑';if(R.st===2)return R.dir>0?'→':'←';return R.w===0?'':s>R.ts?'↑':'↓'}
+
+function render(){
+  var svg=document.getElementById('fb'),SL=slots(),W=PADL+SL*SW+14,g7=R.g7?GAP:0,H=TOP+(NS-1)*GAP+62+g7,i,s;
+  svg.setAttribute('viewBox','0 0 '+W+' '+H);svg.innerHTML='';
+  svg.style.touchAction=R.st===5?'none':'manipulation';
+  // дорожки струн, куда сейчас можно ставить; подсказанная ярче, с номером и стрелкой
+  targets().forEach(function(ls){svg.appendChild(el('rect',{x:PADL-4,y:sy(ls)-GAP/2+4,width:SL*SW+8,height:GAP-8,rx:10,'class':'lane'+(R.hint===ls?' hl':'')}))});
+  if(R.hint!=null&&!R.done){var hw=wantAt(R.hint),ht=R.hint;
+    svg.appendChild(el('text',{x:(cx(hw[0])+cx(hw[2]))/2,y:sy(ht)-32,'class':'capname',style:'fill:'+pcol(ht,hw[0])},(arrowFor(ht)+' '+pname(ht,hw[0])).trim()))}
+  for(i=0;i<=SL;i++)svg.appendChild(el('line',{x1:PADL+i*SW,x2:PADL+i*SW,y1:TOP-14,y2:TOP+(NS-1)*GAP+14+g7,'class':'fret'}));
+  for(i=0;i<SL;i++)svg.appendChild(el('text',{x:PADL+i*SW+SW/2,y:H-8,'class':'fnum'},String(x0()+i)));
+  for(s=0;s<NS;s++){svg.appendChild(el('line',{x1:PADL,x2:PADL+SL*SW,y1:sy(s),y2:sy(s),'class':'str','stroke-width':(3.6-s*.6).toFixed(1)}));
+    svg.appendChild(el('text',{x:16,y:sy(s)+5,'class':'snum'},String(6-s)))}
+  // метка стыка 3-й и 2-й струны: там терция, всё сверху уезжает на лад вправо
+  if(NS>4){var gy=(sy(3)+sy(4))/2;svg.appendChild(el('line',{x1:PADL,x2:PADL+SL*SW,y1:gy,y2:gy,'class':'gbl'}));svg.appendChild(el('text',{x:16,y:gy+5,'class':'gb'},'GB'))}
+  // призрачная 7-я струна под 6-й: на ней та палка, что «под» палкой 6-й струны, то есть её соседка слева, поднятая на струну
+  if(R.g7){var y7=sy(0)+GAP,d7=down(0,wallAt(0)),c7=R.blind?'#8d90a0':pcol(0,neighbour(0,wallAt(0),-1)[0]);
+    svg.appendChild(el('line',{x1:PADL,x2:PADL+SL*SW,y1:y7,y2:y7,'class':'str g7','stroke-width':'4'}));
+    svg.appendChild(el('text',{x:16,y:y7+5,'class':'snum g7'},'7'));
+    if(d7[0]>=x0()){svg.appendChild(el('rect',{x:cx(d7[0])-26,y:y7-26,width:cx(d7[2])-cx(d7[0])+52,height:52,rx:26,'class':'cap ghost',style:'stroke:'+c7}));
+      if(!R.blind)svg.appendChild(el('text',{x:(cx(d7[0])+cx(d7[2]))/2,y:y7-32,'class':'capname',style:'fill:'+c7+';opacity:.6'},pname(0,neighbour(0,wallAt(0),-1)[0])));
+      d7.forEach(function(f){var g=el('g',{'class':'n built g7',transform:'translate('+cx(f)+','+y7+')'});g.appendChild(el('circle',{r:21}));svg.appendChild(g)})}}
+  // прошлые рамки трансформации пунктиром
+  (R.ghost||[]).forEach(function(g){var gs=g[0],fr=g[1],col=R.blind?'#8d90a0':pcol(gs,fr[0]);
+    svg.appendChild(el('rect',{x:cx(fr[0])-19,y:sy(gs)-19,width:cx(fr[2])-cx(fr[0])+38,height:38,rx:19,'class':'cap ghost',style:'stroke:'+col}))});
+  // в трансформации все ноты гаммы на струне рамки видны: по ним она и едет
+  if(R.st===5&&!R.done){var cs=R.cur[0];for(i=0;i<SL;i++){var ff=x0()+i;if(inScale(midi(cs,ff)))dot(cs,ff,'scale')}}
+  // поставленные палки (во время перетаскивания текущая рамка рисуется там, куда её тащат)
+  builtList().forEach(function(b){var bs=b.s,fr=b.fr,drag=R.drag&&R.st===5&&bs===R.cur[0]&&fr[0]===R.cur[1][0];
+    if(drag)fr=R.drag.fr;
+    var nm=pname(bs,fr[0]),col=R.blind?'#8d90a0':pcol(bs,fr[0]),nw=!drag&&R.fresh===bs+':'+fr[0];
+    svg.appendChild(el('rect',{x:cx(fr[0])-26,y:sy(bs)-26,width:cx(fr[2])-cx(fr[0])+52,height:52,rx:26,'class':'cap'+(nw?' new':'')+(drag?' drag':''),style:'fill:rgba(255,255,255,.06);stroke:'+col}));
+    if(!R.blind)svg.appendChild(el('text',{x:(cx(fr[0])+cx(fr[2]))/2,y:sy(bs)-32,'class':'capname',style:'fill:'+col},nm));
+    fr.forEach(function(f){dot(bs,f,'built'+(nw?' new':''))})});
+  // выбранные ноты
+  Object.keys(R.picks).forEach(function(k){var p=k.split(':');dot(+p[0],+p[1],'ok')});
+  Object.keys(R.bad).forEach(function(k){var p=k.split(':');dot(+p[0],+p[1],'bad')});
+  function dot(ds,f,cls){var home=mod12(midi(ds,f))===R.tonicPc,g=el('g',{'class':'n '+(home&&cls!=='bad'?'home':cls),transform:'translate('+cx(f)+','+sy(ds)+')'});
+    g.appendChild(el('circle',{r:21}));if(home&&cls!=='bad')g.appendChild(el('text',{y:5},'Т'));svg.appendChild(g)}
+  // клетки для касания
+  for(s=0;s<NS;s++)for(i=0;i<SL;i++){var r=el('rect',{x:PADL+i*SW,y:sy(s)-GAP/2,width:SW,height:GAP,'class':'cell'});r.dataset.s=s;r.dataset.f=x0()+i;svg.appendChild(r)}
+  // текст, таблица, кнопки
+  document.getElementById('key').textContent=MINOR_NAME[R.tonicPc];
+  document.getElementById('ttl').textContent='Бокс · глава '+(R.L.ch+1)+' · '+CH[R.L.ch].f;
+  document.getElementById('q').textContent=question();
+  var ru=document.getElementById('rule');ru.textContent=R.warn||ruleText();ru.className='rule'+(R.warn?' warn':R.done?' good':'');
+  var hl=0;if(!R.done){if(R.hint!=null)hl=pnum(R.hint,wantAt(R.hint)[0]);else if(R.st===5&&R.hintT)hl=pnum(R.cur[0],R.plan[R.step][1][0])}
+  var tb=document.getElementById('tbl');tb.classList.toggle('hide',R.blind&&!R.done);
+  tb.innerHTML=[1,2,3,4,5,6,7].map(function(n){return '<div class="'+(hl===n?'hl':'')+'" style="color:'+RAINBOW[n-1]+'"><b>'+n+'</b><small>'+DOTS[shapeByNum(n)]+'</small></div>'}).join('');
+  document.getElementById('hint').classList.toggle('hide',R.done||R.blind);
+  document.getElementById('next').classList.toggle('hide',!R.done);
+  var ch=R.L.ch,l1=document.getElementById('lv1'),l2=document.getElementById('lv2');l1.innerHTML='';l2.innerHTML='';
+  CH.forEach(function(C,c){var b=document.createElement('button'),op=isOpen(firstOf(c));b.innerHTML='<b>'+(c+1)+' '+C.t+'</b>'+(op?C.m:'🔒');
+    b.disabled=!op;b.className=c===ch?'on':'';b.onclick=function(){goChapter(c)};l1.appendChild(b)});
+  LEVELS.forEach(function(L,j){if(L.ch!==ch)return;var b=document.createElement('button');b.innerHTML='<b>'+L.t+'</b>'+(isOpen(j)?L.sub:'🔒');
+    b.disabled=!isOpen(j);b.className=j===R.lv?'on':'';b.onclick=function(){newRound(j)};l2.appendChild(b)});
+  document.getElementById('stat').textContent='чистых: '+Math.min(cleanOf(R.lv),NEED)+'/'+NEED+(R.err?' · ошибок: '+R.err:'')+(R.hinted?' · с подсказкой':'');
+}
+
+// --- ходы ----------------------------------------------------------------
+function tap(s,f){
+  if(R.done||R.st===5)return;
+  pluck(midi(s,f));
+  var key=s+':'+f,t=targets();
+  if(t.indexOf(s)<0){R.err++;R.bad[key]=true;
+    R.warn=R.st===4?'Снизу вверх: следующая палка на струне над последней.':builtList().some(function(b){return b.s===s})?'На этой струне палка уже стоит.':'Не та струна.';
+    render();setTimeout(function(){delete R.bad[key];render()},600);return}
+  var w=wantAt(s);
+  if(w.indexOf(f)<0){R.err++;R.bad[key]=true;R.warn='Этой ноты в палке нет.';render();setTimeout(function(){delete R.bad[key];render()},600);return}
+  if(R.picks[key])return;R.picks[key]=true;R.warn=null;
+  var got=w.filter(function(x){return R.picks[s+':'+x]}).length;
+  if(got===3){put(s,w);w.forEach(function(x){delete R.picks[s+':'+x]});R.fresh=s+':'+w[0];
+    w.forEach(function(x,k){pluck(midi(s,x),.25+k*.22)});
+    flashMove(s,w);
+    if(R.hint===s)R.hint=null;
+    if(R.st===4){R.step++;if(R.step>=R.plan.length)finish()}
+    else{R.rem=R.rem.filter(function(x){return x!==s});if(!R.rem.length)finish()}}
+  render();
+}
+// трансформация: рамку тащат по струне, она липнет к нотам гаммы и только к нужной (слово Влада 01.10.2026 18:36:
+// «она прилепляется только к правильной палке, и это считается правильным ответом»); вслепую можно уехать и не туда, это ошибка
+function allowedK(){return R.blind?[-1,0,1]:[0,R.dir]}
+function posK(s,f,k){var i;for(i=0;i<k;i++)f=nextIn(s,f);for(i=0;i>k;i--)f=prevIn(s,f);return f}
+function shiftTry(k){R.drag=null;if(k===0){render();return}
+  if(k===R.dir){var pv=R.cur,nw=R.plan[R.step];delete R.built[pv[0]+':'+pv[1][0]];R.ghost.push(pv);R.cur=nw;put(nw[0],nw[1]);R.fresh=nw[0]+':'+nw[1][0];R.warn=null;R.hintT=false;
+    nw[1].forEach(function(x,i){pluck(midi(nw[0],x),.05+i*.22)});flashMove(nw[0],nw[1]);R.step++;if(R.step>=R.plan.length)finish()}
+  else{R.err++;R.warn='Не туда: рамка на ноту '+(R.dir>0?'вправо':'влево')+'.'}
+  render()}
+var svgEl=document.getElementById('fb'),DG=null;
+function svgPt(e){var p=svgEl.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svgEl.getScreenCTM().inverse())}
+svgEl.addEventListener('pointerdown',function(e){
+  if(R.st===5&&!R.done){var pt=svgPt(e);DG={x:pt.x,f0:R.cur[1][0]};try{svgEl.setPointerCapture(e.pointerId)}catch(x){}e.preventDefault();return}
+  var c=e.target;if(c.classList&&c.classList.contains('cell'))tap(+c.dataset.s,+c.dataset.f)});
+svgEl.addEventListener('pointermove',function(e){if(!DG)return;var pt=svgPt(e),dxf=(pt.x-DG.x)/SW,s=R.cur[0],best=0,bd=1e9;
+  allowedK().forEach(function(k){var d=Math.abs(posK(s,DG.f0,k)-(DG.f0+dxf));if(d<bd){bd=d;best=k}});
+  if(!R.drag||R.drag.k!==best){R.drag={k:best,fr:palka(s,posK(s,DG.f0,best))};if(best!==0)pluck(midi(s,R.drag.fr[best>0?2:0]));render()}});
+function dragEnd(){if(!DG)return;DG=null;var k=R.drag?R.drag.k:0;shiftTry(k)}
+svgEl.addEventListener('pointerup',dragEnd);svgEl.addEventListener('pointercancel',dragEnd);
+// Safari на айфоне: пока тащишь рамку, страница не должна прокручиваться
+svgEl.addEventListener('touchstart',function(e){if(R.st===5&&!R.done)e.preventDefault()},{passive:false});
+svgEl.addEventListener('touchmove',function(e){if(R.st===5&&!R.done)e.preventDefault()},{passive:false});
+// вспышка на весь экран при верном ходе, как в большом боксе: «1 → 2» цветами палок, под ней словами куда; светит и вслепую.
+// Результат пишется с той стороны, куда ушли: вправо «1 → 2», влево «7 ← 1»; трансформация знаком «равно со стрелкой»: «1 ⇒ 6», «3 ⇐ 1» (слово Влада 01.10.2026 18:33)
+var FLASH=true,FL=null;try{FLASH=localStorage.getItem('boxLearnFlash')!=='0'}catch(e){}
+function flashMove(t,w){if(!FLASH)return;var from,ar,d,rev=false;
+  if(R.st>=4){var pv=prevStick();from=[pv[0],pv[1][0]];
+    if(R.st===4){var sh=shiftOf(R.step);ar=sh>0?'↗':'↑';d=sh===0?'на струну выше, тот же лад':'на струну выше, на '+sh+' '+lad(sh)+' вправо'+(t===4?' (GB)':'')}
+    else{ar=R.dir>0?'⇒':'⇐';rev=R.dir<0;d='рамка на ноту '+(R.dir>0?'вправо':'влево')}}
+  else if(R.st===2){from=[t,wallAt(t)[0]];ar=R.dir>0?'→':'←';rev=R.dir<0;d=R.dir>0?'вправо по грифу':'влево по грифу'}
+  else if(R.w===0){from=null;ar='';d='дом'}
+  else{var fs=t>R.ts?t-1:t+1;from=[fs,wallAt(fs)[0]];ar=t>R.ts?'↑':'↓';d=t>R.ts?'на струну выше':'на струну ниже'}
+  var to='<span style="color:'+pcol(t,w[0])+'">'+pname(t,w[0])+'</span>',fh=from?'<span style="color:'+pcol(from[0],from[1])+'">'+pname(from[0],from[1])+'</span>':'';
+  document.getElementById('flashT').innerHTML=from?(rev?to+' '+ar+' '+fh:fh+' '+ar+' '+to):to;
+  document.getElementById('flashD').textContent=d;
+  var f=document.getElementById('flash');f.classList.add('on');clearTimeout(FL);FL=setTimeout(function(){f.classList.remove('on')},1100)}
+document.getElementById('fl').classList.toggle('off',!FLASH);
+document.getElementById('fl').onclick=function(){FLASH=!FLASH;this.classList.toggle('off',!FLASH);try{localStorage.setItem('boxLearnFlash',FLASH?'1':'0')}catch(e){}};
+// подсказка одной кнопкой: подсвечивает одну палку в таблице и её дорожку на грифе; круг после неё чистым не считается
+function hintOn(){if(R.done||R.blind)return;R.hinted=true;if(R.st===5)R.hintT=true;else R.hint=hintStr();R.warn=null;render()}
+document.getElementById('hint').onclick=hintOn;
+function finish(){
+  R.done=true;R.warn=null;R.hint=null;R.hintT=false;
+  if(R.err===0&&!R.hinted){var id=R.L.id;P.clean[id]=(P.clean[id]||0)+1;if(P.clean[id]>=NEED&&R.lv+1<LEVELS.length)P.open[LEVELS[R.lv+1].id]=1}
+  save();setTimeout(playAll,900);
+}
+function playAll(){var notes=[];(R.ghost||[]).map(function(g){return{s:g[0],fr:g[1]}}).concat(builtList()).forEach(function(b){b.fr.forEach(function(f){notes.push(midi(b.s,f))})});
+  if(!notes.length)return;var seq=notes.concat(notes.slice(0,-1).reverse());
+  seq.forEach(function(m,i){pluck(m,i*.2)})}
+
+document.getElementById('next').onclick=function(){newRound(R.lv)};
+document.getElementById('play').onclick=playAll;
+newRound(0);
+
+// --- онбординг -------------------------------------------------------------
+// карта для онбординга: ля минор, свои функции, чтобы не зависеть от текущего круга (слово Влада 30.09.2026 20:22: «онбординг с бесконечной картинкой в начале с возможностью прокрутки, потом отдельно справа, сверху»)
+var OBT=9;   // ля
+function obIn(m){return MINOR.indexOf(mod12(m-OBT))>=0}
+function obNext(s,f){do{f++}while(!obIn(midi(s,f)));return f}
+function obPrev(s,f){do{f--}while(!obIn(midi(s,f)));return f}
+function obPk(s,a){var fr=[a],f=a;while(fr.length<3){f++;if(obIn(midi(s,f)))fr.push(f)}return fr}
+function obNum(s,f){return (MINOR.indexOf(mod12(midi(s,f)-OBT))*5)%7+1}
+// бесконечная плоскость квартовых струн (слово Влада 30.09.2026 22:35: «гриф бесконечный во все стороны... одно пространство квартовых струн, он там достраивается»).
+// Ряд r это струна на 5 полутонов выше ряда r-1, столбец c это лад; высота ноты = 5r + c от тоники. Палки: тройки нот гаммы по порядку, счёт от тоники,
+// сдвиг счёта off на 1..2 ноты перегруппировывает те же ноты в другие палки (режим «перетекают», Влад 24.09: «в каждой палке лежит другая палка»)
+function obPlane(box,mode){var cw=46,rh=44,px=0,py=0,off=0,vw=0,vh=0,svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  box.appendChild(svg);var badge=document.createElement('div');badge.className='badge';box.appendChild(badge);
+  function ordOf(pitch){var o=Math.floor(pitch/12),d=MINOR.indexOf(mod12(pitch));return d<0?null:o*7+d}
+  function pitchOf(ord){return Math.floor(ord/7)*12+MINOR[((ord%7)+7)%7]}
+  function draw(){var r=box.getBoundingClientRect();vw=r.width||360;vh=r.height||330;svg.setAttribute('viewBox',(-vw/2-px)+' '+(-vh/2-py)+' '+vw+' '+vh);
+    var o='',r0=Math.floor((py-vh/2)/rh)-1,r1=Math.ceil((py+vh/2)/rh)+1,c0=Math.floor((-px-vw/2)/cw)-6,c1=Math.ceil((-px+vw/2)/cw)+6,rr,c;
+    // ряды растут вверх: y = -r*rh
+    for(c=c0;c<=c1;c++)o+='<line class="fret" x1="'+(c*cw-cw/2)+'" x2="'+(c*cw-cw/2)+'" y1="'+(-r1*rh)+'" y2="'+(-r0*rh+rh)+'"/>';
+    for(rr=r0;rr<=r1;rr++){var y=-rr*rh;o+='<line class="str" x1="'+(c0*cw)+'" x2="'+(c1*cw)+'" y1="'+y+'" y2="'+y+'" stroke-width="2"/>';
+      var seen={};for(c=c0;c<=c1;c++){var pch=5*rr+c,ord=ordOf(pch);if(ord===null)continue;var g=Math.floor((ord-off)/3),st=g*3+off;if(seen[st])continue;seen[st]=1;
+        var p0=pitchOf(st),p2=pitchOf(st+2),x0=(p0-5*rr)*cw,x2=(p2-5*rr)*cw,num=(((st%7)+7)%7*5)%7+1,col=RAINBOW[num-1];
+        o+='<rect class="cap" x="'+(x0-17)+'" y="'+(y-17)+'" width="'+(x2-x0+34)+'" height="34" rx="17" style="fill:rgba(255,255,255,.06);stroke:'+col+'"/>';
+        o+='<text class="capname" x="'+((x0+x2)/2)+'" y="'+(y-20)+'" style="fill:'+col+';font-size:17px">'+num+'</text>';
+        for(var k=0;k<3;k++){var pk=pitchOf(st+k),xk=(pk-5*rr)*cw,home=mod12(pk)===0;o+='<g class="n '+(home?'home':'built')+'" transform="translate('+xk+','+y+')"><circle r="13"/>'+(home?'<text y="4" style="font-size:13px">Т</text>':'')+'</g>'}}}
+    svg.innerHTML=o;var m3=((off%3)+3)%3;badge.textContent=mode==='shift'?'рамка на '+m3+' '+['нот','ноту','ноты'][m3]:''}
+  // тащится и мышью, и пальцем: на айфоне pointer-события внутри прокручиваемой карточки не доезжали (Влад 02.10.2026 11:02: «он не достраивается»),
+  // поэтому рядом стоят touch-события с preventDefault, они у Safari старше и надёжнее
+  var D=null;
+  function start(x,y){D={x:x,y:y,px:px,py:py,off:off}}
+  function move(x,y){if(!D)return;var dx=x-D.x,dy=y-D.y;if(mode==='shift'){off=D.off+Math.round(dx/50);py=D.py+dy}else{px=D.px+dx;py=D.py+dy}draw()}
+  function up(){D=null}
+  box.addEventListener('pointerdown',function(e){start(e.clientX,e.clientY);try{box.setPointerCapture(e.pointerId)}catch(x){}e.preventDefault()});
+  box.addEventListener('pointermove',function(e){move(e.clientX,e.clientY)});
+  box.addEventListener('pointerup',up);box.addEventListener('pointercancel',up);
+  // Safari на айфоне: без этого карточка начинает прокрутку и обрывает перетаскивание
+  box.addEventListener('touchstart',function(e){e.preventDefault()},{passive:false});
+  box.addEventListener('touchmove',function(e){e.preventDefault()},{passive:false});
+  draw();return{draw:draw}}
+// кусок грифа для вступлений: strs струны, лады f0..f1, pal палки [струна, первый лад]
+var OBM={SW:72,PL:34,T:44,G:64};
+function obFrame(strs,f0,f1){var n=f1-f0+1,W=OBM.PL+n*OBM.SW+10,H=OBM.T+(strs.length-1)*OBM.G+50,o='',i;
+  for(i=0;i<=n;i++)o+='<line class="fret" x1="'+(OBM.PL+i*OBM.SW)+'" x2="'+(OBM.PL+i*OBM.SW)+'" y1="'+(OBM.T-12)+'" y2="'+(OBM.T+(strs.length-1)*OBM.G+12)+'"/>';
+  for(i=0;i<n;i++)o+='<text class="fnum" x="'+(OBM.PL+i*OBM.SW+OBM.SW/2)+'" y="'+(H-6)+'">'+(f0+i)+'</text>';
+  strs.forEach(function(s,j){var y=OBM.T+(strs.length-1-j)*OBM.G;o+='<line class="str" x1="'+OBM.PL+'" x2="'+(OBM.PL+n*OBM.SW)+'" y1="'+y+'" y2="'+y+'" stroke-width="'+(3.4-s*.6)+'"/><text class="snum" x="14" y="'+(y+5)+'">'+(6-s)+'</text>'});
+  return{W:W,H:H,o:o}}
+function obStick(strs,f0,s,a,attrs){var fr=obPk(s,a),nm=obNum(s,a),col=RAINBOW[nm-1],y=OBM.T+(strs.length-1-strs.indexOf(s))*OBM.G;
+  function cxm(f){return OBM.PL+(f-f0)*OBM.SW+OBM.SW/2}
+  var o='<g '+(attrs||'')+'><rect class="cap" x="'+(cxm(fr[0])-22)+'" y="'+(y-22)+'" width="'+(cxm(fr[2])-cxm(fr[0])+44)+'" height="44" rx="22" style="fill:rgba(255,255,255,.06);stroke:'+col+'"/>';
+  o+='<text class="capname" x="'+((cxm(fr[0])+cxm(fr[2]))/2)+'" y="'+(y-27)+'" style="fill:'+col+'">'+nm+'</text>';
+  fr.forEach(function(f){var home=mod12(midi(s,f))===OBT;o+='<g class="n '+(home?'home':'built')+'" transform="translate('+cxm(f)+','+y+')"><circle r="17"/>'+(home?'<text y="5">Т</text>':'')+'</g>'});
+  return o+'</g>'}
+function obSvg(strs,f0,f1,pal,cls){var fr=obFrame(strs,f0,f1),o='<svg class="'+(cls||'')+'" viewBox="0 0 '+fr.W+' '+fr.H+'">'+fr.o;
+  pal.forEach(function(p){o+=obStick(strs,f0,p[0],p[1])});return o+'</svg>'}
+// ролик соседки: вправо копия верхней палки (2) съезжает по диагонали вниз на 5 ладов правее и встаёт справа от 1;
+// влево копия нижней (1) поднимается по диагонали на 5 ладов левее и встаёт слева от 2. Та же палка, другая струна: поэтому номер ±1
+function obAnim(dir){var strs=[0,1],f0=dir>0?4:0,f1=dir>0?13:9,fr=obFrame(strs,f0,f1),o='<svg viewBox="0 0 '+fr.W+' '+fr.H+'">'+fr.o;
+  o+=obStick(strs,f0,0,5)+obStick(strs,f0,1,5);
+  var ms=dir>0?1:0,ds=dir>0?0:1,da=dir>0?10:0;   // откуда едет и где встаёт
+  o+=obStick(strs,f0,ds,da,'style="opacity:.35"');
+  o+=obStick(strs,f0,ms,5,'class="mv" style="--dx:'+(dir*5*OBM.SW)+'px;--dy:'+(dir*OBM.G)+'px"');
+  return o+'</svg>'}
+function chips(a,ar){return '<div class="chain">'+a.map(function(n,i){return(i?(ar||'⇒')+' ':'')+'<span style="background:'+RAINBOW[n-1]+'">'+n+'</span>'}).join(' ')+'</div>'}
+// вступление своё перед каждой главой (слово Влада 01.10.2026 17:34: «перед каждой главой обучалка своя»)
+var OBCH=[
+ [{h:'Зачем это',p:['Гриф не надо зубрить. Хватит одной точки, тоники: от неё всё остальное вычисляется, палка за палкой, как кирпичи в стене.',
+   'Здесь ты не учишь аппликатуры и не считаешь номера. Ты продолжаешь гамму на три ноты, а номер и форму гриф называет сам.']},
+  {h:'Бесконечный бокс',p:['Гриф без конца во все стороны: струны идут по квартам, ряд за рядом. Тащи пальцем куда хочешь, бокс достраивается сам.',
+   '<div class="scrl">✋ тащи пальцем в любую сторону</div><div class="map plane" data-plane="pan"></div>',
+   'Палок всего семь: 1, 2 … 7, и снова 1. Узор повторяется без конца, и любая гамма учится так же: одна тоника, семь палок, весь гриф.']},
+  {h:'Дом',p:['Тоника это дом. На грифе она горит жёлтой с буквой <b>Т</b>. Нашёл дом, значит уже знаешь три ноты рядом: его палку.',
+   '<div class="pic"><b style="color:#ff5a5a">1</b>● · ● ●</div>','От дома в миноре палка всегда одна и та же: пропуск лада, две ноты подряд. Красная, номер 1, форма R.']},
+  {h:'Сверху',p:['Струной выше с того же лада стоит следующая палка: номер на один больше, цвет следующий по радуге. Струной ниже наоборот.',
+   '<div class="map small">'+obSvg([0,1],4,10,[[0,5],[1,5]])+'</div>',
+   '<div class="rb"><span style="background:#ff5a5a">1</span><span style="background:#ff9a3c">2</span><span style="background:#ffd93c">3</span><span style="background:#5fdc7a">4</span><span style="background:#4fb8ff">5</span><span style="background:#7c8cff">6</span><span style="background:#c77dff">7</span></div>',
+   'Форм три: <b>R</b> ●·●● пара справа, <b>W</b> ●·●·● широкая, <b>L</b> ●●·● пара слева. 1 и 2 это R, 3 4 5 это W, 6 и 7 это L. Таблица с ними всегда стоит под заданием, угадывать не надо.']},
+  {h:'Стенка',p:['Четыре струны с одного лада это стенка. Строй её с любой струны и в любом порядке. Одна палка может уехать на лад влево, это первый сдвиг, его разберём в главе «Исключения».',
+   'Застрял, жми «Подсказка»: она подсветит одну палку в таблице и её струну, но круг уже не чистый. Тональность каждый круг новая, чтобы правило село в руку, а не картинка. Гитару держи рядом: собрал палку на экране, сыграй её пальцами. Каждое касание звучит.']}],
+ [{h:'Глава 2 · Вправо',p:['На той же струне правее стоит следующая палка: продолжаешь гамму ещё на три ноты. Номер на один больше, после 7 снова 1.',
+   '<div class="map small">'+obAnim(1)+'</div>',
+   'Соседка справа это та же палка, что струной выше, только на 5 ладов правее: смотри, как она съезжает по диагонали. Между палкой и соседкой обычно один пустой лад; вплотную справа только у 3 и 4, там в гамме полутон.']},
+  {h:'Стенка вправо',p:['Стенка от тоники уже стоит. Пристрой к каждой из четырёх палок соседку справа, в любом порядке.',
+   'Номера не считай: продолжай гамму. Гриф сам покажет, что вышло.']}],
+ [{h:'Глава 3 · Влево',p:['На той же струне левее стоит предыдущая палка: три ноты гаммы назад. Номер на один меньше, слева от 1 стоит 7.',
+   '<div class="map small">'+obAnim(-1)+'</div>',
+   'Соседка слева это та же палка, что струной ниже, только на 5 ладов левее: она поднимается по диагонали. Под 6-й струной ничего нет, поэтому в уроке там нарисована призрачная 7-я: на семиструнке это си, та же, что 2-я.',
+   'Вплотную слева только у 4 и 5, у остальных между палками пустой лад.']},
+  {h:'Обе стороны',p:['Последний урок главы без цифр, без таблицы и без призрачной струны: сторона выпадает случайно, вправо или влево. Держи в голове одно: вправо гамма вперёд, влево назад, и где полутон.']}],
+ [{h:'Глава 4 · Трансформация',p:['Те же ноты можно резать на тройки иначе. Сдвинь рамку на одну ноту, и палка превращается в другую: в каждой палке уже лежит соседняя.',
+   '<div class="scrl">↔ тащи вбок: рамка едет на ноту</div><div class="map plane" data-plane="shift"></div>',
+   'Ноты на месте, меняются только рамки. Знак «равно со стрелкой»: <b>1 ⇒ 6</b> читается «1, сдвинутая вправо, это 6». Влево результат пишется с той стороны, куда уехала рамка: <b>3 ⇐ 1</b>.']},
+  {h:'Правило',p:['Рамка вправо на ноту: номер минус 2. Влево: плюс 2. По кругу, после 7 снова 1. Две ноты остаются общими, третья новая.',
+   chips([1,6,4,2]),
+   'В уроке рамку тащишь пальцем по струне: она липнет к нотам гаммы, прилипла к нужной, значит засчитано. Три шага по ноте, и рамка встала ровно на соседку: справа номер на один больше, слева на один меньше.']}],
+ [{h:'Глава 5 · Исключения',p:['Вся метода стоит на правилах из прошлых глав. Исключений из них ровно два, оба про сдвиг вверх по струнам. Первое: от 5 к 6 палка уезжает на лад вправо, по диагонали.',
+   '<div class="map small">'+obSvg([0,1],0,6,[[0,1],[1,2]])+'</div>',
+   'Почему: от 5 до 6 в гамме не кварта, а тритон, на полтона шире. Струна на это не настроена, вот палка и съезжает. Вниз наоборот: от 6 к 5 на лад влево.']},
+  {h:'Исключение 2 · GB',p:['Все струны настроены по квартам, кроме одной пары: между 3-й (G) и 2-й (B) терция, на полтона уже. Поэтому с 3-й на 2-ю вся палка уезжает на лад вправо.',
+   '<div class="map small">'+obSvg([3,4],1,7,[[3,2],[4,3]])+'</div>',
+   'Если на стыке GB попалось ещё и 5 → 6, оба сдвига складываются: на два лада вправо. На грифе этот стык помечен жёлтой строкой GB.']},
+  {h:'Вот и вся метода',p:['Внизу стоит палка, строй вверх по одной на струну: продолжай гамму. Сначала на четырёх струнах, потом на всех шести.','Тоника, семь палок, вверх +1, вправо +1, рамка на ноту ⇒ минус 2, и два исключения: 5 → 6 и GB. Больше учить нечего, остальное гриф вычисляет сам.']}]];
+var OB=OBCH[0],OBC=0;
+var obI=0;
+function obShow(i){obI=i;var c=OB[i],el=document.getElementById('obc');
+  el.innerHTML='<h2>'+c.h+'</h2>'+c.p.map(function(x){return x.charAt(0)==='<'?x:'<p>'+x+'</p>'}).join('')+
+   '<div class="nav">'+(i>0?'<button class="ghost" id="obb">Назад</button>':'<button class="ghost" id="obs">Пропустить</button>')+
+   '<button id="obn">'+(i<OB.length-1?'Дальше':'Поехали')+'</button><span class="dots">'+(i+1)+' / '+OB.length+'</span></div>';
+  document.getElementById('ob').classList.remove('hide');
+  el.querySelectorAll('.map.plane').forEach(function(b){obPlane(b,b.dataset.plane)});
+  document.getElementById('obn').onclick=function(){if(obI<OB.length-1)obShow(obI+1);else obClose()};
+  var b=document.getElementById('obb');if(b)b.onclick=function(){obShow(obI-1)};
+  var sk=document.getElementById('obs');if(sk)sk.onclick=obClose}
+// какие вступления уже видены. Ключ сменён 02.10.2026 (boxLearnObCh3): вступления переписаны, их надо показать заново
+function obSeenList(){var a=[];try{a=JSON.parse(localStorage.getItem('boxLearnObCh3'))||[]}catch(e){}return a}
+function obShowCh(c){OB=OBCH[c];OBC=c;obShow(0)}
+function obClose(){document.getElementById('ob').classList.add('hide');var a=obSeenList();if(a.indexOf(OBC)<0)a.push(OBC);try{localStorage.setItem('boxLearnObCh3',JSON.stringify(a))}catch(e){}}
+function goChapter(c){newRound(lastOpenIn(c));if(obSeenList().indexOf(c)<0)obShowCh(c)}
+document.getElementById('help').onclick=function(){obShowCh(R.L.ch)};
+if(obSeenList().indexOf(0)<0)obShowCh(0);
+</script>
+</body>
+</html>
