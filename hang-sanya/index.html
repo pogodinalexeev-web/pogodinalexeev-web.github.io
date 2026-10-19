@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Сад ханга: схема Сани оживает, семь гипотез</title>
+<style>
+@font-face{font-family:Lit;src:url(literata.ttf)}
+@font-face{font-family:LitI;src:url(literata-i.ttf)}
+@font-face{font-family:Chalk;src:url(caveat.ttf)}
+:root{--ink:#2A1C13;--paper:#EFE3C9;--paper2:#FBF6EA;--sun:#F1BF4A;--teal:#3C8783;--warm:#D8742B;--rose:#C88C86;--dusk:#2F2748}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;color:var(--ink);font:15px/1.35 -apple-system,Segoe UI,Roboto,sans-serif;
+  background:linear-gradient(#2F2748 0%,#5a4a78 45%,#c99a8e 85%,#e9c79a 100%) fixed}
+#app{display:flex;flex-direction:column;height:100%;max-width:560px;margin:0 auto;padding:8px 8px 6px;gap:6px}
+.card{background:var(--paper) url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence baseFrequency='.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .25  0 0 0 0 .15  0 0 0 .09 0'/></filter><rect width='120' height='120' filter='url(%23n)'/></svg>");
+  border:2.5px solid var(--ink);border-radius:14px;box-shadow:3px 4px 0 rgba(42,28,19,.55)}
+#head{display:flex;gap:10px;align-items:center;padding:8px 12px}
+#head .seal{flex:0 0 40px;height:40px;border-radius:50%;background:var(--sun);border:2.5px solid var(--ink);display:grid;place-items:center;font:22px Lit}
+#head h1{font:600 21px Lit;line-height:1.1}
+#head p{font:13px LitI;color:#5B4331}
+#tabs{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 5px}
+#tabs button{flex:0 0 auto;border:2px solid var(--ink);background:var(--paper2);color:var(--ink);padding:6px 11px;border-radius:999px;font:600 14px Lit;box-shadow:2px 2px 0 rgba(42,28,19,.5)}
+#tabs button.on{background:var(--sun)}
+#hint{padding:7px 12px;font-size:13.5px;min-height:3.2em}
+#stage{position:relative;flex:1;min-height:0;display:flex;justify-content:center}
+#box{position:relative;height:100%;aspect-ratio:9/16;max-width:100%;border:2.5px solid var(--ink);border-radius:14px;overflow:hidden;box-shadow:3px 4px 0 rgba(42,28,19,.55);background:#000}
+video,canvas{position:absolute;inset:0;width:100%;height:100%}
+video{object-fit:fill;transition:filter .4s}
+#ctl{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#ctl button,#ctl select{border:2px solid var(--ink);background:var(--paper2);color:var(--ink);padding:7px 10px;border-radius:12px;font:600 14px Lit;box-shadow:2px 2px 0 rgba(42,28,19,.5)}
+#ctl button.on{background:var(--sun)}
+#play{min-width:50px;background:var(--sun)!important}
+.sp{flex:1}
+#load{position:absolute;inset:0;display:grid;place-items:center;font:600 20px Lit;color:var(--paper)}
+</style>
+<style id="no-zoom-select">/* 19.10.2026: двойной тап не зумит, долгое нажатие не выделяет кнопки */html,body,body *{touch-action:manipulation}canvas{touch-action:none}button,a,label,select,summary,[role=button],[onclick],input[type=range],input[type=button]{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}</style></head>
+<body><script src="/f/garden.js?v=12"></script>
+<div id="app">
+  <div id="head" class="card"><div class="seal">♫</div><div><h1>Сад ханга</h1><p>схема Сани оживает · семь гипотез, какая учит лучше</p></div></div>
+  <div id="tabs"></div>
+  <div id="hint" class="card"></div>
+  <div id="stage"><div id="box">
+    <video id="v" poster="poster.jpg" playsinline preload="auto"></video>
+    <canvas id="c" width="720" height="1280"></canvas>
+    <div id="load">видео грузится…</div>
+  </div></div>
+  <div id="ctl">
+    <button id="play">▶</button>
+    <select id="phrase">
+      <option value="all">Всё подряд</option>
+      <option value="0">Строка 1</option><option value="1">Строка 2</option>
+      <option value="2">Строка 3</option><option value="3">Строка 4</option>
+    </select>
+    <button data-rate="0.5">0,5×</button><button data-rate="0.75">0,75×</button><button data-rate="1" class="on">1×</button>
+    <button id="film" title="Как окрашено само видео">плёнка: сад</button>
+    <span class="sp"></span>
+    <button id="turn" title="После фразы видео ждёт, пока ученик сыграет её сам под щелчки">Твоя очередь</button>
+  </div>
+</div>
+<script>
+// ===== Схема Сани, снята с доски и сверена по звуку (высота тона каждого удара) =====
+// Метки рук с доски: П = правая (бирюза), Л = левая (оранж).
+const R='П',L='Л';
+const LINES=[
+ {slots:[['D+3',{D:L,3:R}],0,['1',{1:R}],['T',{T:L}],['3',{3:R}],0,['D+1',{D:L,1:R}],0,['3',{3:R}],['2',{2:L}],['1',{1:R}],0],
+  board:[[317,152],[330,160],[345,160],[362,162],[385,165],[405,172],[422,167],[445,177],[472,172],[497,177],[520,182],[537,192]],
+  extra:{0:[312,117],6:[425,125]},
+  times:[[11.683,12.266,12.565,12.858,13.459,14.019,14.303,14.611],[25.205,25.69,25.974,26.273,26.813,27.318,27.611,27.873]]},
+ {slots:[['D+5',{D:L,5:R}],0,['1',{1:R}],['2',{2:L}],['3',{3:R}],0,['D+7',{D:L,7:R}],0,['7',{7:R}],['8',{8:L}],['5',{5:R}],0],
+  board:[[320,252],[335,262],[347,260],[367,260],[385,262],[400,275],[422,272],[440,280],[470,280],[490,282],[510,285],[530,295]],
+  extra:{0:[317,220],6:[420,235]},
+  times:[[15.163,15.723,15.999,16.295,16.893,17.47,17.734,18.033],[28.413,28.906,29.234,29.449,29.983,30.514,30.743,31.016]]},
+ {slots:[['D+4',{4:L,D:R}],0,['т',{T:R}],['2',{2:L}],['Т',{T:R}],0,['D+4',{4:L,D:R}],0,['т',{T:R}],['2',{2:L}],['Т',{T:R}],0],
+  board:[[327,342],[340,350],[350,347],[365,342],[382,345],[400,362],[422,360],[440,370],[457,367],[480,365],[500,370],[517,385]],
+  extra:{0:[320,315],6:[420,327]},
+  times:[[18.576,19.093,19.45,19.725,20.286,20.8,21.092,21.386],[31.53,32.0,32.325,32.598,33.132,33.55,33.895,34.165]]},
+ {slots:[['4+7',{7:L,4:R}],0,['D',{D:R}],['2',{2:L}],['5',{5:R}],0,['D+4',{4:L,D:R}],0,['3',{3:R}],['2',{2:L}],['D',{D:R}],0],
+  board:[[317,415],[335,425],[350,427],[367,430],[382,432],[397,442],[417,442],[437,450],[462,445],[475,447],[492,452],[512,465]],
+  extra:{0:[325,390],6:[420,412]},
+  times:[[21.943,22.442,22.735,22.991,23.557,24.105,24.361,24.66],[34.688,35.184,35.445,35.677,36.185,36.702,36.957,37.23]]}
+];
+const EIGHTH=0.29;
+const INK='#2A1C13',PAPER='#EFE3C9',PAPER2='#FBF6EA',SUN='#F1BF4A',TEAL='#3C8783',WARM='#D8742B',DUSK='#2F2748';
+const RCOL=TEAL,LCOL=WARM;
+// Ханг D celtic minor по высоте тона из записи: D3 | 1=A3 2=C4 3=D4 4=E4 5=F4 6=G4 7=A4 8=C5.
+const PITCH={D:'D3',1:'A3',2:'C4',3:'D4',4:'E4',5:'F4',6:'G4',7:'A4',8:'C5'};
+const HANG={cx:313,cy:880,rx:288,ry:272};
+
+const PHR=[];
+for(let rep=0;rep<2;rep++)for(let li=0;li<4;li++){
+  const ln=LINES[li],ts=ln.times[rep],slot=[];let k=0;
+  ln.slots.forEach((s,i)=>{slot.push(s?{t:ts[k++],s,i}:{t:null,s:null,i})});
+  slot.forEach((x,i)=>{if(x.t==null){const p=slot[i-1].t;const n=slot.slice(i+1).find(y=>y.t!=null);x.t=n?(p+n.t)/2:p+EIGHTH}});
+  PHR.push({li,rep,slot,start:slot[0].t,end:slot[11].t+EIGHTH});
+}
+const ALLSLOTS=PHR.flatMap(p=>p.slot.map(s=>({...s,p})));
+const HITS=ALLSLOTS.filter(s=>s.s);
+
+const v=document.getElementById('v'),cv=document.getElementById('c'),g=cv.getContext('2d');
+// Раздача не отдаёт файл кусками, без этого не работают перемотка и айфон: тянем видео целиком в память.
+fetch('hang.mp4').then(r=>r.blob()).then(b=>{v.src=URL.createObjectURL(b);document.getElementById('load').remove()});
+let TR=null;fetch('track.json').then(r=>r.json()).then(j=>TR=j);
+function M(t){if(!TR)return[1,0,0,0,1,0];const i=Math.max(0,Math.min(TR.M.length-1,Math.round(t*TR.fps)));return TR.M[i]}
+const ap=(m,x,y)=>[m[0]*x+m[1]*y+m[2],m[3]*x+m[4]*y+m[5]];
+const sc=m=>Math.hypot(m[0],m[3]);
+function state(t){
+  let ph=PHR.findLast(p=>p.start-0.2<=t)||null;
+  if(ph&&t>ph.end+0.4&&PHR.indexOf(ph)===PHR.length-1)ph=null;
+  let cur=null;if(ph){cur=ph.slot.findLast(s=>s.t<=t+0.02)||null}
+  const hit=HITS.findLast(s=>s.t<=t+0.02);
+  return{ph,cur,hit,age:hit?t-hit.t:9};
+}
+const hands=s=>Object.values(s[1]);
+const handCol=s=>{const h=hands(s);return h.length>1?SUN:(h[0]===R?RCOL:LCOL)};
+const ease=a=>1-Math.pow(1-Math.min(1,Math.max(0,a)),3);
+const clamp=(a,lo,hi)=>Math.max(lo,Math.min(hi,a));
+function txt(s,x,y,size,col,font){g.font=font||('600 '+size+'px Lit');g.fillStyle=col;g.textAlign='center';g.textBaseline='middle';g.fillText(s,x,y)}
+function rr(x,y,w,h,r){g.beginPath();g.roundRect(x,y,w,h,r)}
+// зерно бумаги
+let GRAIN=null;{const n=document.createElement('canvas');n.width=n.height=160;const c=n.getContext('2d'),d=c.createImageData(160,160);
+  for(let i=0;i<d.data.length;i+=4){d.data[i]=90;d.data[i+1]=65;d.data[i+2]=40;d.data[i+3]=Math.random()<.16?38:0}c.putImageData(d,0,0);GRAIN=g.createPattern(n,'repeat')}
+// Чернильный кружок с тенью, как вывески в саду интеграла
+function inkDisc(x,y,r,fill,lw=3){g.save();g.beginPath();g.arc(x+2,y+3,r,0,7);g.fillStyle='rgba(42,28,19,.45)';g.fill();
+  g.beginPath();g.arc(x,y,r,0,7);g.fillStyle=fill;g.fill();g.lineWidth=lw;g.strokeStyle=INK;g.stroke();g.restore()}
+function handDisc(s,x,y,r){const h=hands(s);g.save();g.beginPath();g.arc(x+2,y+3,r,0,7);g.fillStyle='rgba(42,28,19,.45)';g.fill();
+  if(h.length>1){g.beginPath();g.arc(x,y,r,Math.PI/2,Math.PI*1.5);g.fillStyle=LCOL;g.fill();g.beginPath();g.arc(x,y,r,-Math.PI/2,Math.PI/2);g.fillStyle=RCOL;g.fill()}
+  else{g.beginPath();g.arc(x,y,r,0,7);g.fillStyle=h[0]===R?RCOL:LCOL;g.fill()}
+  g.beginPath();g.arc(x,y,r,0,7);g.lineWidth=3;g.strokeStyle=INK;g.stroke();g.restore()}
+function paperCard(x,y,w,h,r=16){g.save();g.fillStyle='rgba(42,28,19,.5)';rr(x+3,y+4,w,h,r);g.fill();g.fillStyle=PAPER;rr(x,y,w,h,r);g.fill();
+  g.globalAlpha=.5;g.fillStyle=GRAIN;rr(x,y,w,h,r);g.fill();g.globalAlpha=1;g.lineWidth=3;g.strokeStyle=INK;rr(x,y,w,h,r);g.stroke();g.restore()}
+
+// ===== 1. Гирлянда на ханге =====
+function drawGarland(t,S,m){
+  if(!S.ph)return;const k=sc(m),[cx,cy]=ap(m,HANG.cx,HANG.cy),R1=HANG.rx*0.86*k,ry=R1*HANG.ry/HANG.rx;
+  const a0=Math.PI*1.12,a1=Math.PI*1.88,pos=i=>{const a=a0+(a1-a0)*i/11;return[cx+Math.cos(a)*R1,cy+Math.sin(a)*ry+Math.sin(i/11*Math.PI)*18*k]};
+  g.strokeStyle=INK;g.lineWidth=3*k;g.beginPath();for(let i=0;i<=40;i++){const [x,y]=pos(i/40*11);i?g.lineTo(x,y):g.moveTo(x,y)}g.stroke();
+  S.ph.slot.forEach((s,i)=>{const [x,y]=pos(i);const isCur=S.cur===s,past=s.t<t-0.02&&!isCur;
+    if(!s.s){g.beginPath();g.arc(x,y,5*k,0,7);g.fillStyle=isCur?SUN:PAPER;g.fill();g.lineWidth=2*k;g.strokeStyle=INK;g.stroke();return}
+    const sw=isCur?Math.sin((t-s.t)*22)*Math.exp(-(t-s.t)*5)*0.5:0;const w=38*k,h=(isCur?62:52)*k;
+    g.save();g.translate(x,y);g.rotate(sw);
+    g.beginPath();g.moveTo(-w/2+2,5);g.lineTo(w/2+2,5);g.lineTo(2,h+3);g.closePath();g.fillStyle='rgba(42,28,19,.45)';g.fill();
+    g.beginPath();g.moveTo(-w/2,0);g.lineTo(w/2,0);g.lineTo(0,h);g.closePath();
+    g.fillStyle=isCur?handCol(s.s):(past?'rgba(239,227,201,.55)':PAPER);g.fill();g.lineWidth=2.5*k;g.strokeStyle=INK;g.stroke();
+    txt(s.s[0],0,h*0.33,(s.s[0].length>1?14:21)*k,INK,'700 '+(s.s[0].length>1?14:21)*k+'px Lit');g.restore()});
+  if(S.hit&&S.age<0.5){const a=1-S.age/0.5,[hx,hy]=ap(m,HANG.cx,HANG.cy-90);g.globalAlpha=a;
+    paperCard(hx-70*k,hy-48*k-12*k*(1-a),140*k,96*k,18*k);txt(S.hit.s[0],hx,hy-12*k*(1-a)-4*k,58*k,handCol(S.hit.s)===SUN?INK:handCol(S.hit.s),'700 '+58*k+'px Lit');g.globalAlpha=1}
+  const nx=S.ph.slot.find(s=>s.s&&s.t>t+0.02);if(nx){const [hx,hy]=ap(m,HANG.cx,HANG.cy+10);txt('дальше '+nx.s[0],hx,hy,21*k,PAPER2,'600 '+21*k+'px LitI')}
+}
+
+// ===== 2. Живая доска =====
+function drawBoard(t,S,m){
+  if(!S.ph)return;const ln=LINES[S.ph.li],k=sc(m);
+  LINES.forEach((l,i)=>{if(i===S.ph.li)return;const p=l.board.map(q=>ap(m,q[0],q[1]-8));
+    g.fillStyle='rgba(239,227,201,.80)';g.beginPath();g.moveTo(p[0][0]-30*k,p[0][1]-40*k);g.lineTo(p[11][0]+20*k,p[11][1]-40*k);g.lineTo(p[11][0]+20*k,p[11][1]+22*k);g.lineTo(p[0][0]-30*k,p[0][1]+22*k);g.fill()});
+  const sl=S.ph.slot;let i=sl.findLastIndex(s=>s.t<=t);if(i<0)i=0;
+  const j=Math.min(11,i+1),t0=sl[i].t,t1=j>i?sl[j].t:t0+EIGHTH,f=clamp((t-t0)/(t1-t0),0,1);
+  const [x0,y0]=ap(m,...ln.board[i]),[x1,y1]=ap(m,...ln.board[j]);
+  const bx=x0+(x1-x0)*f,by=y0+(y1-y0)*f-Math.sin(f*Math.PI)*26*k-24*k;
+  g.strokeStyle=SUN;g.lineWidth=6*k;g.lineCap='round';g.beginPath();g.moveTo(...ap(m,ln.board[0][0]-8,ln.board[0][1]+14));
+  for(let q=0;q<=i;q++)g.lineTo(...ap(m,ln.board[q][0]+8,ln.board[q][1]+14));g.stroke();
+  if(sl[i].s&&t-sl[i].t<0.35){const a=1-(t-sl[i].t)/0.35;
+    [ln.board[i],ln.extra[i]].filter(Boolean).forEach(q=>{const [x,y]=ap(m,...q);g.lineWidth=4*k;g.strokeStyle=handCol(sl[i].s);g.globalAlpha=a;g.beginPath();g.arc(x,y,(12+18*(1-a))*k,0,7);g.stroke();g.globalAlpha=1})}
+  inkDisc(bx,by,9*k,SUN,2.5*k);
+  if(S.hit&&S.age<0.55&&S.hit.p===S.ph){const a=S.age/0.55,[sx,sy]=ap(m,...ln.board[S.hit.i]),[ex,ey]=ap(m,HANG.cx,HANG.cy-80);
+    const px=sx+(ex-sx)*ease(a),py=sy+(ey-sy)*ease(a),fs=(S.hit.s[0].length>1?14:20)*k*(1+a*.8);g.globalAlpha=1-a*a;inkDisc(px,py,(20+16*a)*k,handCol(S.hit.s));txt(S.hit.s[0],px,py,fs,INK,'700 '+fs+'px Lit');g.globalAlpha=1}
+}
+
+// ===== 3. Ноты падают =====
+const LANES=['D','1','2','3','4','5','7','8','T'];
+const laneOf=n=>LANES.indexOf(n==='т'||n==='Т'?'T':n);
+function drawFall(t,S,m){
+  const X=22,Y=26,W=676,H=530,LINE=Y+H-70,AHEAD=2.2;
+  g.save();rr(X,Y,W,H,22);g.clip();const gr=g.createLinearGradient(0,Y,0,Y+H);gr.addColorStop(0,DUSK);gr.addColorStop(1,'#7a5a7e');g.fillStyle=gr;g.fillRect(X,Y,W,H);
+  const lw=W/LANES.length;
+  LANES.forEach((n,i)=>{if(i%2){g.fillStyle='rgba(255,255,255,.05)';g.fillRect(X+lw*i,Y,lw,H)}});
+  ALLSLOTS.forEach(s=>{const y=LINE-(s.t-t)/AHEAD*(LINE-Y);if(y<Y||y>Y+H)return;g.strokeStyle=s.i===0?'rgba(241,191,74,.55)':'rgba(255,255,255,.08)';g.lineWidth=s.i===0?2:1;g.beginPath();g.moveTo(X,y);g.lineTo(X+W,y);g.stroke();
+    if(s.i===0)txt('строка '+(s.p.li+1),X+W-60,y-12,15,SUN,'15px LitI')});
+  HITS.forEach(s=>{const dt=s.t-t;if(dt<-0.4||dt>AHEAD)return;const y=LINE-dt/AHEAD*(LINE-Y);
+    for(const [n,h] of Object.entries(s.s[1])){const x=X+lw*(laneOf(n)+.5),near=Math.abs(dt)<0.12;
+      g.globalAlpha=dt<0?clamp(1+dt/0.4,0,1):1;
+      g.fillStyle='rgba(42,28,19,.45)';rr(x-lw*.38+2,y-12,lw*.76,30,10);g.fill();
+      g.fillStyle=h===R?RCOL:LCOL;rr(x-lw*.38,y-15,lw*.76,30,10);g.fill();g.lineWidth=2.5;g.strokeStyle=near?SUN:INK;g.stroke();
+      txt(n,x,y+1,18,PAPER2,'700 18px Lit');g.globalAlpha=1}});
+  g.strokeStyle=SUN;g.lineWidth=4;g.beginPath();g.moveTo(X,LINE);g.lineTo(X+W,LINE);g.stroke();
+  if(S.hit&&S.age<0.3)for(const n of Object.keys(S.hit.s[1])){const x=X+lw*(laneOf(n)+.5);g.globalAlpha=1-S.age/0.3;g.strokeStyle=SUN;g.lineWidth=4;g.beginPath();g.arc(x,LINE,18+60*S.age,0,7);g.stroke();g.globalAlpha=1}
+  g.fillStyle=PAPER;g.fillRect(X,Y+H-50,W,50);g.strokeStyle=INK;g.lineWidth=2.5;g.beginPath();g.moveTo(X,Y+H-50);g.lineTo(X+W,Y+H-50);g.stroke();
+  LANES.forEach((n,i)=>{const x=X+lw*(i+.5);txt(n,x,Y+H-32,20,INK,'700 20px Lit');txt(n==='T'?'шлеп':PITCH[n],x,Y+H-12,12,'#8A735C','12px LitI')});
+  g.restore();g.lineWidth=3;g.strokeStyle=INK;rr(X,Y,W,H,22);g.stroke();
+}
+
+// ===== 4. Солнечные часы =====
+function drawSundial(t,S,m){
+  if(!S.ph)return;const k=sc(m),[cx,cy]=ap(m,HANG.cx,HANG.cy),Rr=HANG.rx*0.70*k,ry=Rr*HANG.ry/HANG.rx;
+  g.fillStyle='rgba(47,39,72,.42)';g.beginPath();g.ellipse(cx,cy,HANG.rx*k,HANG.ry*k,0,0,7);g.fill();
+  g.strokeStyle=PAPER;g.lineWidth=2*k;g.setLineDash([6*k,8*k]);g.beginPath();g.ellipse(cx,cy,Rr,ry,0,0,7);g.stroke();g.setLineDash([]);
+  const sl=S.ph.slot,span=sl[11].t+EIGHTH-sl[0].t,f=clamp((t-sl[0].t)/span,0,1),ang=i=>-Math.PI/2+i/12*Math.PI*2;
+  g.fillStyle='rgba(241,191,74,.22)';g.beginPath();g.moveTo(cx,cy);g.ellipse(cx,cy,Rr,ry,0,-Math.PI/2,-Math.PI/2+f*Math.PI*2);g.closePath();g.fill();
+  const aH=-Math.PI/2+f*Math.PI*2;g.strokeStyle=INK;g.lineWidth=7*k;g.lineCap='round';g.beginPath();g.moveTo(cx,cy);g.lineTo(cx+Math.cos(aH)*Rr*.92,cy+Math.sin(aH)*ry*.92);g.stroke();
+  g.strokeStyle=SUN;g.lineWidth=3.5*k;g.stroke();
+  sl.forEach((s,i)=>{const x=cx+Math.cos(ang(i))*Rr,y=cy+Math.sin(ang(i))*ry,on=s.s&&t>=s.t&&t-s.t<0.3;
+    if(!s.s){inkDisc(x,y,6*k,PAPER,2*k);return}
+    const r=(on?30:22)*k;const isT=/[тТT]/.test(s.s[0]);
+    if(isT){g.save();g.translate(x,y);g.rotate(Math.PI/4);g.fillStyle='rgba(42,28,19,.45)';g.fillRect(-r*.75+2,-r*.75+3,r*1.5,r*1.5);g.fillStyle=on?handCol(s.s):PAPER;g.fillRect(-r*.75,-r*.75,r*1.5,r*1.5);g.lineWidth=2.5*k;g.strokeStyle=INK;g.strokeRect(-r*.75,-r*.75,r*1.5,r*1.5);g.restore()}
+    else if(on)handDisc(s.s,x,y,r);else inkDisc(x,y,r,PAPER,2.5*k);
+    const fs=(s.s[0].length>1?14:20)*k;txt(s.s[0],x,y,fs,INK,'700 '+fs+'px Lit')});
+  inkDisc(cx,cy,48*k,SUN);const cnt=sl.filter(s=>s.s&&s.t<=t).length;
+  txt(cnt+'/8',cx,cy-4*k,30*k,INK,'700 '+30*k+'px Lit');txt('ударов',cx,cy+20*k,13*k,INK,13*k+'px LitI');
+  txt('строка '+(S.ph.li+1)+' · круг '+(S.ph.rep+1)+' из 2',cx,cy+ry+34*k,19*k,PAPER2,'600 '+19*k+'px LitI');
+}
+
+// ===== 5. Лесенка звуков =====
+const STEPS=['D','1','2','3','4','5','6','7','8'];
+function drawLadder(t,S,m){
+  const X=14,Y=40,W=236,H=500,sh=H/STEPS.length;paperCard(X,Y,W,H+70,20);
+  const sy=i=>Y+H-(i+.5)*sh+46;
+  STEPS.forEach((n,i)=>{const y=sy(i),x=X+16+i*9;g.fillStyle=n==='6'?'rgba(239,227,201,.6)':'#E2D1B0';rr(x,y-sh*.36,W-40-i*9,sh*.72,8);g.fill();g.lineWidth=2;g.strokeStyle=INK;g.stroke();
+    txt(n,x+18,y,20,n==='6'?'#b8a88a':INK,'700 20px Lit');txt(PITCH[n],x+56,y+1,13,'#8A735C','13px LitI')});
+  const keyOf=s=>{const k=Object.keys(s.s[1]).filter(n=>n!=='T');return k.length?k.sort((a,b)=>STEPS.indexOf(b)-STEPS.indexOf(a))[0]:null};
+  const past=HITS.filter(s=>s.t<=t+0.02&&t-s.t<2.6&&keyOf(s));
+  const px=s=>X+W-30-(t-s.t)/2.6*(W-80),py=s=>sy(STEPS.indexOf(keyOf(s)));
+  g.strokeStyle='rgba(216,116,43,.7)';g.lineWidth=3;g.beginPath();past.forEach((s,j)=>{j?g.lineTo(px(s),py(s)):g.moveTo(px(s),py(s))});g.stroke();
+  past.forEach(s=>{g.globalAlpha=1-(t-s.t)/2.6;inkDisc(px(s),py(s),7,handCol(s.s),2);g.globalAlpha=1});
+  if(S.hit&&keyOf(S.hit)){const prev=past.length>1?past[past.length-2]:null,yi=py(S.hit),yp=prev?py(prev):yi;
+    const f=ease(S.age/0.18),y=yp+(yi-yp)*f-Math.sin(Math.min(1,S.age/0.18)*Math.PI)*24;inkDisc(X+W-30,y,14,SUN)}
+  if(S.hit&&S.hit.s[1].T&&S.age<0.3)txt('шлеп!',X+W/2,Y+H+56,26,WARM,'700 26px Chalk');
+  txt('куда идёт мелодия',X+W/2,Y+20,17,INK,'600 17px LitI');
+}
+
+// ===== 6. Карта ханга сверху =====
+const FIELDS={D:[0,0],1:[0,.78],2:[.52,.6],3:[-.52,.6],4:[.78,.05],5:[-.78,.05],6:[.52,-.58],7:[-.52,-.58],8:[0,-.8]};
+function rough(x,y,r,seed){g.beginPath();for(let a=0;a<=6.4;a+=.35){const j=1+Math.sin(a*3+seed)*.04+Math.sin(a*7+seed*2)*.03;const px=x+Math.cos(a)*r*j,py=y+Math.sin(a)*r*j*.9;a?g.lineTo(px,py):g.moveTo(px,py)}g.closePath()}
+const fkey=s=>{const k=Object.keys(s.s[1]).filter(n=>n!=='D'&&n!=='T');return k[0]||(s.s[1].D?'D':null)};
+function drawMap(t,S,m){
+  const X=22,Y=30,BW=676,BH=480;paperCard(X,Y,BW,BH,22);
+  const cx=X+200,cy=Y+250,Rr=172;
+  g.fillStyle='rgba(200,140,134,.25)';rough(cx,cy,Rr,1);g.fill();g.lineWidth=3.5;g.strokeStyle=INK;g.stroke();
+  const hit=S.hit&&S.age<0.6?S.hit:null;const lit={};if(hit)for(const [n,h] of Object.entries(hit.s[1]))lit[n]=h;
+  for(const [n,[fx,fy]] of Object.entries(FIELDS)){const x=cx+fx*Rr,y=cy+fy*Rr,r=n==='D'?42:28;
+    rough(x,y,r,n.charCodeAt(0));g.fillStyle=lit[n]?(lit[n]===R?RCOL:LCOL):PAPER2;g.fill();g.strokeStyle=INK;g.lineWidth=2.5;g.stroke();
+    txt(n,x,y-3,n==='D'?34:26,INK,'700 '+(n==='D'?34:26)+'px Lit');txt(PITCH[n],x,y+(n==='D'?24:18),12,'#5B4331','12px LitI')}
+  if(lit.T){g.strokeStyle=lit.T===R?RCOL:LCOL;g.lineWidth=8;rough(cx,cy,Rr+10,5);g.stroke();txt('шлепок по корпусу',cx,cy+Rr+28,20,INK,'600 20px LitI')}
+  if(hit){const prev=HITS.filter(s=>s.t<hit.t).pop();const a=prev&&fkey(prev),b=fkey(hit);
+    if(a&&b&&a!==b){const [ax,ay]=FIELDS[a],[bx,by]=FIELDS[b],x0=cx+ax*Rr,y0=cy+ay*Rr,x1=cx+bx*Rr,y1=cy+by*Rr,f=ease(S.age/0.3);
+      g.strokeStyle=INK;g.lineWidth=3;g.setLineDash([9,7]);g.beginPath();g.moveTo(x0,y0);g.lineTo(x0+(x1-x0)*f,y0+(y1-y0)*f);g.stroke();g.setLineDash([])}}
+  const rx=X+410;txt('карта сверху',rx+120,Y+44,30,INK,'600 30px Lit');
+  if(S.ph){txt('строка '+(S.ph.li+1)+' · круг '+(S.ph.rep+1),rx+120,Y+80,19,'#5B4331','19px LitI');
+    S.ph.slot.forEach((s,i)=>{const col=i<6?0:1,row=i%6,x=rx+46+col*126,y=Y+128+row*50;const on=S.cur===s;
+      if(s.s){if(on)handDisc(s.s,x,y,21);txt(s.s[0],x,y,s.s[0].length>1?16:24,INK,'700 '+(s.s[0].length>1?16:24)+'px Lit');
+        txt(hands(s.s).join(''),x+44,y+1,20,'#8A735C','700 20px Chalk')}
+      else txt('·',x,y,34,on?WARM:INK,'700 34px Lit')})}
+  txt('поля расставлены по типовой раскладке, сверить с Саней',X+BW/2,Y+BH-22,16,'#8A735C','16px LitI');
+}
+
+// ===== 7. Лента со счётом =====
+const COUNT=['раз','и','два','и','три','и','четыре','и','пять','и','шесть','и'];
+function drawStrip(t,S,m){
+  paperCard(10,1090,700,180,20);
+  if(!S.ph){txt('жми ▶, схема пойдёт с 11-й секунды',360,1180,24,INK,'600 24px LitI');return}
+  txt('строка '+(S.ph.li+1)+' · круг '+(S.ph.rep+1)+'/2',360,1118,20,'#5B4331','600 20px LitI');
+  S.ph.slot.forEach((s,i)=>{const x=40+i*58,y=1178,on=S.cur===s;
+    if(s.s){const p=on?1+0.25*(1-ease((t-s.t)/0.2)):1;if(on)handDisc(s.s,x,y,25*p);else inkDisc(x,y,25,PAPER2,2.5);
+      txt(s.s[0],x,y,s.s[0].length>1?15:23,INK,'700 '+(s.s[0].length>1?15:23)+'px Lit')}
+    else inkDisc(x,y,6,on?SUN:PAPER,2);
+    txt(COUNT[i],x,y+42,i%2?15:17,on?WARM:'#8A735C',(on?'700 ':'')+(i%2?15:17)+'px LitI')});
+  const f=(t-S.ph.start)/(S.ph.end-S.ph.start);g.fillStyle=SUN;g.fillRect(40,1248,638*clamp(f,0,1),5);g.strokeStyle=INK;g.lineWidth=1.5;g.strokeRect(40,1248,638,5);
+}
+
+const MODES=[
+ {id:'garland',name:'Гирлянда',hint:'Строка флажками прямо на металле, флажок взмахивает на ударе, сыгранная нота крупно над центром. Глаз не прыгает на доску.',draw:drawGarland},
+ {id:'board',name:'Живая доска',hint:'Оживает схема самого Сани: солнечный мячик скачет по его же символам, лишние строки гаснут, нота слетает с доски на ханг.',draw:drawBoard},
+ {id:'fall',name:'Ноты падают',hint:'Как в «гитарном герое»: удар падает на линию заранее, видно на две секунды вперёд, какой рукой и какую ноту. Учит предугадывать.',draw:drawFall},
+ {id:'sundial',name:'Солнечные часы',hint:'Фраза как круг из 12 долей: стрелка идёт, паузы пустые, шлепок ромбом. Ритм виден телом, считать не надо.',draw:drawSundial},
+ {id:'ladder',name:'Лесенка',hint:'Каждая нота это ступенька от низкого D до высокого 8. Видно рисунок мелодии: куда она идёт, вверх или вниз.',draw:drawLadder},
+ {id:'map',name:'Карта сверху',hint:'Ханг нарисован сверху: какое поле горит, какой рукой, пунктир показывает, куда рука идёт дальше.',draw:drawMap},
+ {id:'strip',name:'Лента со счётом',hint:'Спокойная лента под видео: все доли, цвет руки и счёт вслух «раз-и-два-и». Для чата учеников.',draw:drawStrip},
+];
+let mode=MODES[0];
+const tabs=document.getElementById('tabs');
+MODES.forEach((md,i)=>{const b=document.createElement('button');b.textContent=(i+1)+' · '+md.name;b.onclick=()=>{mode=md;[...tabs.children].forEach(x=>x.classList.toggle('on',x===b));document.getElementById('hint').textContent=md.hint;b.scrollIntoView({inline:'center',block:'nearest'})};tabs.appendChild(b)});
+const qs=new URLSearchParams(location.search);tabs.children[Math.max(0,MODES.findIndex(x=>x.id===qs.get('mode')))].click();
+
+// плёнка: как окрашено само видео
+const FILMS=[['сад','sepia(.32) saturate(1.2) contrast(1.04) brightness(1.04)'],['сумерки','sepia(.25) hue-rotate(-18deg) saturate(.85) brightness(.82) contrast(1.08)'],['как есть','none']];
+let film=+(qs.get('film')||0);const filmB=document.getElementById('film');
+function setFilm(){v.style.filter=FILMS[film][1];filmB.textContent='плёнка: '+FILMS[film][0]}setFilm();
+filmB.onclick=()=>{film=(film+1)%FILMS.length;setFilm()};
+
+// ===== Тренажёр: петля по строке, скорость, «твоя очередь» =====
+let loopLine='all',turn=false,waiting=null,actx=null,lastTurn=null;
+const playB=document.getElementById('play');
+playB.onclick=()=>{if(waiting)return;if(v.paused)v.play();else v.pause()};
+v.onplay=()=>playB.textContent='❚❚';v.onpause=()=>{if(!waiting)playB.textContent='▶'};
+document.getElementById('phrase').onchange=e=>{loopLine=e.target.value;if(loopLine!=='all'){v.currentTime=PHR[+loopLine].start-0.3;v.play()}};
+document.querySelectorAll('[data-rate]').forEach(b=>b.onclick=()=>{v.playbackRate=+b.dataset.rate;document.querySelectorAll('[data-rate]').forEach(x=>x.classList.toggle('on',x===b))});
+const turnB=document.getElementById('turn');turnB.onclick=()=>{turn=!turn;turnB.classList.toggle('on',turn)};
+function click(at,hi){const o=actx.createOscillator(),gn=actx.createGain();o.frequency.value=hi?1500:1000;gn.gain.setValueAtTime(.3,at);gn.gain.exponentialRampToValueAtTime(.001,at+.05);o.connect(gn).connect(actx.destination);o.start(at);o.stop(at+.06)}
+function startTurn(ph){v.pause();const step=EIGHTH/v.playbackRate;actx=actx||new AudioContext();const t0=actx.currentTime+0.1;
+  for(let i=0;i<12;i++)click(t0+i*step,i===0);waiting={ph,t0,step};playB.textContent='🎶';
+  setTimeout(()=>{waiting=null;v.currentTime=ph.start-0.3;v.play()},12*step*1000+400)}
+function frame(){
+  const t=v.currentTime;
+  if(!waiting&&!v.paused){
+    if(loopLine!=='all'){const ph=PHR[+loopLine];if(t>ph.end+0.15){if(turn)startTurn(ph);else v.currentTime=ph.start-0.3}}
+    else if(turn){const ph=PHR.find(p=>t>p.end+0.1&&t<p.end+0.2);if(ph&&ph!==lastTurn){lastTurn=ph;startTurn(ph)}}}
+  g.clearRect(0,0,720,1280);
+  // виньетка и зерно, чтобы видео село в бумагу
+  if(film!==2){const vg=g.createRadialGradient(360,640,380,360,640,820);vg.addColorStop(0,'rgba(42,28,19,0)');vg.addColorStop(1,'rgba(42,28,19,.45)');g.fillStyle=vg;g.fillRect(0,0,720,1280);
+    g.globalAlpha=.6;g.fillStyle=GRAIN;g.fillRect(0,0,720,1280);g.globalAlpha=1}
+  if(waiting){const ph=waiting.ph,i=clamp(Math.floor((actx.currentTime-waiting.t0)/waiting.step),0,11),s=ph.slot[i];
+    g.fillStyle='rgba(47,39,72,.35)';g.fillRect(0,0,720,1280);mode.draw(s.t+0.01,{ph,cur:s,hit:null,age:9},M(t));
+    paperCard(170,560,380,90,20);txt('твоя очередь',360,606,40,INK,'600 40px Lit');
+  }else mode.draw(t,state(t),M(t));
+  requestAnimationFrame(frame)}
+frame();
+const qt=qs.get('t');if(qt){v.addEventListener('loadedmetadata',()=>{v.currentTime=+qt},{once:true})}
+</script>
+</body>
+</html>

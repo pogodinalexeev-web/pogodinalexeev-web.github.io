@@ -34,6 +34,16 @@
   #card .ctrls label{font:600 13px/1 var(--sans);color:var(--inkSoft);display:flex;align-items:center;gap:8px;flex:1 1 100%}
   #card .ctrls label b{font:700 18px/1 var(--serif);color:var(--ink);min-width:44px;text-align:right}
   #card .formula{margin-top:8px;font:italic 12px/1.2 var(--serif);color:var(--inkFaint)}
+  #card .formula .more{margin-left:8px;font:600 12px/1 var(--sans);color:var(--ink);background:var(--sun);border:1.5px solid var(--ink);border-radius:14px;padding:5px 10px;cursor:pointer}
+  #slide{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;background:rgba(42,28,19,.55);padding:16px;box-sizing:border-box}
+  #slide.open{display:flex}
+  #slide .sheet{width:min(560px,100%);max-height:92vh;overflow:auto;box-sizing:border-box;padding:20px 22px 16px}
+  #slide h3{margin:0 0 10px;font:700 24px/1.15 var(--serif);color:var(--ink)}
+  #slide .big{margin:10px 0;padding:10px 12px;background:var(--paperShade);border:2px solid var(--ink);border-radius:10px;font:italic 700 24px/1.3 var(--serif);color:var(--ink);text-align:center}
+  #slide .big i{font-style:normal;font-size:13px;font-weight:600;font-family:var(--sans);color:var(--inkSoft);display:block}
+  #slide p{margin:8px 0;font:16px/1.4 var(--sans);color:var(--inkSoft)}
+  #slide .foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px}
+  #slide .dots{font:700 14px var(--sans);color:var(--inkFaint)}
   #card.min .body{display:none}
   #card .tog{position:absolute;right:8px;top:6px;border:0;background:none;font:700 18px var(--sans);color:var(--inkFaint);padding:6px}
   input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:30px;background:transparent;margin:0}
@@ -69,8 +79,12 @@
     #nav .btn{font-size:14px;padding:11px 13px}
   }
 </style>
-</head>
-<body>
+<script>/* 05.10.2026: на айфоне беззвучный режим глушит Web Audio; переводим страницу в режим проигрывания, как у музыки */
+(function(){try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}
+var a=null;function u(){if(a)return;a=new Audio('data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YUAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');a.loop=true;a.setAttribute('playsinline','');a.volume=0.01;var p=a.play();if(p&&p.catch)p.catch(function(){a=null;});}
+['touchstart','touchend','pointerdown','click','keydown'].forEach(function(t){window.addEventListener(t,u,{capture:true,passive:true});});})();</script>
+<style id="no-zoom-select">/* 19.10.2026: двойной тап не зумит, долгое нажатие не выделяет кнопки */html,body,body *{touch-action:manipulation}canvas{touch-action:none}button,a,label,select,summary,[role=button],[onclick],input[type=range],input[type=button]{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}</style></head>
+<body><script src="/f/garden.js?v=12"></script>
 <canvas id="gl"></canvas>
 <div id="vig"></div>
 <div id="grain"></div>
@@ -80,6 +94,7 @@
   <div class="body"><div class="ctrls" id="cctrls"></div><div class="formula" id="cformula"></div></div>
 </div>
 <div id="nav"><button class="btn" id="snd">♪ звук</button><button class="btn" id="next">к станции 1 →</button></div>
+<div id="slide"><div class="sheet paper"><div id="slbody"></div><div class="foot"><button class="btn" id="slprev">← назад</button><span class="dots" id="sldots"></span><button class="btn on" id="slnext">дальше →</button></div></div></div>
 <div id="joyzone"></div>
 <div id="joy"><div id="knob"></div></div>
 <div id="hint"></div>
@@ -144,6 +159,9 @@ const GLSL_COMMON = /* glsl */`
   uniform float uTime; uniform vec3 uFogColor; uniform float uFogDensity; uniform vec3 uLightDir; uniform vec3 uInk; uniform vec2 uRes; uniform float uDpr;
   float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
   float fogAmt(vec3 w){ float d = length(w - cameraPosition); return 1.0 - exp(-pow(d*uFogDensity, 1.5)); }
+  float vnoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+    return mix(mix(hash21(i), hash21(i+vec2(1.0,0.0)), f.x), mix(hash21(i+vec2(0.0,1.0)), hash21(i+vec2(1.0,1.0)), f.x), f.y); }
+  float fbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++){ s += a * vnoise(p); p = p * 2.03 + vec2(17.1, 9.2); a *= 0.5; } return s / 0.9375; }
 `;
 
 // ---------------------------------------------------------------------------
@@ -168,7 +186,7 @@ const INK_VS = /* glsl */`
 const INK_FS = /* glsl */`
   ${GLSL_COMMON}
   uniform vec3 uColor; uniform sampler2D uMap; uniform float uUseMap; uniform vec2 uRepeat;
-  uniform float uHatch, uBorder, uFlat, uOpacity, uAlphaTest, uFog, uEmit;
+  uniform float uHatch, uBorder, uFlat, uOpacity, uAlphaTest, uFog, uEmit, uWash;
   varying vec3 vN; varying vec3 vW; varying vec2 vUv; varying vec3 vCol;
   void main(){
     vec3 base = uColor * vCol; float a = uOpacity;
@@ -197,6 +215,15 @@ const INK_FS = /* glsl */`
       c = mix(uInk, c, min(ex, ey));
     }
     c = mix(c, base, uEmit);
+    if (uWash > 0.0) {
+      // watercolor washes laid over the paper: sage / apricot / rose pools with darker dried edges
+      float n = fbm(vW.xz * 0.045), n2 = fbm(vW.xz * 0.12 + 7.3), n3 = fbm(vW.xz * 0.02 + 3.1);
+      vec3 tint = mix(vec3(0.88, 0.93, 0.80), vec3(1.03, 0.92, 0.80), smoothstep(0.35, 0.65, n));
+      tint = mix(tint, vec3(0.97, 0.84, 0.82), smoothstep(0.55, 0.8, n3) * 0.7);
+      c *= mix(vec3(1.0), tint, uWash * (0.35 + 0.4 * smoothstep(0.3, 0.7, n2)));
+      float e = 1.0 - smoothstep(0.0, 0.025, abs(n2 - 0.52));
+      c *= 1.0 - e * 0.07 * uWash;
+    }
     c += (hash21(floor(gl_FragCoord.xy * px)) - 0.5) * 0.05;
     c = mix(c, uFogColor, fogAmt(vW) * uFog);
     gl_FragColor = vec4(c, a);
@@ -208,7 +235,7 @@ function inkMat(o = {}) {
       uMap: { value: o.map || null }, uUseMap: { value: o.map ? 1 : 0 },
       uRepeat: { value: new THREE.Vector2(...(o.repeat || [1, 1])) },
       uHatch: { value: o.hatch ?? 1 }, uBorder: { value: o.border || 0 }, uFlat: { value: o.flat || 0 },
-      uOpacity: { value: o.opacity ?? 1 }, uAlphaTest: { value: o.alphaTest || 0 }, uFog: { value: o.fog ?? 1 }, uEmit: { value: o.emit || 0 },
+      uOpacity: { value: o.opacity ?? 1 }, uAlphaTest: { value: o.alphaTest || 0 }, uFog: { value: o.fog ?? 1 }, uEmit: { value: o.emit || 0 }, uWash: { value: o.wash || 0 },
     }, SH),
     vertexShader: INK_VS, fragmentShader: INK_FS,
     transparent: !!o.transparent, side: o.side ?? THREE.FrontSide, depthWrite: o.depthWrite ?? true,
@@ -559,7 +586,7 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 48, 24), new THREE.Shad
     float h3(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
     void main(){
       vec3 d = normalize(vDir); float y = d.y;
-      vec3 hor = vec3(0.957,0.835,0.655), low = vec3(0.910,0.690,0.600), mid = vec3(0.640,0.490,0.600), high = vec3(0.330,0.270,0.450), top = vec3(0.180,0.150,0.270);
+      vec3 hor = vec3(0.957,0.835,0.655), low = vec3(0.910,0.690,0.600), mid = vec3(0.640,0.490,0.600), high = vec3(0.500,0.460,0.740), top = vec3(0.330,0.300,0.560);
       vec3 c = mix(hor, low, smoothstep(0.0, 0.09, y));
       c = mix(c, mid, smoothstep(0.07, 0.28, y));
       c = mix(c, high, smoothstep(0.25, 0.58, y));
@@ -568,8 +595,28 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 48, 24), new THREE.Shad
       float az = atan(d.x, d.z);
       float band = fract(az * 3.0 + y * 7.0 + 0.04 * sin(az * 23.0));
       c *= 1.0 + 0.035 * smoothstep(0.45, 0.5, band) * (1.0 - smoothstep(0.95, 1.0, band)) * (1.0 - smoothstep(0.1, 0.6, y));
-      // sun: flat disc, ink ring, warm bloom
       float ang = acos(clamp(dot(d, uSun), -1.0, 1.0));
+      // watercolor: projected onto a cloud plane so there is no seam
+      vec2 cp = d.xz / (max(y, 0.0) + 0.12);
+      float wash = fbm(cp * 0.35 + vec2(uTime * 0.004, 0.0));
+      c *= 0.93 + 0.14 * wash;
+      c = mix(c, c * vec3(1.04, 0.92, 1.06), smoothstep(0.45, 0.75, fbm(cp * 0.18 + 5.0)) * 0.6);
+      // painted cloud streaks: long horizontal strokes, lit from the sun side, darker dried rim
+      float sunSide = pow(max(dot(normalize(vec3(d.x, 0.0, d.z)), normalize(vec3(uSun.x, 0.0, uSun.z))), 0.0), 3.0);
+      float st = fbm(cp * vec2(0.22, 0.9) + vec2(uTime * 0.006, 2.0));
+      float cloudMask = smoothstep(0.03, 0.12, y) * (1.0 - smoothstep(0.32, 0.55, y));
+      float cl = smoothstep(0.52, 0.66, st) * cloudMask;
+      vec3 cloudCol = mix(vec3(0.62, 0.50, 0.66), vec3(1.0, 0.80, 0.62), sunSide);
+      cloudCol = mix(cloudCol, vec3(1.0, 0.93, 0.80), smoothstep(0.66, 0.8, st) * sunSide * 0.7);
+      c = mix(c, cloudCol, cl * 0.75);
+      float rim = (smoothstep(0.50, 0.53, st) - smoothstep(0.53, 0.58, st)) * cloudMask;
+      c = mix(c, c * vec3(0.78, 0.70, 0.82), rim * 0.5);
+      // high thin wisps
+      float wi = smoothstep(0.58, 0.72, fbm(cp * vec2(0.08, 0.5) + 11.0)) * smoothstep(0.3, 0.5, y) * (1.0 - smoothstep(0.7, 0.9, y));
+      c = mix(c, vec3(0.80, 0.66, 0.80), wi * 0.35);
+      // big soft haze around the sun, warming the horizon
+      c += vec3(0.95, 0.55, 0.25) * 0.20 * exp(-ang * 1.6) * (1.0 - smoothstep(0.0, 0.5, y));
+      // sun: flat disc, ink ring, warm bloom
       c += vec3(0.95, 0.62, 0.25) * 0.28 * exp(-ang * 5.0);
       c = mix(c, vec3(0.972, 0.800, 0.380), 1.0 - smoothstep(0.052, 0.055, ang));
       c = mix(c, vec3(0.99, 0.90, 0.62), (1.0 - smoothstep(0.030, 0.040, ang)) * 0.6);
@@ -610,7 +657,7 @@ const groundTex = tex(paperCanvas(1024, 1024, (g, w, h) => {
   const R = mulberry(9);
   for (let i = 0; i < 900; i++) { g.strokeStyle = rgba(R() < 0.5 ? PAL.sage : PAL.tan, 0.18 + R() * 0.2); g.lineWidth = 1 + R(); const x = R() * w, y = R() * h, a = -1.2 - R() * 0.8; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 7, y + Math.sin(a) * 7); g.stroke(); }
 }, { seed: 11, vignette: 0 }), { repeat: true, aniso: 8 });
-const ground = mesh(new THREE.CircleGeometry(160, 64), inkMat({ map: groundTex, repeat: [32, 32], flat: 1, hatch: 0 }), scene, [0, 0, 0], [-Math.PI / 2, 0, 0]);
+const ground = mesh(new THREE.CircleGeometry(160, 64), inkMat({ map: groundTex, repeat: [32, 32], flat: 1, hatch: 0, wash: 1 }), scene, [0, 0, 0], [-Math.PI / 2, 0, 0]);
 
 // protractor plaza decal (drawn once on a big canvas) ---------------------------
 {
@@ -650,29 +697,139 @@ const ground = mesh(new THREE.CircleGeometry(160, 64), inkMat({ map: groundTex, 
   decal.renderOrder = 1;
 }
 
-// paper-cut hills: three rings of silhouettes with ink edges ---------------------
-function hillRing(R, base, amp, color, seed, edge) {
-  const n = 160, pos = [], idx = [], top = [];
+// paper-cut hills: layered watercolor silhouettes, far = paler and bluer --------------
+const HILL_VS = /* glsl */`varying vec3 vW; varying float vV; void main(){ vV = uv.y; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`;
+const HILL_FS = /* glsl */`${GLSL_COMMON}
+  uniform vec3 uColor, uHaze; uniform float uAir, uSeed; varying vec3 vW; varying float vV;
+  void main(){
+    vec2 p = vec2(atan(vW.x, vW.z) * 40.0, vW.y * 0.25) + uSeed;
+    float n = fbm(p * 0.35), n2 = fbm(p * vec2(0.12, 0.6) + 3.0);
+    vec3 c = uColor * (0.78 + 0.44 * n);
+    // backruns: pale cauliflower blooms where water crept back into the wash
+    float br = fbm(p * 0.9 + 11.0);
+    c = mix(c, mix(c, uHaze, 0.45), smoothstep(0.58, 0.66, br));
+    c *= 1.0 - (smoothstep(0.56, 0.58, br) - smoothstep(0.58, 0.62, br)) * 0.18;
+    c = mix(c, c * vec3(0.92, 0.95, 1.10), smoothstep(0.4, 0.7, n2) * 0.6);
+    // pigment pooled along the dried top edge
+    c *= 1.0 - (1.0 - smoothstep(0.0, 0.07, 1.0 - vV)) * 0.22;
+    // soft granulation
+    c *= 0.97 + 0.06 * hash21(floor(gl_FragCoord.xy / uDpr * 0.7));
+    // valley mist eats the foot of every layer
+    float foot = 1.0 - smoothstep(0.02, 0.55 + 0.15 * n2, vV);
+    c = mix(c, uHaze, clamp(uAir + foot * (0.75 - uAir * 0.5), 0.0, 1.0));
+    gl_FragColor = vec4(c, 1.0);
+  }`;
+function hillRing(R, base, amp, color, seed, edge, air = 0.2, haze = '#EDCFAE') {
+  const n = 220, pos = [], idx = [], top = [], uv = [];
   for (let i = 0; i <= n; i++) {
     const a = i / n * TAU;
     const hgt = base + amp * (0.55 * (noise1(a * 3.2, seed) * 0.5 + 0.5) + 0.35 * (noise1(a * 9.0, seed + 1) * 0.5 + 0.5) + 0.1 * noise1(a * 30, seed + 2));
     const x = Math.sin(a) * R, z = Math.cos(a) * R;
-    pos.push(x, -2, z, x, hgt, z); top.push(V3(x, hgt, z));
+    pos.push(x, -2, z, x, hgt, z); top.push(V3(x, hgt, z)); uv.push(i / n, 0, i / n, 1);
     if (i < n) { const k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((n + 1) * 4).fill(0), 2));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
-  const m = new THREE.Mesh(g, inkMat({ color, flat: 1, hatch: 0, side: THREE.DoubleSide }));
-  m.position.copy(CENTER); scene.add(m);
-  const l = new Line(n + 2, { width: edge, color: PAL.ink, minPx: 1.2, boil: 0.5, seed });
-  l.set(top); l.mesh.position.copy(CENTER); scene.add(l.mesh);
+  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: Object.assign({ uColor: { value: col(color) }, uHaze: { value: col(haze) }, uAir: { value: air }, uSeed: { value: seed * 13.7 } }, SH), vertexShader: HILL_VS, fragmentShader: HILL_FS, side: THREE.DoubleSide }));
+  m.position.copy(CENTER); m.frustumCulled = false; scene.add(m);
+  if (edge > 0) { const l = new Line(n + 2, { width: edge, color: PAL.ink, minPx: 1.0, boil: 0.5, seed }); l.set(top); l.mesh.position.copy(CENTER); scene.add(l.mesh); }
 }
-hillRing(150, 10, 26, '#6A5A86', 3, 0.35);
-hillRing(118, 4, 16, '#4F7C74', 7, 0.28);
-hillRing(90, 1, 9, '#86A077', 12, 0.22);
+// mist band: an open cylinder, dense at the foot, torn at the top, drifting
+const MIST_FS = /* glsl */`${GLSL_COMMON}
+  uniform vec3 uColor; uniform float uA, uSeed; varying vec3 vW; varying float vV;
+  void main(){
+    float a = atan(vW.x, vW.z);
+    float n = fbm(vec2(a * 18.0 + uTime * 0.02 + uSeed, vV * 2.5));
+    float top = 0.35 + 0.5 * n;
+    float alpha = (1.0 - smoothstep(top - 0.25, top, vV)) * smoothstep(0.0, 0.08, vV) * uA;
+    gl_FragColor = vec4(uColor * (0.97 + 0.06 * n), alpha);
+  }`;
+function mistRing(R, h, color, alpha, seed) {
+  const g = new THREE.CylinderGeometry(R, R, h, 160, 1, true); g.translate(0, h / 2 - 1, 0);
+  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({ uniforms: Object.assign({ uColor: { value: col(color) }, uA: { value: alpha }, uSeed: { value: seed } }, SH), vertexShader: HILL_VS, fragmentShader: MIST_FS, side: THREE.DoubleSide, transparent: true, depthWrite: false }));
+  m.position.copy(CENTER); m.frustumCulled = false; m.renderOrder = 2; scene.add(m);
+}
+// living mist: domain-warped watercolor smoke on Y-billboards, drifting and boiling ------
+const SMOKE_VS = /* glsl */`${GLSL_COMMON}
+  attribute float aSeed; varying vec2 vUv; varying float vSeed; varying vec3 vW; varying float vFade;
+  void main(){
+    vec3 ip = (modelMatrix * instanceMatrix * vec4(0.0,0.0,0.0,1.0)).xyz;
+    float sx = length(instanceMatrix[0].xyz), sy = length(instanceMatrix[1].xyz);
+    ip.x += sin(uTime * 0.07 + aSeed * 6.0) * 3.0 + uTime * 0.25 * (0.5 + aSeed);
+    ip.z += cos(uTime * 0.05 + aSeed * 4.0) * 2.0;
+    vec3 cd = cameraPosition - ip; cd.y = 0.0; cd = normalize(cd);
+    vec3 right = vec3(cd.z, 0.0, -cd.x);
+    vec3 w = ip + right * position.x * sx + vec3(0.0,1.0,0.0) * position.y * sy;
+    vW = w; vUv = uv; vSeed = aSeed;
+    vFade = smoothstep(2.5, 11.0, length(cameraPosition - w));
+    gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
+  }`;
+const SMOKE_FS = /* glsl */`${GLSL_COMMON}
+  uniform vec3 uColA, uColB; uniform float uAlpha; varying vec2 vUv; varying float vSeed; varying vec3 vW; varying float vFade;
+  void main(){
+    vec2 p = vUv * 2.0 - 1.0;
+    vec2 q = vec2(vUv.x * 2.2 + uTime * 0.035 + vSeed * 7.0, vUv.y * 1.4 - uTime * 0.02 + vSeed * 3.0);
+    vec2 wq = vec2(fbm(q * 1.6 + 5.0 + uTime * 0.02), fbm(q * 1.6 + 9.0 - uTime * 0.015));
+    float n = fbm(q + 1.2 * wq);
+    float shape = 1.0 - smoothstep(0.2, 1.0, length(p * vec2(1.0, 1.15)));
+    float d = n * 1.0 + shape * 0.85 - 0.95;
+    float a = smoothstep(0.0, 0.3, d);
+    float rim = smoothstep(0.0, 0.03, d) - smoothstep(0.03, 0.10, d);
+    vec3 c = mix(uColB, uColA, smoothstep(0.0, 0.45, d) * (0.45 + 0.55 * vUv.y));
+    c *= 1.0 - rim * 0.22;
+    a = clamp(a * 0.75 + rim * 0.3, 0.0, 1.0) * vFade * uAlpha * (1.0 - smoothstep(0.85, 1.0, abs(p.x))) * (1.0 - smoothstep(0.85, 1.0, p.y));
+    c = mix(c, uFogColor, fogAmt(vW) * 0.45);
+    gl_FragColor = vec4(c, a);
+  }`;
+function smokeField(list, colA, colB, alpha, order) {
+  const geo = new THREE.PlaneGeometry(1, 1); geo.translate(0, 0.42, 0);
+  const seeds = new Float32Array(list.length);
+  const m = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({ uniforms: Object.assign({ uColA: { value: col(colA) }, uColB: { value: col(colB) }, uAlpha: { value: alpha } }, SH), vertexShader: SMOKE_VS, fragmentShader: SMOKE_FS, side: THREE.DoubleSide, transparent: true, depthWrite: false }), list.length);
+  const M = new THREE.Matrix4();
+  list.forEach(([x, y, z, w, h, sd], i) => { M.makeScale(w, h, 1); M.setPosition(x, y, z); m.setMatrixAt(i, M); seeds[i] = sd; });
+  geo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seeds, 1));
+  m.frustumCulled = false; m.raycast = () => {}; m.renderOrder = order; scene.add(m); return m;
+}
+const PAINTED = !Q.has('hills');
+if (!PAINTED) {
+hillRing(250, 34, 60, '#A99BC4', 31, 0, 0.55, '#E9C9B4');
+hillRing(205, 20, 40, '#8A7AAA', 23, 0.18, 0.38, '#E6C6B2');
+mistRing(190, 26, '#EFD3BC', 0.75, 1.0);
+hillRing(150, 10, 26, '#6A5A86', 3, 0.3, 0.18);
+mistRing(135, 14, '#F0D6BE', 0.65, 4.0);
+hillRing(118, 4, 16, '#4F7C74', 7, 0.26, 0.08);
+mistRing(104, 7, '#F2DCC2', 0.5, 9.0);
+hillRing(90, 1, 9, '#86A077', 12, 0.22, 0.0);
+}
+// painted backdrop: a hand-painted watercolor valley wrapped around the garden like a theatre cloth
+const backdrop = (() => {
+  if (!PAINTED) return null;
+  const R = 230, H = R * TAU * 760 / 6048, Y0 = -5;
+  const t = new THREE.TextureLoader().load('./pano.jpg');
+  t.wrapS = THREE.RepeatWrapping; t.anisotropy = 8; t.minFilter = THREE.LinearMipmapLinearFilter;
+  const g = new THREE.CylinderGeometry(R, R, H, 128, 1, true); g.translate(0, Y0 + H / 2, 0);
+  const sunU = 895 / 6048, sunTheta = Math.atan2(SUN_DIR.x, SUN_DIR.z);
+  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({
+    uniforms: Object.assign({ uMap: { value: t }, uOff: { value: 0 }, uSky: { value: col('#8C82C7') } }, SH),
+    vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `${GLSL_COMMON}
+      uniform sampler2D uMap; uniform float uOff; uniform vec3 uSky; varying vec2 vUv; varying vec3 vW;
+      void main(){
+        vec3 c = texture2D(uMap, vec2(uOff - vUv.x, vUv.y)).rgb;
+        float a = 1.0 - smoothstep(0.80, 0.99, vUv.y + (fbm(vec2(vUv.x * 60.0, uTime * 0.02)) - 0.5) * 0.08);
+        c = mix(c, uFogColor, (1.0 - smoothstep(0.02, 0.10, vUv.y)) * 0.55);
+        gl_FragColor = vec4(c, a);
+      }`,
+    side: THREE.BackSide, transparent: true, depthWrite: false, fog: false,
+  }));
+  // CylinderGeometry: u = theta / TAU with x = sin, z = cos; we sample (uOff - u), so sun lands where u = uOff - sunU
+  let th = sunTheta; if (th < 0) th += TAU;
+  m.material.uniforms.uOff.value = th / TAU + sunU;
+  m.renderOrder = -9; m.frustumCulled = false; m.raycast = () => {}; scene.add(m);
+  return m;
+})();
 
 // drawn trees & tufts: billboard atlas ------------------------------------------------
 const atlas = (() => {
@@ -753,12 +910,77 @@ function billboards(cell, list, w, h) {
   m.frustumCulled = false; m.raycast = () => {};
   scene.add(m); return m;
 }
+// painted river: turquoise-and-gold watercolor ribbon winding behind stations 3 and 4 ----
+const RIVER_PTS = (() => {
+  const key = [[152, 118], [127, 94], [143, 72], [121, 55], [137, 40], [119, 28], [95, 25], [73, 29], [57, 42], [68, 62], [51, 86], [61, 116]];
+  const pts = key.map(([d, r]) => { const a = d / 180 * Math.PI; return V3(CENTER.x + Math.sin(a) * r, 0, CENTER.z + Math.cos(a) * r); });
+  return new THREE.CatmullRomCurve3(pts, false, 'centripetal').getSpacedPoints(420);
+})();
+const RIVER_W = (i) => 6.4 * (0.8 + 0.35 * (noise1(i * 0.05, 71) * 0.5 + 0.5));
+function riverDist(x, z) { let m = 1e9; for (let i = 0; i < RIVER_PTS.length; i += 3) { const p = RIVER_PTS[i]; const d = Math.hypot(x - p.x, z - p.z) - RIVER_W(i); if (d < m) m = d; } return m; }
+{
+  const n = RIVER_PTS.length, pos = [], uv = [], idx = []; let L = 0;
+  for (let i = 0; i < n; i++) {
+    const p = RIVER_PTS[i], q = RIVER_PTS[Math.min(i + 1, n - 1)], o = RIVER_PTS[Math.max(i - 1, 0)];
+    if (i) L += p.distanceTo(RIVER_PTS[i - 1]);
+    const tx = q.x - o.x, tz = q.z - o.z, tl = Math.hypot(tx, tz) || 1, nx = -tz / tl, nz = tx / tl, w = RIVER_W(i) * 1.7;
+    pos.push(p.x + nx * w, 0.05, p.z + nz * w, p.x - nx * w, 0.05, p.z - nz * w); uv.push(L, 0, L, 1);
+    if (i < n - 1) { const k = i * 2; idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+  const m = new THREE.Mesh(g, new THREE.ShaderMaterial({
+    uniforms: Object.assign({ uSunDir: { value: SUN_DIR } }, SH),
+    vertexShader: `varying vec2 vUv; varying vec3 vW; void main(){ vUv = uv; vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: /* glsl */`${GLSL_COMMON}
+      uniform vec3 uSunDir; varying vec2 vUv; varying vec3 vW;
+      void main(){
+        float u = vUv.x, v = vUv.y, x = abs(v - 0.5) * 2.0;
+        float eN = fbm(vec2(u * 0.10, v > 0.5 ? 3.0 : 9.0)) * 0.22 + fbm(vec2(u * 0.45, v > 0.5 ? 5.0 : 13.0)) * 0.10;
+        float waterEdge = 0.46 + eN, bankEdge = 0.80 + eN * 0.6;
+        // wet bank: greenish-ochre wash with a soft torn edge
+        float bn = fbm(vW.xz * 0.18);
+        vec3 bank = mix(vec3(0.84, 0.80, 0.56), vec3(0.60, 0.72, 0.50), bn);
+        float bankA = (1.0 - smoothstep(bankEdge - 0.18, bankEdge, x + (fbm(vW.xz * 0.6) - 0.5) * 0.12)) * 0.6;
+        // water body, deep in the middle, pale at the edges
+        float flow = fbm(vec2(u * 0.16 - uTime * 0.30, x * 2.2 + u * 0.02));
+        float flow2 = fbm(vec2(u * 0.55 - uTime * 0.55, v * 7.0));
+        vec3 deep = vec3(0.09, 0.40, 0.47), mid = vec3(0.26, 0.67, 0.66), pale = vec3(0.72, 0.89, 0.80);
+        float xr = x / waterEdge;
+        vec3 w = mix(deep, mid, smoothstep(0.0, 0.85, xr + (flow - 0.5) * 0.5));
+        w = mix(w, pale, smoothstep(0.72, 1.0, xr));
+        // sky and sun painted into the water
+        vec3 V = normalize(cameraPosition - vW); vec3 R = reflect(-V, vec3(0.0, 1.0, 0.0));
+        float sun = pow(max(dot(R, uSunDir), 0.0), 6.0);
+        float fres = pow(1.0 - max(V.y, 0.0), 3.0);
+        w = mix(w, vec3(0.99, 0.79, 0.44), clamp(sun * 0.95 + fres * 0.35, 0.0, 0.85) * (0.45 + 0.55 * flow));
+        w = mix(w, vec3(0.78, 0.66, 0.86), fres * 0.25 * (1.0 - sun));
+        w += vec3(1.0, 0.93, 0.72) * smoothstep(0.62, 0.76, flow2) * 0.32;
+        // pigment pooled at the waterline
+        float d = waterEdge - x;
+        float rim = smoothstep(-0.012, 0.0, d) * (1.0 - smoothstep(0.0, 0.06, d));
+        w = mix(w, deep * 0.75, rim * 0.55);
+        float waterA = smoothstep(-0.006, 0.03, d);
+        vec3 c = mix(bank, w, waterA);
+        float a = max(waterA * 0.96, bankA);
+        // glints drifting downstream
+        vec2 gq = vec2(u * 2.0 - uTime * 1.6, v * 16.0); float h = hash21(floor(gq));
+        c += vec3(1.0, 0.95, 0.80) * step(0.982, h) * (0.5 + 0.5 * sin(uTime * 6.0 + h * 40.0)) * waterA * 0.7;
+        c += (hash21(floor(gl_FragCoord.xy / uDpr)) - 0.5) * 0.04;
+        c = mix(c, uFogColor, fogAmt(vW));
+        gl_FragColor = vec4(c, a);
+      }`,
+    transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  }));
+  m.renderOrder = 1; m.frustumCulled = false; m.raycast = () => {}; scene.add(m);
+}
 const STATION_ANG = [-50, -130, 130, 50].map((d) => d / 180 * Math.PI);
 function freeSpot(x, z, pad) {
   const dc = Math.hypot(x - CENTER.x, z - CENTER.z);
   if (dc < 7) return false;
   for (const a of STATION_ANG) { const sx = CENTER.x + Math.sin(a) * RING, sz = CENTER.z + Math.cos(a) * RING; const dx = x - sx, dz = z - sz; if (dx * dx + dz * dz < pad * pad) return false; }
   if (Math.abs(x) < 1.6 && z > -6 && z < 12) return false;
+  if (riverDist(x, z) < 2.5) return false;
   return true;
 }
 {
@@ -777,6 +999,24 @@ function freeSpot(x, z, pad) {
   billboards(0, lists[0], 4.2, 8.4); billboards(1, lists[1], 2.6, 5.2); billboards(2, lists[2], 3.6, 7.2); billboards(3, lists[3], 0.9, 1.8);
 }
 
+{
+  const R = mulberry(404), near = [], valley = [], plumes = [];
+  // low mist crawling around the garden, between the trees and across the plaza edge
+  for (let i = 0; i < 110; i++) {
+    const a = R() * TAU, r = 9 + Math.pow(R(), 0.7) * 62, x = CENTER.x + Math.sin(a) * r, z = CENTER.z + Math.cos(a) * r;
+    if (!freeSpot(x, z, 6.5)) continue;
+    near.push([x, -0.4, z, 9 + R() * 16, 3 + R() * 4.5, R()]);
+  }
+  // thick banks lying in the valleys in front of the hills
+  for (let i = 0; i < 40; i++) { const a = i / 40 * TAU + R() * 0.1, r = 80 + R() * 30; valley.push([CENTER.x + Math.sin(a) * r, -1, CENTER.z + Math.cos(a) * r, 40 + R() * 30, 12 + R() * 8, R()]); }
+  // tall soft plumes rising off the far ridges
+  for (let i = 0; i < 18; i++) { const a = R() * TAU, r = 125 + R() * 50; plumes.push([CENTER.x + Math.sin(a) * r, 4 + R() * 8, CENTER.z + Math.cos(a) * r, 45 + R() * 35, 30 + R() * 25, R()]); }
+  for (let i = 8; i < RIVER_PTS.length; i += 30) { const p = RIVER_PTS[i]; valley.push([p.x + (R() - 0.5) * 6, -0.5, p.z + (R() - 0.5) * 6, 10 + R() * 12, 2.5 + R() * 2.5, R()]); }
+  if (!PAINTED) smokeField(plumes, '#F4DCCB', '#B9A3C4', 0.55, 3);
+  smokeField(valley, '#F6E2CF', '#B39CBD', 0.85, 4);
+  smokeField(near, '#FBF0E2', '#B9A4C0', 0.85, 5);
+}
+
 // clouds: paper cut-outs far away -----------------------------------------------------
 {
   const c = mkCanvas(512, 256), g = c.getContext('2d');
@@ -789,7 +1029,7 @@ function freeSpot(x, z, pad) {
   pts.push([60, 230]); pts.unshift([440, 230]);
   inkStroke(g, pts, 3.5, PAL.dusk, { seed: 4 });
   const t = tex(c), R = mulberry(5);
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < (PAINTED ? 0 : 9); i++) {
     const a = -1.9 + i / 8 * 3.8 + (R() - 0.5) * 0.3, r = 180 + R() * 40;
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false }));
     s.position.set(Math.sin(a) * r + CENTER.x, 30 + R() * 45, -Math.cos(a) * r + CENTER.z);
@@ -797,7 +1037,7 @@ function freeSpot(x, z, pad) {
     scene.add(s);
   }
   // a few behind the player too
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < (PAINTED ? 0 : 4); i++) {
     const a = Math.PI + (i - 1.5) * 0.7, r = 200;
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true, depthWrite: false, fog: false, opacity: 0.85 }));
     s.position.set(Math.sin(a) * r, 50 + i * 9, -Math.cos(a) * r + CENTER.z); s.scale.set(50, 25, 1); s.renderOrder = -5; scene.add(s);
@@ -1332,8 +1572,14 @@ const PROFILES = {
 };
 makeStation(2, {
   title: 'Интеграл — это сколько накопилось',
-  text: 'Кран льёт то сильнее, то слабее — это левый график. Закрашенная под ним площадь ровно равна воде в баке — это правый график. Интеграл отвечает на вопрос «сколько уже набралось».',
+  text: 'Смотри на кран и на бак посередине. Кран льёт то сильнее, то слабее. Левый график показывает, КАК СИЛЬНО льёт кран прямо сейчас: это не положение чего-то в пространстве, а напор в литрах в секунду (выше линия — кран открыт сильнее, больше литров каждую секунду). Правый показывает, СКОЛЬКО воды уже в баке (он только растёт). Левая линия — это скорость, правая — накопленное. А накопленное и есть интеграл: берём всё, что лилось по чуть-чуть, и складываем. Попробуй «ровно»: струя одинаковая, бак растёт ровной линией. «Ливень»: сильный всплеск, и бак резко скачет вверх. А в режиме «сам кручу» напор задаёшь ты: двигай ползунок «вентиль», и левая линия будет рисоваться по тому, как ты открыл кран.',
   formula: 'в баке = ∫ напор dt',
+  slides: [
+    '<h3>Что значит эта запись?</h3><div class="big">в баке = ∫ напор dt<i>читается: «вода в баке равна сумме всех капель напора»</i></div><p>Это не страшная формула, а короткая запись простой мысли: <b>воды в баке столько, сколько в него успело налиться</b>. Сейчас разберём её по кусочкам.</p>',
+    '<h3>Что такое «напор» и «dt»</h3><p><b>напор</b> — как сильно льёт кран в данный момент, в литрах в секунду. Это левый график, красная точка: чем выше она, тем больше открыт кран. Это не координата, а именно скорость струи.</p><p><b>dt</b> — очень короткий кусочек времени, например одна секунда или даже мгновение. Буква d значит «чуть-чуть», t значит «время».</p><div class="big">напор × dt = воды за этот миг<i>льёт 3 литра в секунду × 1 секунду = 3 литра</i></div>',
+    '<h3>Что такое ∫</h3><p>Значок ∫ — это вытянутая буква S, от слова «сумма». Он говорит: «сложи все такие кусочки от начала до конца».</p><div class="big">∫ напор dt = кусочек + кусочек + кусочек + …<i>каждый кусочек — вода, налившаяся за один миг</i></div><p>На левом графике каждый кусочек — тонкая полоска под линией. Все полоски вместе — закрашенная площадь. Поэтому площадь под линией и есть вода в баке.</p>',
+    '<h3>А что такое «F»?</h3><p>Иногда пишут <b>F(t)</b>. Это просто имя для ответа «сколько набралось к моменту t». У нас это правый график: каждая его точка — вода в баке на этот момент.</p><div class="big">F(t) = ∫ напор dt<i>F — накопленное. Напор — то, из чего копим.</i></div><p>Итого: левый график — скорость, правый — накопленное. Интеграл превращает первый во второй.</p>',
+  ],
   view: { pos: [0, 1.75, 8.3], look: [0, 1.65, -0.3] },
   short: 'Слева — как сильно льёт кран. Закрашенная площадь под линией — ровно вода в баке. Интеграл — это сколько накопилось.',
   build(st) {
@@ -1392,7 +1638,13 @@ makeStation(2, {
     st.link = new Line(2, { width: 0.018, color: PAL.inkSoft, dash: 0.09, parent: G, pressure: 0 });
     st.linkL = new Line(2, { width: 0.018, color: PAL.water, dash: 0.09, parent: G, pressure: 0 });
     st.setProfile = (name) => {
-      st.prof = name; const fn = PROFILES[name];
+      st.prof = name;
+      if (name === 'сам') { // ручной режим: напор задаёт вентиль, график рисуется по ходу
+        st.M = 600; st.norm = 1; st.rmax = 2.5; st.mr = new Float32Array(st.M); st.cum = new Float32Array(st.M + 1);
+        st.mlast = 0; st.uEnd = 1; st.t = 0; st.phase = 'fill';
+        st.baseL = st.drawBase(true); st.baseR = st.drawBase(false); return;
+      }
+      const fn = PROFILES[name];
       let s = 0, mx = 0; const M = 600; for (let i = 0; i < M; i++) { const v = fn((i + 0.5) / M); s += v / M; mx = Math.max(mx, v); }
       st.norm = 1 / s; st.rmax = mx * st.norm; // r normalised: integral over u∈[0,1] = 1 tank
       st.cum = new Float32Array(M + 1); for (let i = 0; i < M; i++) st.cum[i + 1] = st.cum[i] + fn((i + 0.5) / M) * st.norm / M;
@@ -1411,29 +1663,45 @@ makeStation(2, {
       g.fillText(left ? 'СКОЛЬКО ЛЬЁТСЯ' : 'СКОЛЬКО В БАКЕ', 78, 46);
       g.font = `italic 24px ${SERIF}`; g.fillStyle = PAL.inkSoft; g.textAlign = 'right'; g.fillText('время →', 548, 556);
       if (left) {
-        const fn = PROFILES[st.prof]; const pts = []; for (let i = 0; i <= 120; i++) { const u = i / 120; pts.push([gx(u), gyL(fn(u) * st.norm)]); }
-        quickStroke(g, pts, 2.5, rgba(PAL.inkSoft, 0.55), 1, [8, 8]);
+        if (st.prof !== 'сам') { const fn = PROFILES[st.prof]; const pts = []; for (let i = 0; i <= 120; i++) { const u = i / 120; pts.push([gx(u), gyL(fn(u) * st.norm)]); }
+        quickStroke(g, pts, 2.5, rgba(PAL.inkSoft, 0.55), 1, [8, 8]); }
         g.font = `italic 22px ${SERIF}`; g.textAlign = 'left'; g.fillStyle = PAL.teal; g.fillText('закрашено = вода в баке', 80, 76);
+        g.fillStyle = PAL.inkSoft; g.font = `italic 21px ${SERIF}`; g.fillText('↑ напор в литрах в секунду (л/с)', 80, 100);
+        g.fillText('выше линия — кран открыт сильнее', 80, 124);
+        g.fillStyle = PAL.red; g.fillText('красная точка: льётся сейчас', 72, 556);
       } else {
         g.font = `italic 22px ${SERIF}`; g.textAlign = 'left'; g.fillStyle = PAL.inkSoft; g.fillText('полный бак', 72, 64);
+        g.fillText('↑ сколько воды уже набралось', 72, 90);
+        g.fillStyle = PAL.teal; g.fillText('точка: набралось к этому моменту', 72, 556);
+        g.fillStyle = PAL.inkSoft;
         quickStroke(g, [[64, gyR(1)], [544, gyR(1)]], 2, rgba(PAL.inkSoft, 0.5), 1, [10, 8]);
       }
       return c;
     };
     st.setProfile('волной');
     if (Q.get('st') === '3') st.t = 7.4;
-    sign(st, [-5.9, 0, 2.2], faceTo([-5.9, 0, 2.2], [0, 0, 8.3]), { title: 'Сколько накопилось', body: ['Кран льёт то сильнее, то слабее.', 'Закрашенная площадь под левым графиком — это вода в баке.'], formula: 'в баке = ∫ напор dt' });
+    sign(st, [-5.9, 0, 2.2], faceTo([-5.9, 0, 2.2], [0, 0, 8.3]), { title: 'Сколько накопилось', body: ['Левый график: как сильно льёт кран сейчас. Правый: сколько воды уже в баке.', 'Закрашенная площадь под левой линией — это и есть вода в баке.'], formula: 'в баке = ∫ напор dt' });
     hitBox(st, 11, 4.5, 3, [0, 2.2, -0.2]);
   },
   update(st, dt) {
-    const T = st.T;
+    const T = st.T, manual = st.prof === 'сам';
+    const rf = (uu) => manual ? st.mr[Math.min(st.M - 1, Math.floor(uu * st.M))] : PROFILES[st.prof](uu) * st.norm;
     let u = st.t / T, rate = 0;
     if (st.phase === 'fill') {
       st.t += dt * st.tspeed; u = Math.min(1, st.t / T);
-      rate = PROFILES[st.prof](u) * st.norm;
-      if (st.t >= T) { st.phase = 'hold'; st.hold = 0; }
-    } else if (st.phase === 'hold') { st.hold += dt; u = 1; if (st.hold > 2.6) { st.phase = 'drain'; st.hold = 0; } }
-    else { st.hold += dt; u = 1; if (st.hold > 1.6) { st.phase = 'fill'; st.t = 0; u = 0; } }
+      if (manual) {
+        rate = (st.open || 0) * st.rmax;
+        const i = Math.min(st.M - 1, Math.floor(u * st.M));
+        for (let k = st.mlast; k <= i; k++) { st.mr[k] = rate; st.cum[k + 1] = st.cum[k] + rate / st.M; }
+        st.mlast = i + 1;
+        if (st.cum[i + 1] >= 1) { st.phase = 'hold'; st.hold = 0; st.uEnd = u; rate = 0; }
+        else if (st.t >= T) { st.phase = 'hold'; st.hold = 0; st.uEnd = 1; }
+      } else {
+        rate = PROFILES[st.prof](u) * st.norm;
+        if (st.t >= T) { st.phase = 'hold'; st.hold = 0; }
+      }
+    } else if (st.phase === 'hold') { st.hold += dt; u = manual ? st.uEnd : 1; if (st.hold > 2.6) { st.phase = 'drain'; st.hold = 0; } }
+    else { st.hold += dt; u = manual ? st.uEnd : 1; if (st.hold > 1.6) { st.phase = 'fill'; st.t = 0; u = 0; if (manual) st.setProfile('сам'); } }
     const V = st.cum[Math.min(st.M, Math.floor(u * st.M))] * (st.phase === 'drain' ? 1 - ease(Math.min(1, st.hold / 1.5)) : 1);
     st.level = V;
     SND.rate = st.phase === 'fill' ? rate / st.rmax : 0;
@@ -1451,16 +1719,16 @@ makeStation(2, {
     const dx = cl.x, dz = cl.z - st.TZ, L = Math.hypot(dx, dz) || 1, px = -dz / L * st.R, pz = dx / L * st.R;
     st.sil.setStrips([[V3(px, st.TY, st.TZ + pz), V3(px, st.TY + st.TH, st.TZ + pz)], [V3(-px, st.TY, st.TZ - pz), V3(-px, st.TY + st.TH, st.TZ - pz)]]);
     // graphs
-    const { gx, gyL, gyR } = st, fn = PROFILES[st.prof];
+    const { gx, gyL, gyR } = st;
     const drainK = st.phase === 'drain' ? 1 - Math.min(1, st.hold / 1.2) : 1;
     {
       const g = st.L.c.getContext('2d'); g.drawImage(st.baseL, 0, 0);
       const pts = []; const n = Math.max(2, Math.round(u * 120));
-      for (let i = 0; i <= n; i++) { const uu = u * i / n; pts.push([gx(uu), gyL(fn(uu) * st.norm)]); }
+      for (let i = 0; i <= n; i++) { const uu = u * i / n; pts.push([gx(uu), gyL(rf(uu))]); }
       g.save(); g.globalAlpha = 0.75 * drainK; g.fillStyle = PAL.water; g.beginPath(); g.moveTo(gx(0), 532); pts.forEach((p) => g.lineTo(p[0], p[1])); g.lineTo(gx(u), 532); g.closePath(); g.fill();
       g.clip(); g.strokeStyle = rgba('#DDF1EC', 0.5); g.lineWidth = 2; for (let s = -600; s < 600; s += 16) { g.beginPath(); g.moveTo(s, 560); g.lineTo(s + 560, 0); g.stroke(); } g.restore();
       quickStroke(g, pts, 5, PAL.ink, drainK);
-      const cx = gx(u), cy = gyL(fn(u) * st.norm);
+      const cx = gx(u), cy = gyL(rf(u));
       quickStroke(g, [[cx, 532], [cx, cy]], 2.5, PAL.red, drainK, [6, 6]);
       g.globalAlpha = drainK; g.fillStyle = PAL.red; g.beginPath(); g.arc(cx, cy, 9, 0, TAU); g.fill(); g.globalAlpha = 1;
       st.L.t.needsUpdate = true;
@@ -1480,7 +1748,7 @@ makeStation(2, {
       const wp = st.Rp.grp.localToWorld(V3((cx / 580 - 0.5) * 2.9, 3.0 - cy / 560 * 2.8, 0.07));
       const lp = st.g.worldToLocal(wp);
       st.link.set([V3(st.R * 0.95, y, st.TZ + 0.2), lp]);
-      const lcx = gx(u), lcy = gyL(fn(u) * st.norm);
+      const lcx = gx(u), lcy = gyL(rf(u));
       const wl = st.g.worldToLocal(st.L.grp.localToWorld(V3((lcx / 580 - 0.5) * 2.9, 3.0 - lcy / 560 * 2.8, 0.07)));
       st.linkL.set([wl, V3(-1.7, 2.35, st.TZ + 0.2)]);
       st.linkL.mesh.visible = st.phase === 'fill';
@@ -1488,10 +1756,13 @@ makeStation(2, {
   },
   controls(box) {
     const st = this;
-    box.innerHTML = Object.keys(PROFILES).map((k) => `<button class="btn${k === st.prof ? ' on' : ''}" data-p="${k}">${k}</button>`).join('') +
-      `<label>скорость времени <input type="range" min="30" max="300" value="100"><b>1×</b></label>`;
-    box.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { st.setProfile(b.dataset.p); box.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); }));
-    const inp = box.querySelector('input'), b = box.querySelector('b');
+    box.innerHTML = Object.keys(PROFILES).map((k) => `<button class="btn${k === st.prof ? ' on' : ''}" data-p="${k}">${k}</button>`).join('') + `<button class="btn${st.prof === 'сам' ? ' on' : ''}" data-p="сам">сам кручу</button>` +
+      `<label id="vlab" style="display:${st.prof === 'сам' ? 'flex' : 'none'}">вентиль <input type="range" min="0" max="100" value="${Math.round((st.open || 0) * 100)}" id="vopen"><b>${Math.round((st.open || 0) * 100)}%</b></label>` +
+      `<label>скорость времени <input type="range" min="30" max="300" value="100" id="vspd"><b>1×</b></label>`;
+    const vlab = box.querySelector('#vlab'), vin = box.querySelector('#vopen');
+    box.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { st.setProfile(b.dataset.p); vlab.style.display = b.dataset.p === 'сам' ? 'flex' : 'none'; box.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); }));
+    vin.addEventListener('input', () => { st.open = vin.value / 100; vlab.querySelector('b').textContent = vin.value + '%'; });
+    const inp = box.querySelector('#vspd'), b = box.querySelector('#vspd + b');
     inp.addEventListener('input', () => { st.tspeed = inp.value / 100; b.textContent = fmt(st.tspeed, 1) + '×'; });
   },
 });
@@ -1519,9 +1790,12 @@ makeStation(3, {
         g.fillStyle = rgba(PAL.annBlue, 0.08); g.fillRect(px(SX0), py(A0), px(SX0 + SW) - px(SX0), py(A0 - AMP - 0.2) - py(A0));
         for (let x = -5.5; x <= 5; x += 0.5) { g.strokeStyle = rgba(PAL.inkFaint, 0.18); g.lineWidth = 1.2; g.beginPath(); g.moveTo(px(x), py(0.4)); g.lineTo(px(x), py(4.3)); g.stroke(); }
         for (let y = 0.45; y <= 4.3; y += 0.5) { g.beginPath(); g.moveTo(px(-5.5), py(y)); g.lineTo(px(5.0), py(y)); g.stroke(); }
-        g.font = `700 36px ${SANS}`; g.textAlign = 'left';
-        g.fillStyle = PAL.orange; g.fillText('+ выше нуля: прибавляем', px(SX0 + 0.05), py(A0 + AMP + 0.32));
-        g.fillStyle = PAL.annBlue; g.fillText('− ниже нуля: отнимаем', px(SX0 + SW * 0.5 + 0.05), py(A0 - AMP - 0.5));
+        g.font = `700 150px ${SERIF}`; g.textAlign = 'center';
+        g.fillStyle = rgba(PAL.orange, 0.28); g.fillText('+', px(SX0 + SW * 0.25), py(A0 + 0.35));
+        g.fillStyle = rgba(PAL.annBlue, 0.28); g.fillText('−', px(SX0 + SW * 0.75), py(A0 - 0.2));
+        g.font = `700 52px ${SANS}`; g.textAlign = 'left';
+        g.fillStyle = PAL.orange; g.fillText('+ выше нуля: прибавляем', px(SX0 + 0.05), py(A0 + AMP + 0.38));
+        g.fillStyle = PAL.annBlue; g.fillText('− ниже нуля: отнимаем', px(SX0 + 0.05), py(A0 - AMP - 0.55));
         g.font = `italic 30px ${SERIF}`; g.fillStyle = PAL.inkSoft; g.fillText('ноль', px(SX0 + SW + 0.1), py(A0) + 10);
         g.fillText('полный круг', px(SX0 + SW - 1.0), py(A0 - 0.25) + 50);
         g.fillText('точка на кольце', px(CX - 0.9), py(A0 - AMP - 0.35));
@@ -1576,7 +1850,7 @@ makeStation(3, {
     st.cc = mkCanvas(1200, 230); st.ccBase = paperCanvas(1200, 230, PAL.paper, { seed: 88, vignette: 0.3 });
     { const g = st.ccBase.getContext('2d'); inkRect(g, 16, 16, 1168, 198, 4.5, PAL.ink, 31); }
     st.ccTex = tex(st.cc, { nomip: true });
-    mesh(new THREE.PlaneGeometry(4.3, 4.3 * 230 / 1200), inkMat({ map: st.ccTex, flat: 1, hatch: 0 }), G, [-0.9, 4.45, -0.98], [0, 0, -0.012]);
+    mesh(new THREE.PlaneGeometry(5.4, 5.4 * 230 / 1200), inkMat({ map: st.ccTex, flat: 1, hatch: 0 }), G, [-0.9, 4.4, -0.98], [0, 0, -0.012]);
     if (Q.get('st') === '4') st.s = 0.8;
     sign(st, [-6.5, 0, 1.8], faceTo([-6.5, 0, 1.8], [0.1, 0, 8.9]), { title: 'Синус за полный круг — ноль', body: ['Горб вверх (тёплый) прибавляет, горб вниз (холодный) отнимает ровно столько же.', 'Весы встают ровно.'], formula: '∫ sin x dx  от 0 до 2π  =  0' });
     st.rects.push([-5.6, 5.0, -1.25, 1.0]);
@@ -1604,7 +1878,7 @@ makeStation(3, {
       const u = (i + 0.5) / NS, on = u <= s + 1e-6 ? 1 : 0;
       st.gs[i] += (on - st.gs[i]) * (1 - Math.exp(-dt * 10));
       const hgt = AMP * Math.sin(u * TAU) * st.gs[i];
-      M.makeScale(w * 0.9, Math.max(0.001, Math.abs(hgt)), 0.46);
+      M.makeScale(w * 0.98, Math.max(0.001, Math.abs(hgt)), 0.75);
       M.setPosition(SX0 + u * SW, A0 + hgt / 2, 0);
       st.sl.setMatrixAt(i, M);
     }
@@ -1612,15 +1886,15 @@ makeStation(3, {
     const pos = 1 - Math.cos(Math.min(s, 0.5) * TAU), neg = s > 0.5 ? 1 + Math.cos(s * TAU) : 0;
     const posR = Math.round(pos * 100) / 100, negR = Math.round(neg * 100) / 100;
     // beam physics: damped spring toward the difference
-    const target = clamp((pos - neg) * 0.16, -0.32, 0.32);
+    const target = clamp((pos - neg) * 0.26, -0.52, 0.52);
     st.tv += ((target - st.tilt) * 30 - st.tv * 5) * dt; st.tilt += st.tv * dt;
     st.beam.rotation.z = st.tilt;
     const strips = [];
     st.pans.forEach((p, k) => {
       const ex = (k ? 1.15 : -1.15), cx = st.BX + ex * Math.cos(st.tilt), cy = st.PY + ex * Math.sin(st.tilt);
       p.g.position.set(cx, cy - 1.25, 0.12);
-      p.pile.scale.y = Math.max(0.001, (k ? neg : pos) * 0.42);
-      p.pile.scale.x = p.pile.scale.z = 0.35 + 0.65 * Math.min(1, (k ? neg : pos) * 1.5);
+      p.pile.scale.y = Math.max(0.001, (k ? neg : pos) * 0.75);
+      p.pile.scale.x = p.pile.scale.z = 0.5 + 0.9 * Math.min(1, (k ? neg : pos) * 1.5);
       strips.push([V3(cx, cy, 0.12), V3(cx - 0.44, cy - 1.22, 0.12)], [V3(cx, cy, 0.12), V3(cx + 0.44, cy - 1.22, 0.12)]);
     });
     st.strings.setStrips(strips);
@@ -1810,11 +2084,23 @@ function setActive(i, open) {
     const st = stations[i];
     $('cnum').textContent = i + 1; $('cnum').style.background = [PAL.sun, PAL.stripeYellow, PAL.waterLight, PAL.duskRose][i];
     $('ctitle').textContent = st.title; $('ctext').textContent = innerWidth < 600 ? st.short : st.text; $('cformula').textContent = 'для любопытных: ' + st.formula;
+    if (st.slides) { const mb = document.createElement('button'); mb.className = 'more'; mb.textContent = 'что это значит?'; mb.addEventListener('click', () => openSlides(st)); $('cformula').appendChild(mb); }
     if (!ctrlCache[i]) { const d = document.createElement('div'); d.style.display = 'contents'; st.controls(d); ctrlCache[i] = d; }
     box.appendChild(ctrlCache[i]);
   }
   updateNext();
 }
+let slSt = null, slI = 0;
+function showSlide() {
+  $('slbody').innerHTML = slSt.slides[slI];
+  $('sldots').textContent = (slI + 1) + ' / ' + slSt.slides.length;
+  $('slprev').style.visibility = slI ? 'visible' : 'hidden';
+  $('slnext').textContent = slI === slSt.slides.length - 1 ? 'понятно ✓' : 'дальше →';
+}
+function openSlides(st) { slSt = st; slI = 0; showSlide(); $('slide').classList.add('open'); }
+$('slprev').addEventListener('click', () => { if (slI > 0) { slI--; showSlide(); } });
+$('slnext').addEventListener('click', () => { if (slI < slSt.slides.length - 1) { slI++; showSlide(); } else $('slide').classList.remove('open'); });
+$('slide').addEventListener('click', (e) => { if (e.target === $('slide')) $('slide').classList.remove('open'); });
 function updateNext() {
   const n = nextIndex();
   $('next').textContent = `к станции ${n + 1} →`;
@@ -1837,6 +2123,78 @@ setTimeout(hideHint, 12000);
 if (Q.has('shot')) { $('hint').style.display = 'none'; }
 
 // ---------------------------------------------------------------------------
+// watercolor post pass: wobbly painted edges, pigment pooling, paper tooth,
+// soft bloom and light shafts from the sun. ?flat turns it off.
+// ---------------------------------------------------------------------------
+const POST = !Q.has('flat') && renderer.capabilities.isWebGL2;
+const wcRT = new THREE.WebGLRenderTarget(4, 4, { samples: 4, generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter, depthBuffer: true });
+const wcCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const wcMat = new THREE.ShaderMaterial({
+  glslVersion: THREE.GLSL3,
+  uniforms: { tScene: { value: wcRT.texture }, uRes: SH.uRes, uDpr: SH.uDpr, uTime: SH.uTime, uSun: { value: new THREE.Vector2(0.5, 0.6) }, uSunVis: { value: 0 } },
+  vertexShader: `out vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: /* glsl */`
+    uniform sampler2D tScene; uniform vec2 uRes, uSun; uniform float uDpr, uTime, uSunVis; in vec2 vUv; out vec4 outColor;
+    float h21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+    float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+      return mix(mix(h21(i), h21(i+vec2(1,0)), f.x), mix(h21(i+vec2(0,1)), h21(i+vec2(1,1)), f.x), f.y); }
+    float lum(vec3 c){ return dot(c, vec3(0.299, 0.587, 0.114)); }
+    void main(){
+      vec2 px = 1.0 / uRes;
+      vec2 q = gl_FragCoord.xy / uDpr;                        // css pixels: paper is the screen
+      // painted edges wobble like a brush that never quite follows the pencil
+      vec2 wob = vec2(vn(q * 0.05), vn(q * 0.05 + 31.7)) - 0.5;
+      wob += 0.5 * (vec2(vn(q * 0.17 + 7.0), vn(q * 0.17 + 3.0)) - 0.5);
+      vec2 uv = vUv;
+      vec3 c = texture(tScene, uv).rgb;
+      // wet edges: pigment pools where a darker wash meets a lighter one
+      vec3 b1 = textureLod(tScene, uv, 1.5).rgb, b2 = textureLod(tScene, uv, 3.0).rgb;
+      float d = lum(b1) - lum(c);
+      c *= 1.0 - clamp(d, 0.0, 0.25) * 0.45;
+      c += clamp(-d, 0.0, 0.2) * 0.12;                       // paper shows through on the light side
+      // soft bleed: colour creeps a little past its edge
+      
+      // paper tooth: pigment settles in the grain, more in dark washes
+      float tooth = vn(q * 0.9) * 0.6 + vn(q * 2.3) * 0.4;
+      c *= 1.0 - (tooth - 0.5) * 0.10 * (1.2 - lum(c));
+      // big blotchy value variation, as if the wash dried unevenly
+      float bl = vn(q * 0.006 + 2.0) * 0.6 + vn(q * 0.015) * 0.4;
+      c *= 0.96 + 0.08 * bl;
+      // bloom
+      vec3 g1 = textureLod(tScene, vUv, 4.0).rgb, g2 = textureLod(tScene, vUv, 5.5).rgb;
+      vec3 glow = max(g1 - 0.90, 0.0) * 1.6 + max(g2 - 0.86, 0.0) * 1.2;
+      c += glow * vec3(1.0, 0.85, 0.65);
+      // light shafts from the sun
+      if (uSunVis > 0.001) {
+        vec2 dir = (uSun - vUv); float acc = 0.0, w = 1.0;
+        vec2 st = dir / 24.0; vec2 sp = vUv + st * h21(q);
+        for (int i = 0; i < 24; i++) { vec3 s = textureLod(tScene, sp, 3.0).rgb; acc += max(lum(s) - 0.90, 0.0) * w; w *= 0.94; sp += st; }
+        float asp = uRes.x / uRes.y;
+        float fall = exp(-length(dir * vec2(asp, 1.0)) * 1.4);
+        c += vec3(1.0, 0.78, 0.50) * acc * 0.5 * fall * uSunVis;
+      }
+      // dusk grade: warm the lights, cool violet in the shadows
+      float L = lum(c);
+      c = mix(c * vec3(0.92, 0.90, 1.06), c * vec3(1.04, 1.0, 0.94), smoothstep(0.2, 0.8, L));
+      c += (h21(floor(q)) - 0.5) * 0.02;
+      outColor = vec4(c, 1.0);
+    }`,
+  depthTest: false, depthWrite: false,
+});
+const wcScene = new THREE.Scene();
+{ const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), wcMat); m.frustumCulled = false; wcScene.add(m); }
+const _sunV = new THREE.Vector3();
+function renderFrame() {
+  if (!POST) { renderer.render(scene, camera); return; }
+  _sunV.copy(camera.position).addScaledVector(SUN_DIR, 100).project(camera);
+  const inFront = _sunV.z < 1 ? 1 : 0;
+  wcMat.uniforms.uSun.value.set(_sunV.x * 0.5 + 0.5, _sunV.y * 0.5 + 0.5);
+  wcMat.uniforms.uSunVis.value = inFront * smooth(1.8, 0.9, Math.max(Math.abs(_sunV.x), Math.abs(_sunV.y)));
+  renderer.setRenderTarget(wcRT); renderer.render(scene, camera);
+  renderer.setRenderTarget(null); renderer.render(wcScene, wcCam);
+}
+
+// ---------------------------------------------------------------------------
 // resize & loop
 // ---------------------------------------------------------------------------
 function resize() {
@@ -1848,7 +2206,7 @@ function resize() {
   let v = 2 * Math.atan(Math.tan(minH / 2) / camera.aspect) * 180 / Math.PI;
   camera.fov = clamp(v, 58, 92);
   camera.updateProjectionMatrix();
-  const b = renderer.getDrawingBufferSize(new THREE.Vector2()); SH.uRes.value.copy(b);
+  const b = renderer.getDrawingBufferSize(new THREE.Vector2()); SH.uRes.value.copy(b); wcRT.setSize(b.x, b.y);
 }
 addEventListener('resize', resize); resize();
 
@@ -1876,8 +2234,9 @@ function loop(now) {
   armillary.userData.r4.rotation.z += dt * 0.3;
   { const a = T * 0.9; armillary.userData.orb.position.set(Math.cos(a) * 1.6, Math.sin(a) * 1.6, 0); }
   sky.position.copy(camera.position);
+  if (backdrop) backdrop.position.set(camera.position.x, 0, camera.position.z);
   AUDIO.update(dt);
-  renderer.render(scene, camera);
+  renderFrame();
   if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = Math.round(fpsN / fpsAcc) + ' fps · ' + renderer.info.render.triangles + ' tri · ' + renderer.info.render.calls + ' calls'; fpsAcc = 0; fpsN = 0; } }
   if (frames === 20) window.__ready = true;
   requestAnimationFrame(loop);
@@ -1886,5 +2245,9 @@ setActive(-1);
 requestAnimationFrame(loop);
 window.__stats = () => ({ tri: renderer.info.render.triangles, calls: renderer.info.render.calls });
 window.__flyTo = flyTo; window.__st = stations; window.__cam = cam; window.__nan = () => { const out = []; scene.traverse((o) => { const p = o.geometry && o.geometry.attributes.position; if (p) { for (let i = 0; i < p.array.length; i++) if (isNaN(p.array[i])) { out.push(o.type + ':' + JSON.stringify(o.geometry.parameters) + (o.parent && o.parent.type) + ':' + p.array.length + ':' + i + ':' + JSON.stringify(o.position)); break; } } }); return out; };
+
+// Ручки для живой правки (19.10.2026): garden.js снимает камеру перед перезагрузкой и ставит обратно.
+window.__gardenState = () => ({ p: [cam.pos.x, cam.pos.y, cam.pos.z], y: cam.yaw, pi: cam.pitch });
+window.__gardenRestore = s => { if (!s || !s.p) return; cam.fly = null; cam.vel.set(0, 0, 0); cam.pos.set(s.p[0], s.p[1], s.p[2]); cam.yaw = cam.tyaw = s.y; cam.pitch = cam.tpitch = s.pi; };
 </script>
 </body></html>

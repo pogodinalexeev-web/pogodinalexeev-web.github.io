@@ -1,0 +1,2122 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#141A33">
+<link rel="icon" href="data:,">
+<title>Космическая октава: сад по Хансу Кусто</title>
+<style>
+  :root{
+    --paper:#EFE3C9; --paperShade:#E2D1B0; --ink:#2A1C13; --inkSoft:#5B4331; --inkFaint:#8A735C;
+    --warm:#D8742B; --cold:#3B8EE0; --teal:#3C8783; --sun:#F1BF4A; --rose:#C88C86;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"DejaVu Serif",serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  }
+  html,body{margin:0;height:100%;overflow:hidden;background:#141A33;color:var(--ink);
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;
+    font-family:var(--sans);overscroll-behavior:none}
+  canvas#gl{position:fixed;inset:0;width:100vw;height:100vh;height:100dvh;display:block;touch-action:none}
+  #grain{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:.11;mix-blend-mode:multiply;background-size:256px 256px}
+  #vig{position:fixed;inset:0;pointer-events:none;z-index:2;
+    background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,0) 55%,rgba(10,14,34,.42) 100%)}
+  .paper{background-color:var(--paper);background-size:256px 256px;border:2px solid var(--ink);border-radius:14px 16px 13px 15px;
+    box-shadow:4px 5px 0 rgba(42,28,19,.32)}
+  #card{position:fixed;z-index:5;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));
+    width:min(430px,calc(100vw - 24px));box-sizing:border-box;padding:12px 16px 12px 16px;transition:transform .5s cubic-bezier(.2,.8,.2,1),opacity .4s}
+  #card .row{display:flex;gap:12px;align-items:flex-start}
+  #card .num{flex:0 0 auto;width:38px;height:38px;border:2px solid var(--ink);border-radius:50%;display:grid;place-items:center;
+    font:700 20px/1 var(--serif);background:var(--sun);transform:rotate(-4deg)}
+  #card h2{margin:1px 22px 4px 0;font:700 20px/1.15 var(--serif);letter-spacing:.01em}
+  #card p{margin:0;font:15px/1.35 var(--sans);color:var(--inkSoft)}
+  #card .ctrls{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+  #card .ctrls label{font:600 13px/1 var(--sans);color:var(--inkSoft);display:flex;align-items:center;gap:8px;flex:1 1 100%}
+  #card .ctrls label b{font:700 18px/1 var(--serif);color:var(--ink);min-width:44px;text-align:right}
+  #card .note{margin-top:6px;font:italic 12px/1.25 var(--serif);color:var(--inkFaint)}
+  #card .big{font:700 22px/1.1 var(--serif);color:var(--ink);margin-top:6px}
+  #card .formula{margin-top:8px;font:italic 12px/1.2 var(--serif);color:var(--inkFaint)}
+  #card.min .body{display:none}
+  #card .tog{position:absolute;right:8px;top:6px;border:0;background:none;font:700 18px var(--sans);color:var(--inkFaint);padding:6px}
+  input[type=range]{-webkit-appearance:none;appearance:none;flex:1;height:30px;background:transparent;margin:0}
+  input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:var(--paperShade);border:1.5px solid var(--ink)}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:var(--warm);border:2px solid var(--ink);margin-top:-11px;box-shadow:2px 2px 0 rgba(42,28,19,.35)}
+  input[type=range]::-moz-range-track{height:6px;border-radius:3px;background:var(--paperShade);border:1.5px solid var(--ink)}
+  input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--warm);border:2px solid var(--ink)}
+  .btn{font:600 14px/1 var(--sans);color:var(--ink);background:var(--paper);border:2px solid var(--ink);border-radius:20px;padding:9px 14px;
+    box-shadow:2px 3px 0 rgba(42,28,19,.35);cursor:pointer}
+  .btn.on{background:var(--sun)}
+  .btn:active{transform:translate(2px,2px);box-shadow:0 1px 0 rgba(42,28,19,.35)}
+  #nav{position:fixed;z-index:5;right:max(14px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center}
+  #nav .btn{font-size:15px;padding:12px 16px;background-color:var(--paper);background-size:256px}
+  #next{background:var(--sun)!important}
+  #joy{position:fixed;z-index:4;width:124px;height:124px;border-radius:50%;border:2px dashed rgba(251,246,234,.75);
+    background:rgba(42,28,19,.18);display:none;pointer-events:none;transform:translate(-50%,-50%)}
+  #knob{position:absolute;left:50%;top:50%;width:54px;height:54px;margin:-27px 0 0 -27px;border-radius:50%;background:var(--paper);border:2px solid var(--ink);box-shadow:2px 3px 0 rgba(42,28,19,.35)}
+  #hint{position:fixed;z-index:4;left:50%;bottom:max(84px,calc(env(safe-area-inset-bottom) + 76px));transform:translateX(-50%);
+    font:600 14px/1.3 var(--sans);color:#FBF6EA;text-align:center;text-shadow:0 1px 3px rgba(20,14,30,.8);transition:opacity 1s;pointer-events:none;width:92vw}
+  #hint span{display:inline-block;margin:0 8px}
+  #joyzone{position:fixed;z-index:3;left:14px;bottom:max(18px,env(safe-area-inset-bottom));width:120px;height:120px;border-radius:50%;
+    border:2px dashed rgba(251,246,234,.45);pointer-events:none;display:none}
+  body.touch #joyzone{display:block}
+  #fps{position:fixed;right:6px;top:4px;z-index:9;font:11px monospace;color:#fff;opacity:.5;display:none}
+  @media (max-width:560px){
+    #card{padding:9px 11px 8px 11px;border-radius:12px}
+    #card h2{font-size:16px}
+    #card p{font-size:13px;line-height:1.3}
+    #card .ctrls{margin-top:6px;gap:6px 8px}
+    #card .ctrls .btn{padding:6px 10px;font-size:12.5px}
+    #card .note{margin-top:6px;font:italic 12px/1.25 var(--serif);color:var(--inkFaint)}
+  #card .big{font:700 22px/1.1 var(--serif);color:var(--ink);margin-top:6px}
+  #card .formula{margin-top:4px;font-size:11px}
+    #card .note{font-size:10.5px;line-height:1.2;margin-top:4px}
+    #card .ctrls label{font-size:12px}
+    input[type=range]{height:26px}
+    #card .num{width:32px;height:32px;font-size:17px}
+    #nav .btn{font-size:14px;padding:11px 13px}
+  }
+</style>
+<script>/* 05.10.2026: на айфоне беззвучный режим глушит Web Audio; переводим страницу в режим проигрывания, как у музыки */
+(function(){try{if(navigator.audioSession)navigator.audioSession.type='playback';}catch(e){}
+var a=null;function u(){if(a)return;a=new Audio('data:audio/wav;base64,UklGRmQGAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YUAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA');a.loop=true;a.setAttribute('playsinline','');a.volume=0.01;var p=a.play();if(p&&p.catch)p.catch(function(){a=null;});}
+['touchstart','touchend','pointerdown','click','keydown'].forEach(function(t){window.addEventListener(t,u,{capture:true,passive:true});});})();</script>
+<style id="no-zoom-select">/* 19.10.2026: двойной тап не зумит, долгое нажатие не выделяет кнопки */html,body,body *{touch-action:manipulation}canvas{touch-action:none}button,a,label,select,summary,[role=button],[onclick],input[type=range],input[type=button]{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}</style></head>
+<body><script src="/f/garden.js?v=12"></script>
+<canvas id="gl"></canvas>
+<div id="vig"></div>
+<div id="grain"></div>
+<div id="card" class="paper">
+  <button class="tog" id="tog" aria-label="свернуть">–</button>
+  <div class="row"><div class="num" id="cnum">♪</div><div><h2 id="ctitle">Космическая октава</h2><div class="body"><p id="ctext"></p></div></div></div>
+  <div class="body"><div class="ctrls" id="cctrls"></div><div class="formula" id="cformula"></div></div>
+</div>
+<div id="nav"><button class="btn" id="snd">♪ звук</button><button class="btn" id="next">к станции 1 →</button></div>
+<div id="joyzone"></div>
+<div id="joy"><div id="knob"></div></div>
+<div id="hint"></div>
+<div id="fps"></div>
+<script type="module">
+import * as THREE from './lib/three.module.js';
+THREE.ColorManagement.enabled = false;
+
+// ---------------------------------------------------------------------------
+// palette (procedural-film house palette + subject tints)
+// ---------------------------------------------------------------------------
+const PAL = {
+  paper: '#EFE3C9', paperShade: '#E2D1B0', paperDeep: '#CDB58C',
+  stripeCream: '#F2E7CF', stripeYellow: '#EFDCA3', stripeApricot: '#F0D9B5', stripeSage: '#DCE3CC', stripeSky: '#C9D3D2',
+  ink: '#2A1C13', inkSoft: '#5B4331', inkFaint: '#8A735C',
+  tan: '#C8A47A', ochre: '#C38F2E', rose: '#C88C86', duskRose: '#E3B1A1', sage: '#94A47F',
+  teal: '#3C8783', tealDeep: '#285F5D', sun: '#F1BF4A', nightSky: '#4E3F6E', night: '#2F2748', white: '#FBF6EA',
+  orange: '#D8742B', leaf: '#6E8F4F', wood: '#A8784C', red: '#BF3F2C', dusk: '#5A4878',
+  navy: '#0B1230', navyLight: '#18234D', grid: '#3A4A86', lavender: '#C8C1EF', lineWhite: '#EEF0FF', paleBlue: '#9CC2EA', glow: '#FFF3DC',
+  annBlue: '#3B8EE0', annMagenta: '#E43D8C', annYellow: '#EAB530',
+  warm: '#E0782E', warmLight: '#F1BF4A', cold: '#3E8FC4', coldLight: '#9CC2EA', water: '#3C8783', waterLight: '#8CC3BB',
+};
+const col = (h) => new THREE.Color(h);
+const TAU = Math.PI * 2;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
+const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+function mulberry(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+function hash1(i, s) { let h = Math.imul((i | 0) ^ Math.imul(s | 0, 0x9E3779B1), 0x85EBCA6B); h ^= h >>> 13; h = Math.imul(h, 0xC2B2AE35); h ^= h >>> 16; return (h >>> 0) / 4294967296; }
+function noise1(x, s = 0) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return lerp(hash1(i, s), hash1(i + 1, s), u) * 2 - 1; }
+const fmt = (v, d = 2) => v.toFixed(d).replace('.', ',').replace('-', '−');
+
+const IS_TOUCH = matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window;
+if (IS_TOUCH) document.body.classList.add('touch');
+const Q = new URLSearchParams(location.search);
+
+// ---------------------------------------------------------------------------
+// renderer
+// ---------------------------------------------------------------------------
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: Q.has('shot') });
+renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+const DPR = Math.min(window.devicePixelRatio || 1, 2);
+renderer.setPixelRatio(DPR);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, 1, 0.08, 400);
+camera.rotation.order = 'YXZ';
+
+// shared uniforms (same objects referenced from every material)
+const SH = {
+  uTime: { value: 0 },
+  uFogColor: { value: col('#EDCFAE') },
+  uFogDensity: { value: 0.0095 },
+  uLightDir: { value: new THREE.Vector3(0.25, 0.9, 0.38).normalize() },
+  uInk: { value: col(PAL.ink) },
+  uRes: { value: new THREE.Vector2(1, 1) },
+  uDpr: { value: DPR },
+};
+
+const GLSL_COMMON = /* glsl */`
+  uniform float uTime; uniform vec3 uFogColor; uniform float uFogDensity; uniform vec3 uLightDir; uniform vec3 uInk; uniform vec2 uRes; uniform float uDpr;
+  float hash21(vec2 p){ p = fract(p*vec2(123.34, 456.21)); p += dot(p, p+45.32); return fract(p.x*p.y); }
+  float fogAmt(vec3 w){ float d = length(w - cameraPosition); return 1.0 - exp(-pow(d*uFogDensity, 1.5)); }
+`;
+
+// ---------------------------------------------------------------------------
+// ink material: flat paper colour, cool shadow, screen-space hatching,
+// optional uv border (pixel-constant ink edge), grain, fog
+// ---------------------------------------------------------------------------
+const INK_VS = /* glsl */`
+  varying vec3 vN; varying vec3 vW; varying vec2 vUv; varying vec3 vCol;
+  void main(){
+    mat4 m = modelMatrix;
+    #ifdef USE_INSTANCING
+      m = m * instanceMatrix;
+    #endif
+    vCol = vec3(1.0);
+    #ifdef USE_INSTANCING_COLOR
+      vCol = instanceColor;
+    #endif
+    vec4 w = m * vec4(position, 1.0);
+    vW = w.xyz; vN = normalize(mat3(m) * normal); vUv = uv;
+    gl_Position = projectionMatrix * viewMatrix * w;
+  }`;
+const INK_FS = /* glsl */`
+  ${GLSL_COMMON}
+  uniform vec3 uColor; uniform sampler2D uMap; uniform float uUseMap; uniform vec2 uRepeat;
+  uniform float uHatch, uBorder, uFlat, uOpacity, uAlphaTest, uFog, uEmit;
+  varying vec3 vN; varying vec3 vW; varying vec2 vUv; varying vec3 vCol;
+  void main(){
+    vec3 base = uColor * vCol; float a = uOpacity;
+    if (uUseMap > 0.5) { vec4 t = texture2D(uMap, vUv * uRepeat); base *= t.rgb; a *= t.a; }
+    if (a < uAlphaTest) discard;
+    vec3 N = normalize(vN); if (!gl_FrontFacing) N = -N;
+    float l = dot(N, uLightDir) * 0.5 + 0.5;
+    vec3 V = normalize(cameraPosition - vW);
+    vec3 shade = base * vec3(0.70, 0.66, 0.80);
+    float lit = mix(smoothstep(0.24, 0.52, l), 1.0, uFlat);
+    vec3 c = mix(shade, base, lit);
+    float rim = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+    c += vec3(0.22, 0.13, 0.05) * rim * (1.0 - uFlat) * 0.5;
+    float px = 1.0 / uDpr;
+    float s1 = (gl_FragCoord.x + gl_FragCoord.y) * px / 4.5;
+    float line1 = 1.0 - smoothstep(0.2, 0.5, abs(fract(s1) - 0.5) * 2.0);
+    float s2 = (gl_FragCoord.x - gl_FragCoord.y) * px / 4.5;
+    float line2 = 1.0 - smoothstep(0.2, 0.5, abs(fract(s2) - 0.5) * 2.0);
+    float amt1 = (1.0 - smoothstep(0.26, 0.46, l)) * (1.0 - uFlat);
+    float amt2 = (1.0 - smoothstep(0.06, 0.24, l)) * (1.0 - uFlat);
+    c = mix(c, uInk, uHatch * (line1 * amt1 * 0.30 + line2 * amt2 * 0.25));
+    if (uBorder > 0.0) {
+      vec2 fw = max(fwidth(vUv), vec2(1e-5)); vec2 d = min(vUv, 1.0 - vUv) / fw;
+      vec2 bw = min(vec2(uBorder * uDpr), 0.2 / fw);
+      float ex = smoothstep(bw.x - 0.6, bw.x + 0.6, d.x), ey = smoothstep(bw.y - 0.6, bw.y + 0.6, d.y);
+      c = mix(uInk, c, min(ex, ey));
+    }
+    c = mix(c, base, uEmit);
+    c += (hash21(floor(gl_FragCoord.xy * px)) - 0.5) * 0.05;
+    c = mix(c, uFogColor, fogAmt(vW) * uFog);
+    gl_FragColor = vec4(c, a);
+  }`;
+function inkMat(o = {}) {
+  const m = new THREE.ShaderMaterial({
+    uniforms: Object.assign({
+      uColor: { value: col(o.color || '#ffffff') },
+      uMap: { value: o.map || null }, uUseMap: { value: o.map ? 1 : 0 },
+      uRepeat: { value: new THREE.Vector2(...(o.repeat || [1, 1])) },
+      uHatch: { value: o.hatch ?? 1 }, uBorder: { value: o.border || 0 }, uFlat: { value: o.flat || 0 },
+      uOpacity: { value: o.opacity ?? 1 }, uAlphaTest: { value: o.alphaTest || 0 }, uFog: { value: o.fog ?? 1 }, uEmit: { value: o.emit || 0 },
+    }, SH),
+    vertexShader: INK_VS, fragmentShader: INK_FS,
+    transparent: !!o.transparent, side: o.side ?? THREE.FrontSide, depthWrite: o.depthWrite ?? true,
+  });
+  m.extensions = { derivatives: true };
+  return m;
+}
+
+// inverted-hull ink outline
+const OUT_VS = /* glsl */`
+  uniform float uOut; varying vec3 vW;
+  void main(){
+    mat4 m = modelMatrix;
+    #ifdef USE_INSTANCING
+      m = m * instanceMatrix;
+    #endif
+    vec4 w = m * vec4(position, 1.0);
+    vec3 n = normalize(mat3(m) * normal);
+    float d = length(cameraPosition - w.xyz);
+    w.xyz += n * uOut * (0.7 + d * 0.035);
+    vW = w.xyz;
+    gl_Position = projectionMatrix * viewMatrix * w;
+  }`;
+const OUT_FS = /* glsl */`${GLSL_COMMON} uniform vec3 uColor; varying vec3 vW;
+  void main(){ gl_FragColor = vec4(mix(uColor, uFogColor, fogAmt(vW)), 1.0); }`;
+const outlineMats = {};
+function outlineMat(w = 0.018, c = PAL.ink) {
+  const k = w + c;
+  if (!outlineMats[k]) outlineMats[k] = new THREE.ShaderMaterial({ uniforms: Object.assign({ uOut: { value: w }, uColor: { value: col(c) } }, SH), vertexShader: OUT_VS, fragmentShader: OUT_FS, side: THREE.BackSide });
+  return outlineMats[k];
+}
+function outline(mesh, w, c) { const o = new THREE.Mesh(mesh.geometry, outlineMat(w, c)); o.raycast = () => {}; mesh.add(o); return mesh; }
+function mesh(geo, mat, parent, pos, rot, out) {
+  const m = new THREE.Mesh(geo, mat);
+  if (pos) m.position.set(...pos);
+  if (rot) m.rotation.set(...rot);
+  if (out) outline(m, out === true ? 0.018 : out);
+  if (parent) parent.add(m);
+  return m;
+}
+
+// ---------------------------------------------------------------------------
+// fat hand-drawn lines: screen-facing ribbons, world-space width, pressure
+// variation, boil (the hand-drawn shimmer), dashes, draw-on progress, glow
+// ---------------------------------------------------------------------------
+const LINE_VS = /* glsl */`
+  ${GLSL_COMMON}
+  attribute vec3 prev; attribute vec3 next; attribute float side; attribute float lu; attribute float wv;
+  uniform float uWidth, uMinPx, uBoil;
+  varying float vU; varying float vSide; varying vec3 vW;
+  void main(){
+    mat4 mvp = projectionMatrix * viewMatrix * modelMatrix;
+    vec4 c = mvp * vec4(position, 1.0); vec4 cp = mvp * vec4(prev, 1.0); vec4 cn = mvp * vec4(next, 1.0);
+    float asp = uRes.x / uRes.y;
+    vec2 s = c.xy / max(abs(c.w), 1e-4), sp = cp.xy / max(abs(cp.w), 1e-4), sn = cn.xy / max(abs(cn.w), 1e-4);
+    s.x *= asp; sp.x *= asp; sn.x *= asp;
+    vec2 d1 = s - sp, d2 = sn - s;
+    vec2 t = vec2(0.0);
+    if (dot(d1, d1) > 1e-12) t += normalize(d1);
+    if (dot(d2, d2) > 1e-12) t += normalize(d2);
+    if (dot(t, t) < 1e-12) t = vec2(1.0, 0.0);
+    t = normalize(t);
+    vec2 nr = vec2(-t.y, t.x);
+    float boil = 1.0 + uBoil * 0.22 * sin(lu * 61.0 + floor(uTime * 8.0) * 2.37);
+    float hw = max(uWidth * 0.5 * projectionMatrix[1][1] * wv * boil, uMinPx * uDpr / uRes.y * c.w);
+    vec2 off = nr * hw * side; off.x /= asp;
+    c.xy += off;
+    gl_Position = c; vU = lu; vSide = side; vW = (modelMatrix * vec4(position, 1.0)).xyz;
+  }`;
+const LINE_FS = /* glsl */`
+  ${GLSL_COMMON}
+  uniform vec3 uColor; uniform float uOpacity, uDash, uDashRatio, uProgress, uGlow, uFog, uDashShift;
+  varying float vU; varying float vSide; varying vec3 vW;
+  void main(){
+    if (vU > uProgress) discard;
+    if (uDash > 0.0 && fract(vU * uDash - uDashShift) > uDashRatio) discard;
+    float e = abs(vSide);
+    float a = uOpacity;
+    float f = fogAmt(vW) * uFog;
+    if (uGlow > 0.5) { a *= pow(max(1.0 - e, 0.0), 1.8) * (1.0 - f); gl_FragColor = vec4(uColor, a); return; }
+    gl_FragColor = vec4(mix(uColor, uFogColor, f), a);
+  }`;
+class Line {
+  constructor(max, o = {}) {
+    this.max = max;
+    const g = new THREE.BufferGeometry();
+    const n = max * 2;
+    this.pos = new Float32Array(n * 3); this.prev = new Float32Array(n * 3); this.next = new Float32Array(n * 3);
+    const side = new Float32Array(n), wv = new Float32Array(n);
+    this.lu = new Float32Array(n);
+    const seed = o.seed ?? Math.floor(Math.random() * 1000);
+    for (let i = 0; i < max; i++) {
+      side[i * 2] = -1; side[i * 2 + 1] = 1;
+      const w = o.pressure === 0 ? 1 : 0.8 + 0.4 * (noise1(i * 0.09, seed) * 0.5 + 0.5);
+      wv[i * 2] = wv[i * 2 + 1] = w;
+    }
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('prev', new THREE.BufferAttribute(this.prev, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('next', new THREE.BufferAttribute(this.next, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute('side', new THREE.BufferAttribute(side, 1));
+    g.setAttribute('wv', new THREE.BufferAttribute(wv, 1));
+    g.setAttribute('lu', new THREE.BufferAttribute(this.lu, 1).setUsage(THREE.DynamicDrawUsage));
+    this.index = new Uint32Array((max - 1) * 6);
+    g.setIndex(new THREE.BufferAttribute(this.index, 1).setUsage(THREE.DynamicDrawUsage));
+    this.geo = g;
+    const glow = !!o.glow;
+    this.mat = new THREE.ShaderMaterial({
+      uniforms: Object.assign({
+        uColor: { value: col(o.color || PAL.ink) }, uWidth: { value: o.width ?? 0.03 }, uMinPx: { value: o.minPx ?? 1.0 },
+        uOpacity: { value: o.opacity ?? 1 }, uDash: { value: 0 }, uDashRatio: { value: o.dashRatio ?? 0.55 }, uDashShift: { value: 0 },
+        uProgress: { value: 1.01 }, uGlow: { value: glow ? 1 : 0 }, uBoil: { value: o.boil ?? 1 }, uFog: { value: o.fog ?? 1 },
+      }, SH),
+      vertexShader: LINE_VS, fragmentShader: LINE_FS,
+      transparent: glow || (o.opacity ?? 1) < 1, depthWrite: !glow && (o.opacity ?? 1) >= 1,
+      blending: glow ? THREE.AdditiveBlending : THREE.NormalBlending, side: THREE.DoubleSide,
+    });
+    this.dashLen = o.dash || 0;
+    this.mesh = new THREE.Mesh(g, this.mat);
+    this.mesh.frustumCulled = false;
+    this.mesh.raycast = () => {};
+    if (o.order) this.mesh.renderOrder = o.order;
+    if (o.parent) o.parent.add(this.mesh);
+    if (o.pts) this.set(o.pts);
+    if (o.strips) this.setStrips(o.strips);
+  }
+  set(pts) { return this.setStrips([pts]); }
+  setStrips(strips) {
+    let v = 0, idx = 0, total = 0;
+    const P = this.pos, Pr = this.prev, Nx = this.next, U = this.lu, I = this.index;
+    for (const pts of strips) {
+      const n = pts.length; if (n < 2 || v + n > this.max) continue;
+      let L = 0;
+      for (let i = 1; i < n; i++) L += pts[i].distanceTo(pts[i - 1]);
+      total += L;
+      let acc = 0;
+      for (let i = 0; i < n; i++) {
+        const p = pts[i];
+        if (i > 0) acc += p.distanceTo(pts[i - 1]);
+        const a = i > 0 ? pts[i - 1] : null, b = i < n - 1 ? pts[i + 1] : null;
+        const px = a ? a.x : 2 * p.x - b.x, py = a ? a.y : 2 * p.y - b.y, pz = a ? a.z : 2 * p.z - b.z;
+        const nx = b ? b.x : 2 * p.x - a.x, ny = b ? b.y : 2 * p.y - a.y, nz = b ? b.z : 2 * p.z - a.z;
+        for (let s = 0; s < 2; s++) {
+          const k = (v + i) * 2 + s;
+          P[k * 3] = p.x; P[k * 3 + 1] = p.y; P[k * 3 + 2] = p.z;
+          Pr[k * 3] = px; Pr[k * 3 + 1] = py; Pr[k * 3 + 2] = pz;
+          Nx[k * 3] = nx; Nx[k * 3 + 1] = ny; Nx[k * 3 + 2] = nz;
+          U[k] = strips.length === 1 ? acc / (L || 1) : acc / (L || 1);
+        }
+        if (i < n - 1) {
+          const a0 = (v + i) * 2;
+          I[idx++] = a0; I[idx++] = a0 + 1; I[idx++] = a0 + 2;
+          I[idx++] = a0 + 1; I[idx++] = a0 + 3; I[idx++] = a0 + 2;
+        }
+      }
+      v += n;
+    }
+    this.length = total;
+    if (this.dashLen) this.mat.uniforms.uDash.value = (strips.length === 1 ? total : total / strips.length) / this.dashLen;
+    const g = this.geo;
+    g.setDrawRange(0, idx);
+    for (const k of ['position', 'prev', 'next', 'lu']) g.attributes[k].needsUpdate = true;
+    g.index.needsUpdate = true;
+    return this;
+  }
+}
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+function circlePts(cx, cy, cz, r, n = 64, plane = 'xy', a0 = 0, a1 = TAU) {
+  const out = [];
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * i / n, c = Math.cos(a) * r, s = Math.sin(a) * r;
+    out.push(plane === 'xy' ? V3(cx + c, cy + s, cz) : plane === 'xz' ? V3(cx + c, cy, cz - s) : V3(cx, cy + s, cz + c));
+  }
+  return out;
+}
+// hand wobble for static 3D polylines
+function wobble(pts, amp = 0.012, seed = 1) {
+  return pts.map((p, i) => V3(p.x + noise1(i * 0.21, seed) * amp, p.y + noise1(i * 0.21, seed + 7) * amp, p.z + noise1(i * 0.21, seed + 13) * amp));
+}
+
+// ---------------------------------------------------------------------------
+// 2D painting: paper, stripes, ink strokes, text — the procedural-film look
+// ---------------------------------------------------------------------------
+const SERIF = '"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,"DejaVu Serif",serif';
+const SANS = '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
+function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function rgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function rgba(h, a) { const [r, g, b] = rgb(h); return `rgba(${r},${g},${b},${a})`; }
+
+// grain + mottle + vignette over whatever is already painted
+function grainPass(c, { seed = 3, grain = 1, mottle = 1, vignette = 0.3, warmDark = true } = {}) {
+  const w = c.width, h = c.height, g = c.getContext('2d');
+  const img = g.getImageData(0, 0, w, h), d = img.data;
+  const R = mulberry(seed);
+  const cell = 40, mw = Math.ceil(w / cell) + 2, mh = Math.ceil(h / cell) + 2;
+  const mf = new Float32Array(mw * mh); for (let i = 0; i < mf.length; i++) mf[i] = R() * 2 - 1;
+  const cx = w / 2, cy = h / 2, vr = Math.hypot(cx, cy);
+  for (let y = 0; y < h; y++) {
+    const my = y / cell, jy = Math.floor(my), ty = my - jy, sy = ty * ty * (3 - 2 * ty);
+    for (let x = 0; x < w; x++) {
+      const mx = x / cell, ix = Math.floor(mx), tx = mx - ix, sx = tx * tx * (3 - 2 * tx);
+      const m = lerp(lerp(mf[jy * mw + ix], mf[jy * mw + ix + 1], sx), lerp(mf[(jy + 1) * mw + ix], mf[(jy + 1) * mw + ix + 1], sx), sy);
+      const dx = (x - cx) / vr, dy = (y - cy) / vr;
+      const vig = vignette * Math.max(0, dx * dx + dy * dy - 0.3) * 0.2;
+      const k = 1 + m * 0.035 * mottle + (R() - 0.5) * 0.075 * grain - vig;
+      const i = (y * w + x) * 4;
+      d[i] = d[i] * k;
+      d[i + 1] = d[i + 1] * (warmDark ? k - (1 - k) * 0.12 : k);
+      d[i + 2] = d[i + 2] * (warmDark ? k - (1 - k) * 0.35 : k);
+    }
+  }
+  g.putImageData(img, 0, 0);
+  // fibres and specks
+  const n = Math.round(w * h / 1400 * grain);
+  g.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const x = R() * w, y = R() * h, L = 4 + R() * 18, a = R() * TAU, b = (R() - 0.5) * L;
+    const ex = x + Math.cos(a) * L, ey = y + Math.sin(a) * L;
+    g.strokeStyle = R() < 0.55 ? 'rgba(91,67,49,0.07)' : 'rgba(255,252,242,0.2)';
+    g.lineWidth = R() < 0.5 ? 0.7 : 1.1;
+    g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo((x + ex) / 2 - Math.sin(a) * b, (y + ey) / 2 + Math.cos(a) * b, ex, ey); g.stroke();
+  }
+  g.fillStyle = 'rgba(91,67,49,0.2)';
+  for (let i = 0; i < n * 0.07; i++) { g.beginPath(); g.arc(R() * w, R() * h, 0.3 + R() * 0.9, 0, TAU); g.fill(); }
+  return c;
+}
+function paperCanvas(w, h, base = PAL.paper, opt = {}) {
+  const c = mkCanvas(w, h), g = c.getContext('2d');
+  if (typeof base === 'function') base(g, w, h); else { g.fillStyle = base; g.fillRect(0, 0, w, h); }
+  return grainPass(c, opt);
+}
+// diagonal bands with wobbly edges (the butterfly-frame stripes)
+function stripes(g, w, h, a, b, band = 90, angle = -0.52, seed = 21) {
+  g.fillStyle = a; g.fillRect(0, 0, w, h);
+  const dx = Math.cos(angle), dy = Math.sin(angle), nx = -dy, ny = dx;
+  const cx = w / 2, cy = h / 2, half = Math.hypot(w, h) / 2 + band * 2;
+  g.fillStyle = b;
+  const period = band * 2;
+  for (let k = Math.floor(-half / period) - 1; k <= Math.ceil(half / period) + 1; k++) {
+    const v0 = k * period + band;
+    const edge = (v, kk) => { const pts = []; for (let u = -half; u <= half; u += 30) { const vv = v + 2.2 * noise1(u * 0.012 + kk * 3.7, seed) + 0.8 * noise1(u * 0.05, seed + kk); pts.push([cx + dx * u + nx * vv, cy + dy * u + ny * vv]); } return pts; };
+    const e1 = edge(v0, k * 2), e2 = edge(v0 + band, k * 2 + 1).reverse();
+    g.beginPath(); e1.concat(e2).forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.fill();
+  }
+}
+// pressure-varied, jittered ink stroke; optional faint doubled line
+function inkStroke(g, pts, w, color = PAL.ink, { seed = 1, jitter = 0.8, double = true, alpha = 1, taper = true, step = 3 } = {}) {
+  // resample
+  const rs = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+    const L = Math.hypot(x1 - x0, y1 - y0), n = Math.max(1, Math.ceil(L / step));
+    for (let j = 0; j < n; j++) rs.push([x0 + (x1 - x0) * j / n, y0 + (y1 - y0) * j / n]);
+  }
+  rs.push(pts[pts.length - 1]);
+  const N = rs.length;
+  const jp = rs.map((p, i) => [p[0] + noise1(i * 0.05, seed) * jitter, p[1] + noise1(i * 0.05, seed + 5) * jitter]);
+  g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = color; g.globalAlpha = alpha;
+  for (let i = 0; i < N - 1; i++) {
+    const k = i / (N - 1);
+    const tp = taper ? 0.55 + 0.45 * Math.min(1, k * 10, (1 - k) * 10) : 1;
+    g.lineWidth = w * (0.78 + 0.44 * (noise1(i * 0.06, seed + 11) * 0.5 + 0.5)) * tp;
+    g.beginPath(); g.moveTo(jp[i][0], jp[i][1]); g.lineTo(jp[i + 1][0], jp[i + 1][1]); g.stroke();
+  }
+  if (double && N > 3) {
+    g.globalAlpha = alpha * 0.35; g.lineWidth = Math.max(0.8, w * 0.3);
+    g.beginPath(); jp.forEach((p, i) => { const q = [p[0] + 2.2 + noise1(i * 0.03, seed + 21) * 1.5, p[1] + 1.6]; i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1]); }); g.stroke();
+  }
+  g.restore();
+}
+// fast single-path stroke for per-frame graphs
+function quickStroke(g, pts, w, color, alpha = 1, dash = null) {
+  g.save(); g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = color; g.lineWidth = w; g.globalAlpha = alpha;
+  if (dash) g.setLineDash(dash);
+  g.beginPath(); pts.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.stroke(); g.restore();
+}
+function inkRect(g, x, y, w, h, lw = 4, color = PAL.ink, seed = 3) {
+  const o = 7;
+  inkStroke(g, [[x - o, y], [x + w + o * 0.6, y]], lw, color, { seed });
+  inkStroke(g, [[x + w, y - o * 0.5], [x + w, y + h + o]], lw, color, { seed: seed + 1 });
+  inkStroke(g, [[x + w + o * 0.4, y + h], [x - o, y + h]], lw, color, { seed: seed + 2 });
+  inkStroke(g, [[x, y + h + o * 0.5], [x, y - o]], lw, color, { seed: seed + 3 });
+}
+function inkCircle(g, cx, cy, r, lw, color = PAL.ink, seed = 1) {
+  const pts = []; const a0 = noise1(seed, 3) * 2;
+  for (let i = 0; i <= 64; i++) { const a = a0 + i / 64 * (TAU + 0.25); pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+  inkStroke(g, pts, lw, color, { seed });
+}
+function hatchRegion(g, clipFn, spacing = 9, lw = 1.4, color = PAL.ink, alpha = 0.5, angle = -0.8, seed = 4, bounds = null) {
+  const W = g.canvas.width, H = g.canvas.height;
+  g.save(); g.beginPath(); clipFn(g); g.clip();
+  g.strokeStyle = color; g.globalAlpha = alpha; g.lineWidth = lw; g.lineCap = 'round';
+  const dx = Math.cos(angle), dy = Math.sin(angle), L = Math.hypot(W, H);
+  const R = mulberry(seed);
+  g.beginPath();
+  for (let s = -L; s < L; s += spacing) {
+    const ox = W / 2 - dy * s, oy = H / 2 + dx * s, j = (R() - 0.5) * 2;
+    g.moveTo(ox - dx * L + j, oy - dy * L); g.lineTo(ox + dx * L + j, oy + dy * L);
+  }
+  g.stroke(); g.restore();
+}
+// ruler arc with ticks (the blue protractor from the reference frame)
+function rulerArc(g, cx, cy, r, a0, a1, n, color, lw = 2, long = 5) {
+  const pts = []; for (let i = 0; i <= 80; i++) { const a = a0 + (a1 - a0) * i / 80; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+  quickStroke(g, pts, lw, color, 0.9);
+  g.save(); g.strokeStyle = color; g.lineWidth = lw * 0.8; g.globalAlpha = 0.9;
+  for (let i = 0; i <= n; i++) {
+    const a = a0 + (a1 - a0) * i / n, L = i % long === 0 ? r * 0.08 : r * 0.04;
+    g.beginPath(); g.moveTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); g.lineTo(cx + Math.cos(a) * (r - L), cy + Math.sin(a) * (r - L)); g.stroke();
+  }
+  g.restore();
+}
+function wrapText(g, text, maxW) {
+  const words = text.split(' '), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur); return lines;
+}
+function tex(c, o = {}) {
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.NoColorSpace;
+  t.anisotropy = o.aniso ?? 4;
+  if (o.repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
+  if (o.nomip) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; }
+  return t;
+}
+function radialSprite(inner, outer, size = 128) {
+  const c = mkCanvas(size, size), g = c.getContext('2d');
+  const gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  gr.addColorStop(0, inner); gr.addColorStop(0.25, inner.replace(/[\d.]+\)$/, m => (parseFloat(m) * 0.45) + ')')); gr.addColorStop(1, outer);
+  g.fillStyle = gr; g.fillRect(0, 0, size, size);
+  return tex(c);
+}
+
+// ---------------------------------------------------------------------------
+// WORLD: night garden. Deep sky with stars and the Milky Way, a low rose glow
+// on the horizon, paper ground, an octave-spiral plaza, paper-cut hills
+// ---------------------------------------------------------------------------
+const CENTER = V3(0, 0, -20);
+const RING = 16;
+const STATION_ANG_DEG = [-38, -90, -142, 142, 90, 38];
+const MOON_DIR = V3(-0.42, 0.36, -0.83).normalize();
+SH.uFogColor.value = col('#2C2B57');
+SH.uFogDensity.value = 0.0105;
+SH.uLightDir.value = V3(-0.35, 0.85, 0.4).normalize();
+
+// sky dome ------------------------------------------------------------------
+const sky = new THREE.Mesh(new THREE.SphereGeometry(300, 48, 24), new THREE.ShaderMaterial({
+  uniforms: Object.assign({ uMoon: { value: MOON_DIR } }, SH),
+  vertexShader: `varying vec3 vDir; void main(){ vDir = position; vec4 p = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position = p.xyww; }`,
+  fragmentShader: /* glsl */`
+    ${GLSL_COMMON}
+    uniform vec3 uMoon; varying vec3 vDir;
+    float h3(vec3 p){ p = fract(p*0.3183099 + 0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }
+    float vn(vec3 p){ vec3 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
+      return mix(mix(mix(h3(i), h3(i+vec3(1,0,0)), f.x), mix(h3(i+vec3(0,1,0)), h3(i+vec3(1,1,0)), f.x), f.y),
+                 mix(mix(h3(i+vec3(0,0,1)), h3(i+vec3(1,0,1)), f.x), mix(h3(i+vec3(0,1,1)), h3(i+vec3(1,1,1)), f.x), f.y), f.z); }
+    float stars(vec3 d, float scale, float thr){
+      vec3 q = d * scale; vec3 id = floor(q); float hs = h3(id);
+      if (hs < thr) return 0.0;
+      vec3 f = fract(q) - 0.5; float s = length(f);
+      float tw = 0.65 + 0.35 * sin(uTime * (0.7 + hs * 2.5) + hs * 60.0);
+      return (1.0 - smoothstep(0.03, 0.11, s)) * tw;
+    }
+    void main(){
+      vec3 d = normalize(vDir); float y = d.y;
+      vec3 hor = vec3(0.86,0.55,0.55), low = vec3(0.50,0.33,0.50), mid = vec3(0.20,0.18,0.38), high = vec3(0.09,0.10,0.24), top = vec3(0.045,0.055,0.15);
+      vec3 c = mix(hor, low, smoothstep(0.0, 0.06, y));
+      c = mix(c, mid, smoothstep(0.04, 0.2, y));
+      c = mix(c, high, smoothstep(0.18, 0.5, y));
+      c = mix(c, top, smoothstep(0.5, 1.0, y));
+      // milky way: a tilted band of mottled light
+      vec3 mwN = normalize(vec3(0.55, 0.35, 0.76));
+      float b = dot(d, mwN);
+      float band = exp(-b*b*28.0);
+      float cl = vn(d*7.0) * 0.6 + vn(d*19.0) * 0.4;
+      float dust = smoothstep(0.55, 0.75, vn(d*11.0 + 3.0)) * exp(-b*b*120.0);
+      c += vec3(0.36, 0.34, 0.52) * band * (0.35 + 0.65 * cl) * 0.55 * smoothstep(0.02, 0.25, y) - vec3(0.05,0.05,0.07) * dust;
+      float sAmt = smoothstep(0.03, 0.3, y);
+      c = mix(c, vec3(1.0, 0.95, 0.84), stars(d, 150.0, 0.965) * sAmt);
+      c = mix(c, vec3(0.92, 0.94, 1.0), stars(d, 320.0, 0.94 - band * 0.12) * sAmt * 0.7);
+      c = mix(c, vec3(1.0, 0.9, 0.7), stars(d, 60.0, 0.992) * sAmt);
+      // moon: a crescent with an ink ring and a soft halo
+      float ang = acos(clamp(dot(d, uMoon), -1.0, 1.0));
+      c += vec3(0.55, 0.55, 0.75) * 0.22 * exp(-ang * 7.0);
+      float disc = 1.0 - smoothstep(0.040, 0.043, ang);
+      vec3 sh = normalize(uMoon + vec3(0.03, 0.012, 0.0));
+      float ang2 = acos(clamp(dot(d, sh), -1.0, 1.0));
+      float lit = disc * smoothstep(0.036, 0.043, ang2);
+      c = mix(c, vec3(0.13, 0.13, 0.26), disc * 0.85);
+      c = mix(c, vec3(1.0, 0.95, 0.80), lit);
+      c = mix(c, vec3(0.75, 0.70, 0.85), (1.0 - smoothstep(0.0, 0.0016, abs(ang - 0.043))) * 0.5);
+      // protractor arcs around the moon (the house hand)
+      float ring = 1.0 - smoothstep(0.0, 0.0012, abs(ang - 0.11));
+      vec3 t1 = normalize(cross(uMoon, vec3(0.0,1.0,0.0))); vec3 t2 = cross(t1, uMoon);
+      float a2 = atan(dot(d, t2), dot(d, t1));
+      float tick = step(fract(a2 / 6.2831853 * 48.0 + 0.5), 0.08) * step(0.11, ang) * step(ang, 0.122);
+      c = mix(c, vec3(0.55, 0.62, 0.95), (ring + tick) * 0.35 * smoothstep(-0.1, 0.4, a2 + 1.0));
+      if (y < 0.0) c = mix(hor, vec3(0.22, 0.20, 0.36), smoothstep(0.0, -0.08, y));
+      c += (hash21(floor(gl_FragCoord.xy / uDpr)) - 0.5) * 0.03;
+      gl_FragColor = vec4(c, 1.0);
+    }`,
+  side: THREE.BackSide, depthWrite: false,
+}));
+sky.renderOrder = -10;
+scene.add(sky);
+
+// hand-drawn constellations as glowing lines high in the sky -----------------------
+{
+  const R = 250, toV = (az, el) => V3(Math.sin(az) * Math.cos(el) * R, Math.sin(el) * R, -Math.cos(az) * Math.cos(el) * R);
+  const DEG = Math.PI / 180;
+  // ковш Большой Медведицы и Кассиопея, по памяти, стилизовано
+  const dipper = [[-62, 38], [-55, 40], [-49, 39], [-43, 36], [-40, 30], [-31, 31], [-33, 38], [-43, 36]];
+  const cass = [[40, 46], [46, 41], [52, 45], [58, 40], [64, 44]];
+  const orion = [[150, 22], [158, 24], [154, 16], [153, 14], [152, 12], [146, 6], [160, 7]];
+  const strips = [dipper, cass].map((s) => s.map(([a, e]) => toV(a * DEG, e * DEG)));
+  new Line(40, { strips, width: 0.55, color: '#8FA2E8', opacity: 0.35, glow: true, fog: 0, boil: 0.4, parent: scene });
+  const dotsG = new THREE.BufferGeometry().setFromPoints([...dipper, ...cass].map(([a, e]) => toV(a * DEG, e * DEG)));
+  const dots = new THREE.Points(dotsG, new THREE.PointsMaterial({ color: '#FFF1D0', size: 3.2, sizeAttenuation: false, transparent: true, opacity: 0.95, depthWrite: false }));
+  scene.add(dots); window.__skyDots = dots;
+}
+
+// ground -----------------------------------------------------------------------
+const groundTex = tex(paperCanvas(1024, 1024, (g, w, h) => {
+  g.fillStyle = PAL.paper; g.fillRect(0, 0, w, h);
+  for (let i = 0; i <= 10; i++) {
+    const p = i / 10 * w;
+    g.strokeStyle = rgba(PAL.inkFaint, i % 5 === 0 ? 0.16 : 0.07); g.lineWidth = i % 5 === 0 ? 2 : 1.2;
+    g.beginPath(); g.moveTo(p, 0); g.lineTo(p, h); g.moveTo(0, p); g.lineTo(w, p); g.stroke();
+  }
+  const R = mulberry(9);
+  for (let i = 0; i < 900; i++) { g.strokeStyle = rgba(R() < 0.5 ? PAL.sage : PAL.tan, 0.18 + R() * 0.2); g.lineWidth = 1 + R(); const x = R() * w, y = R() * h, a = -1.2 - R() * 0.8; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * 7, y + Math.sin(a) * 7); g.stroke(); }
+}, { seed: 11, vignette: 0 }), { repeat: true, aniso: 8 });
+const ground = mesh(new THREE.CircleGeometry(160, 64), inkMat({ map: groundTex, color: '#6F709C', repeat: [32, 32], flat: 1, hatch: 0 }), scene, [0, 0, 0], [-Math.PI / 2, 0, 0]);
+
+// octave-spiral plaza decal: every turn of the spiral is one doubling,
+// the twelve spokes are the twelve notes; Cousto's tones sit on it -----------------
+const NOTE_NAMES = ['до', 'до♯', 'ре', 'ре♯', 'ми', 'фа', 'фа♯', 'соль', 'соль♯', 'ля', 'ля♯', 'си'];
+{
+  const S = 2048, RAD = 26, k = S / 2 / RAD;
+  const c = mkCanvas(S, S), g = c.getContext('2d');
+  const cx = S / 2, cy = S / 2;
+  const P = (r, a) => [cx + Math.sin(a) * r * k, cy + Math.cos(a) * r * k];
+  const gr = g.createRadialGradient(cx, cy, 0, cx, cy, S / 2);
+  gr.addColorStop(0, rgba(PAL.paper, 0.75)); gr.addColorStop(0.5, rgba(PAL.paper, 0.55)); gr.addColorStop(0.72, rgba(PAL.stripeApricot, 0.45)); gr.addColorStop(1, rgba(PAL.paperShade, 0));
+  g.fillStyle = gr; g.fillRect(0, 0, S, S);
+  const circ = (r, lw, color, seed) => { const pts = []; for (let i = 0; i <= 180; i++) pts.push(P(r, i / 180 * TAU)); inkStroke(g, pts, lw, color, { seed, step: 6 }); };
+  circ(RING - 2.4, 5, PAL.inkSoft, 1); circ(RING + 2.4, 5, PAL.inkSoft, 2); circ(RING, 2, rgba(PAL.inkFaint, 0.6), 3);
+  circ(3.0, 4, PAL.inkSoft, 4); circ(23, 2.5, rgba(PAL.inkFaint, 0.7), 6);
+  // spiral: radius doubles... gently (Archimedean so it fits), 4 turns from r=3.4 to r=12
+  const spiral = (frac) => 3.6 + frac * 2.1;
+  const sp = []; for (let i = 0; i <= 1440; i++) { const t = i / 360; sp.push(P(spiral(t), -t * TAU + Math.PI)); }
+  inkStroke(g, sp, 4, PAL.teal, { seed: 9, step: 5 });
+  // spokes and note names (pitch class = angle; 'до' faces the entrance)
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let n = 0; n < 12; n++) {
+    const a = -n / 12 * TAU + Math.PI;
+    inkStroke(g, [P(3.2, a), P(12.3, a)], n % 12 === 0 ? 3 : 1.6, rgba(PAL.inkSoft, 0.55), { seed: 40 + n, double: false });
+    const [x, y] = P(13.0, a);
+    g.save(); g.translate(x, y); g.rotate(-a + Math.PI); g.font = `italic 700 ${Math.round(k * 0.7)}px ${SERIF}`; g.fillStyle = PAL.ink; g.fillText(NOTE_NAMES[n], 0, 0); g.restore();
+  }
+  // Cousto tones as coloured dots on the spiral
+  const tones = [[136.10, 'год', PAL.teal], [194.18, 'сутки', PAL.sun], [210.42, 'месяц', '#9AA6E8'], [172.06, 'прецессия', PAL.rose], [221.23, 'Венера', '#F0C9A0'], [141.27, 'Меркурий', PAL.tan], [183.58, 'Юпитер', PAL.orange], [147.85, 'Сатурн', PAL.ochre]];
+  for (const [f, name, cc] of tones) {
+    const semis = 12 * Math.log2(f / 130.81); // from C3
+    const t = 1 + semis / 12;
+    const a = -t * TAU + Math.PI, r = spiral(t);
+    const [x, y] = P(r, a);
+    g.fillStyle = cc; g.beginPath(); g.arc(x, y, k * 0.32, 0, TAU); g.fill(); inkCircle(g, x, y, k * 0.32, 3, PAL.ink, Math.round(f));
+    g.save(); g.translate(x, y); g.rotate(-a + Math.PI); g.font = `600 ${Math.round(k * 0.36)}px ${SANS}`; g.fillStyle = PAL.inkSoft; g.fillText(name, 0, k * 0.62); g.restore();
+  }
+  // outer ring: 6 station numbers
+  STATION_ANG_DEG.forEach((d, i) => { const a = d / 180 * Math.PI; const [x, y] = P(RING + 4.2, a); g.fillStyle = PAL.sun; g.beginPath(); g.arc(x, y, k * 0.55, 0, TAU); g.fill(); inkCircle(g, x, y, k * 0.55, 4, PAL.ink, i + 70); g.fillStyle = PAL.ink; g.font = `700 ${Math.round(k * 0.7)}px ${SERIF}`; g.fillText(String(i + 1), x, y + 3); });
+  for (let dd = 0; dd < 360; dd += 5) { const a = dd / 180 * Math.PI, L = dd % 30 === 0 ? 1.2 : 0.5; inkStroke(g, [P(RING + 2.4, a), P(RING + 2.4 + L, a)], dd % 30 === 0 ? 4 : 2.2, PAL.inkSoft, { seed: dd, double: false }); }
+  const t = tex(c, { aniso: 8 });
+  const decal = mesh(new THREE.PlaneGeometry(RAD * 2, RAD * 2), inkMat({ map: t, color: '#C9C4DC', flat: 1, hatch: 0, transparent: true, depthWrite: false }), scene, [CENTER.x, 0.02, CENTER.z], [-Math.PI / 2, 0, 0]);
+  decal.renderOrder = 1;
+}
+
+// paper-cut hills ---------------------------------------------------------------------
+function hillRing(R, base, amp, color, seed, edge) {
+  const n = 160, pos = [], idx = [], top = [];
+  for (let i = 0; i <= n; i++) {
+    const a = i / n * TAU;
+    const hgt = base + amp * (0.55 * (noise1(a * 3.2, seed) * 0.5 + 0.5) + 0.35 * (noise1(a * 9.0, seed + 1) * 0.5 + 0.5) + 0.1 * noise1(a * 30, seed + 2));
+    const x = Math.sin(a) * R, z = Math.cos(a) * R;
+    pos.push(x, -2, z, x, hgt, z); top.push(V3(x, hgt, z));
+    if (i < n) { const kk = i * 2; idx.push(kk, kk + 2, kk + 1, kk + 1, kk + 2, kk + 3); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(new Array(pos.length).fill(0).map((_, i) => (i % 3 === 1 ? 1 : 0)), 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Array((n + 1) * 4).fill(0), 2));
+  g.setIndex(idx);
+  const m = new THREE.Mesh(g, inkMat({ color, flat: 1, hatch: 0, side: THREE.DoubleSide, fog: 0.6 }));
+  m.position.copy(CENTER); scene.add(m);
+  const l = new Line(n + 2, { width: edge, color: '#9C8FC8', minPx: 1.0, boil: 0.5, seed, opacity: 0.7, fog: 0.5 });
+  l.set(top); l.mesh.position.copy(CENTER); scene.add(l.mesh);
+}
+hillRing(150, 10, 26, '#2E2A55', 3, 0.35);
+hillRing(118, 4, 16, '#22384A', 7, 0.28);
+hillRing(90, 1, 9, '#2F4A45', 12, 0.22);
+
+// drawn trees & tufts: billboard atlas ------------------------------------------------
+const atlas = (() => {
+  const CW = 256, CH = 512, c = mkCanvas(CW * 4, CH), g = c.getContext('2d');
+  // 0: round tree
+  {
+    const ox = 0, R = mulberry(4);
+    inkStroke(g, [[ox + 128, 500], [ox + 126, 300]], 16, PAL.wood, { seed: 2, double: false });
+    inkStroke(g, [[ox + 120, 500], [ox + 119, 300]], 3, PAL.ink, { seed: 3 }); inkStroke(g, [[ox + 136, 500], [ox + 133, 300]], 3, PAL.ink, { seed: 4 });
+    const blobs = [[128, 200, 92], [80, 250, 58], [176, 250, 60], [128, 130, 62], [96, 170, 55], [165, 175, 55]];
+    g.fillStyle = PAL.sage; for (const [x, y, r] of blobs) { g.beginPath(); g.arc(ox + x, y, r, 0, TAU); g.fill(); }
+    g.save(); g.beginPath(); for (const [x, y, r] of blobs) { g.moveTo(ox + x + r, y); g.arc(ox + x, y, r, 0, TAU); } g.clip();
+    g.fillStyle = PAL.leaf; g.globalAlpha = 0.55; g.beginPath(); g.arc(ox + 175, 285, 120, 0, TAU); g.fill(); g.globalAlpha = 1;
+    hatchRegion(g, (gg) => { gg.arc(ox + 180, 300, 110, 0, TAU); }, 7, 1.6, PAL.ink, 0.35, -0.9, 5);
+    g.fillStyle = rgba(PAL.stripeSpring || '#E4EDD0', 0.5); for (let i = 0; i < 14; i++) { g.beginPath(); g.ellipse(ox + 70 + R() * 90, 100 + R() * 150, 10, 5, -0.6, 0, TAU); g.fill(); }
+    g.restore();
+    for (const [x, y, r] of blobs) { const pts = []; for (let i = 0; i <= 40; i++) { const a = i / 40 * TAU; pts.push([ox + x + Math.cos(a) * r, y + Math.sin(a) * r]); } }
+    // outline: trace the union boundary roughly by sampling angles from the centre
+    const pts = [];
+    for (let i = 0; i <= 120; i++) { const a = i / 120 * TAU; let best = 0; for (const [x, y, r] of blobs) { // ray-circle
+        const dx = x - 128, dy = y - 195, b = dx * Math.cos(a) + dy * Math.sin(a), cc = dx * dx + dy * dy - r * r, disc = b * b - cc; if (disc >= 0) best = Math.max(best, b + Math.sqrt(disc)); }
+      pts.push([ox + 128 + Math.cos(a) * best, 195 + Math.sin(a) * best]); }
+    inkStroke(g, pts, 4.5, PAL.ink, { seed: 7 });
+  }
+  // 1: cypress
+  {
+    const ox = CW, pts = [];
+    for (let i = 0; i <= 60; i++) { const t = i / 60, a = t * TAU; const y = 250 - 235 * Math.cos(a / 2) * 1; }
+    const shape = []; for (let i = 0; i <= 50; i++) { const t = i / 50; shape.push([ox + 128 + 62 * Math.sin(Math.PI * Math.pow(t, 0.8)) * (1 + 0.05 * noise1(i, 3)), 20 + t * 460]); }
+    const left = shape.map(([x, y]) => [2 * (ox + 128) - x, y]).reverse();
+    const all = shape.concat(left);
+    g.fillStyle = '#4E7358'; g.beginPath(); all.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.closePath(); g.fill();
+    hatchRegion(g, (gg) => { all.forEach((p, i) => (i ? gg.lineTo(p[0], p[1]) : gg.moveTo(p[0], p[1]))); gg.closePath(); gg.rect(ox + 128, 0, 200, 512); }, 6, 1.5, PAL.ink, 0.35, -1.3, 8);
+    for (let i = 0; i < 22; i++) { const y = 60 + i * 19; inkStroke(g, [[ox + 110 + (i % 2) * 8, y], [ox + 128, y + 16], [ox + 146 - (i % 2) * 8, y]], 1.6, rgba(PAL.ink, 0.5), { seed: i, double: false }); }
+    inkStroke(g, all.concat([all[0]]), 4.5, PAL.ink, { seed: 9 });
+    inkStroke(g, [[ox + 128, 480], [ox + 128, 505]], 10, PAL.wood, { seed: 2, double: false });
+  }
+  // 2: pine
+  {
+    const ox = CW * 2;
+    inkStroke(g, [[ox + 128, 505], [ox + 128, 400]], 14, PAL.wood, { seed: 5, double: false });
+    for (let k = 0; k < 4; k++) {
+      const y0 = 60 + k * 95, w = 50 + k * 26, y1 = y0 + 150;
+      const tri = [[ox + 128, y0], [ox + 128 + w, y1], [ox + 128 - w, y1], [ox + 128, y0]];
+      g.fillStyle = k % 2 ? '#3F6E66' : '#4F7C74'; g.beginPath(); tri.forEach((p, i) => (i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]))); g.fill();
+      hatchRegion(g, (gg) => { gg.moveTo(ox + 128, y0); gg.lineTo(ox + 128 + w, y1); gg.lineTo(ox + 128, y1); }, 6, 1.4, PAL.ink, 0.35, -0.6, 3 + k);
+      inkStroke(g, tri, 4, PAL.ink, { seed: 20 + k });
+    }
+  }
+  // 3: tuft of grass with flowers
+  {
+    const ox = CW * 3, R = mulberry(12);
+    for (let i = 0; i < 26; i++) { const x = ox + 60 + R() * 136, h = 60 + R() * 110, bend = (R() - 0.5) * 60; inkStroke(g, [[x, 505], [x + bend * 0.4, 505 - h * 0.6], [x + bend, 505 - h]], 3 + R() * 2, R() < 0.5 ? PAL.leaf : PAL.sage, { seed: i, double: false }); }
+    for (let i = 0; i < 5; i++) { const x = ox + 80 + R() * 100, y = 360 + R() * 70; inkStroke(g, [[x, 505], [x, y]], 2, PAL.inkSoft, { seed: 50 + i, double: false });
+      g.fillStyle = [PAL.rose, PAL.sun, PAL.white, PAL.duskRose][i % 4]; for (let p = 0; p < 5; p++) { const a = p / 5 * TAU; g.beginPath(); g.ellipse(x + Math.cos(a) * 9, y + Math.sin(a) * 9, 8, 5, a, 0, TAU); g.fill(); }
+      g.fillStyle = PAL.ochre; g.beginPath(); g.arc(x, y, 5, 0, TAU); g.fill(); inkCircle(g, x, y, 15, 1.8, PAL.ink, 60 + i); }
+  }
+  return tex(c);
+})();
+const BB_VS = /* glsl */`
+  uniform float uCell; varying vec2 vUv; varying vec3 vW;
+  void main(){
+    vec3 ip = (modelMatrix * instanceMatrix * vec4(0.0,0.0,0.0,1.0)).xyz;
+    float sc = length(instanceMatrix[0].xyz);
+    vec3 cd = cameraPosition - ip; cd.y = 0.0; cd = normalize(cd);
+    vec3 right = vec3(cd.z, 0.0, -cd.x);
+    vec3 w = ip + right * position.x * sc + vec3(0.0,1.0,0.0) * position.y * sc;
+    vW = w; vUv = vec2((uv.x + uCell) / 4.0, uv.y);
+    gl_Position = projectionMatrix * viewMatrix * vec4(w, 1.0);
+  }`;
+const BB_FS = /* glsl */`${GLSL_COMMON} uniform sampler2D uMap; varying vec2 vUv; varying vec3 vW;
+  void main(){ vec4 t = texture2D(uMap, vUv); if (t.a < 0.5) discard; vec3 c = t.rgb * vec3(0.50, 0.55, 0.78) + (hash21(floor(gl_FragCoord.xy/uDpr)) - 0.5) * 0.04; gl_FragColor = vec4(mix(c, uFogColor, fogAmt(vW)), 1.0); }`;
+function billboards(cell, list, w, h) {
+  const geo = new THREE.PlaneGeometry(w, h); geo.translate(0, h / 2, 0);
+  const m = new THREE.InstancedMesh(geo, new THREE.ShaderMaterial({ uniforms: Object.assign({ uMap: { value: atlas }, uCell: { value: cell } }, SH), vertexShader: BB_VS, fragmentShader: BB_FS, side: THREE.DoubleSide }), list.length);
+  const M = new THREE.Matrix4();
+  list.forEach(([x, z, s], i) => { M.makeScale(s, s, s); M.setPosition(x, 0, z); m.setMatrixAt(i, M); });
+  m.frustumCulled = false; m.raycast = () => {};
+  scene.add(m); return m;
+}
+const STATION_ANG = STATION_ANG_DEG.map((d) => d / 180 * Math.PI);
+function freeSpot(x, z, pad) {
+  const dc = Math.hypot(x - CENTER.x, z - CENTER.z);
+  if (dc < 8) return false;
+  for (const a of STATION_ANG) { const sx = CENTER.x + Math.sin(a) * RING, sz = CENTER.z + Math.cos(a) * RING; const dx = x - sx, dz = z - sz; if (dx * dx + dz * dz < pad * pad) return false; }
+  if (Math.abs(x) < 1.6 && z > -6 && z < 12) return false;
+  return true;
+}
+{
+  const R = mulberry(77), lists = [[], [], [], []];
+  for (let i = 0; i < 120; i++) {
+    const a = R() * TAU, r = 30 + Math.pow(R(), 0.8) * 42, x = CENTER.x + Math.sin(a) * r, z = CENTER.z + Math.cos(a) * r;
+    if (!freeSpot(x, z, 12)) continue;
+    const k = R() < 0.4 ? 0 : R() < 0.55 ? 1 : 2; lists[k].push([x, z, 0.9 + R() * 0.8]);
+  }
+  for (let i = 0; i < 420; i++) {
+    const a = R() * TAU, r = 4 + R() * 34, x = CENTER.x + Math.sin(a) * r, z = CENTER.z + Math.cos(a) * r;
+    if (!freeSpot(x, z, 8.5)) continue;
+    if (Math.abs(Math.hypot(x - CENTER.x, z - CENTER.z) - RING) < 2.2) continue;
+    lists[3].push([x, z, 0.7 + R() * 0.6]);
+  }
+  billboards(0, lists[0], 4.2, 8.4); billboards(1, lists[1], 2.6, 5.2); billboards(2, lists[2], 3.6, 7.2); billboards(3, lists[3], 0.9, 1.8);
+}
+
+// lanterns: paper globes on posts, warm glow ----------------------------------------------
+const poolGeo = new THREE.PlaneGeometry(7, 7);
+const poolMat = new THREE.MeshBasicMaterial({ map: radialSprite('rgba(255,196,120,0.55)', 'rgba(255,170,90,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 });
+const haloTex = radialSprite('rgba(255,214,140,0.95)', 'rgba(255,190,120,0)');
+const lanternMat = inkMat({ color: '#FFD98A', emit: 0.9, flat: 1, hatch: 0 });
+const postMat = inkMat({ color: PAL.inkSoft });
+function lantern(x, z, h = 2.6, parent = scene) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); parent.add(g);
+  mesh(new THREE.CylinderGeometry(0.045, 0.06, h, 8), postMat, g, [0, h / 2, 0], null, 0.012);
+  mesh(new THREE.BoxGeometry(0.5, 0.04, 0.04), postMat, g, [0.2, h - 0.02, 0]);
+  const L = mesh(new THREE.SphereGeometry(0.15, 16, 12), lanternMat, g, [0.42, h - 0.3, 0], null, 0.012); L.scale.y = 1.3;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.8 }));
+  s.position.set(0.42, h - 0.3, 0); s.scale.set(2.2, 2.2, 1); g.add(s);
+  const pool = new THREE.Mesh(poolGeo, poolMat); pool.position.set(0.42, 0.05, 0); pool.rotation.x = -Math.PI / 2; pool.renderOrder = 5; g.add(pool);
+  return g;
+}
+lantern(-3.4, 1.2); lantern(3.4, 1.2);
+for (const d of [0, 64, 116, 180, 244, 296]) { const a = d / 180 * Math.PI; lantern(CENTER.x + Math.sin(a) * (RING + 3.4), CENTER.z + Math.cos(a) * (RING + 3.4)); }
+
+// drifting motes ---------------------------------------------------------------------------
+{
+  const n = 420, p = new Float32Array(n * 3), s = new Float32Array(n), R = mulberry(3);
+  for (let i = 0; i < n; i++) { const a = R() * TAU, r = Math.sqrt(R()) * 30; p[i * 3] = CENTER.x + Math.sin(a) * r; p[i * 3 + 1] = 0.3 + R() * 6; p[i * 3 + 2] = CENTER.z + Math.cos(a) * r; s[i] = R(); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('seed', new THREE.BufferAttribute(s, 1));
+  const m = new THREE.Points(g, new THREE.ShaderMaterial({
+    uniforms: Object.assign({}, SH),
+    vertexShader: `${GLSL_COMMON} attribute float seed; varying float vA;
+      void main(){ vec3 q = position; float t = uTime * (0.15 + seed * 0.2) + seed * 50.0;
+        q += vec3(sin(t) * 0.8, sin(t * 0.7 + seed * 9.0) * 0.5, cos(t * 0.8) * 0.8);
+        vec4 mv = viewMatrix * modelMatrix * vec4(q, 1.0); gl_Position = projectionMatrix * mv;
+        gl_PointSize = (2.0 + seed * 3.0) * uDpr * (8.0 / max(1.0, -mv.z));
+        vA = (0.4 + 0.6 * sin(uTime * (1.0 + seed) + seed * 20.0)) * (1.0 - fogAmt((modelMatrix * vec4(q,1.0)).xyz)); }`,
+    fragmentShader: `varying float vA; void main(){ float d = length(gl_PointCoord - 0.5); float a = (1.0 - smoothstep(0.1, 0.5, d)) * vA; gl_FragColor = vec4(0.86, 1.0, 0.62, a); }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+  }));
+  m.frustumCulled = false; scene.add(m);
+}
+
+
+// paper lane from the start to the plaza ----------------------------------------------------
+{
+  const c = paperCanvas(256, 1024, (g, w, h) => { stripes(g, w, h, PAL.stripeCream, PAL.stripeYellow, 40, -0.52, 5); for (let y = 60; y < h; y += 120) inkStroke(g, [[w * 0.3, y + 40], [w * 0.5, y], [w * 0.7, y + 40]], 5, rgba(PAL.inkSoft, 0.6), { seed: y }); }, { seed: 71, vignette: 0.1 });
+  const lane = mesh(new THREE.PlaneGeometry(2.4, 11), inkMat({ map: tex(c, { aniso: 8 }), color: '#C8C2DA', flat: 1, hatch: 0 }), scene, [0, 0.025, 2.0], [-Math.PI / 2, 0, 0]); lane.renderOrder = 2;
+  new Line(4, { pts: wobble([V3(-1.2, 0.04, 7.5), V3(-1.2, 0.04, -3.5)], 0.02, 3), width: 0.04, parent: scene });
+  new Line(4, { pts: wobble([V3(1.2, 0.04, 7.5), V3(1.2, 0.04, -3.5)], 0.02, 4), width: 0.04, parent: scene });
+}
+
+// the great tuning fork at the plaza centre: the year tone, 136,10 Гц, and
+// its colour, 501 нм, glowing in the orb on top ------------------------------------
+const YEAR_COLOR = '#00FFB0'; // replaced below by the computed wavelength colour
+const centerpiece = {};
+{
+  const g = new THREE.Group(); g.position.copy(CENTER); scene.add(g);
+  const stone = inkMat({ color: PAL.paperShade });
+  mesh(new THREE.CylinderGeometry(1.7, 1.9, 0.3, 40), stone, g, [0, 0.15, 0], null, 0.02);
+  mesh(new THREE.CylinderGeometry(0.8, 1.0, 0.7, 28), stone, g, [0, 0.65, 0], null, 0.02);
+  const gold = inkMat({ color: PAL.ochre });
+  const fork = new THREE.Group(); fork.position.y = 1.0; g.add(fork);
+  mesh(new THREE.CylinderGeometry(0.09, 0.12, 1.3, 14), gold, fork, [0, 0.65, 0], null, 0.016);
+  mesh(new THREE.SphereGeometry(0.16, 16, 12), gold, fork, [0, 1.3, 0], null, 0.014);
+  const u = mesh(new THREE.TorusGeometry(0.55, 0.1, 12, 40, Math.PI), gold, fork, [0, 1.95, 0], [0, 0, Math.PI], 0.016);
+  const tines = [];
+  for (const x of [-0.55, 0.55]) tines.push(mesh(new THREE.CylinderGeometry(0.1, 0.1, 2.6, 14), gold, fork, [x, 3.25, 0], null, 0.016));
+  centerpiece.tines = tines;
+  // engraved label on the stone
+  const c = paperCanvas(512, 128, PAL.paperShade, { seed: 4, vignette: 0.2 }); const cg = c.getContext('2d');
+  cg.fillStyle = PAL.ink; cg.textAlign = 'center'; cg.font = `700 54px ${SERIF}`; cg.fillText('136,10 Гц', 256, 62); cg.font = `italic 30px ${SERIF}`; cg.fillStyle = PAL.inkSoft; cg.fillText('тон года · до-диез', 256, 104);
+  for (let i = 0; i < 4; i++) { const a = i / 4 * TAU; mesh(new THREE.PlaneGeometry(1.05, 0.26), inkMat({ map: tex(c), flat: 1, hatch: 0 }), g, [Math.sin(a) * 0.93, 0.66, Math.cos(a) * 0.93], [0, a, 0]).rotation.order = 'YXZ'; }
+  // glowing orb
+  const orb = mesh(new THREE.SphereGeometry(0.34, 24, 16), inkMat({ color: '#9FF5E0', emit: 1, flat: 1, hatch: 0 }), fork, [0, 4.95, 0], null, 0.014);
+  const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialSprite('rgba(120,255,220,0.9)', 'rgba(40,200,180,0)'), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.9 }));
+  halo.scale.set(4.2, 4.2, 1); orb.add(halo);
+  centerpiece.orb = orb; centerpiece.halo = halo; centerpiece.orbMat = orb.material;
+  // expanding sound rings around the fork
+  centerpiece.rings = [];
+  for (let i = 0; i < 4; i++) { const l = new Line(66, { pts: circlePts(0, 0, 0, 1, 64, 'xz'), width: 0.06, color: '#7FF0D0', glow: true, opacity: 0.8, parent: g }); l.mesh.position.y = 3.2; centerpiece.rings.push(l); }
+}
+function updateCenterpiece(T) {
+  const k = 0.5 + 0.5 * Math.sin(T * 2.1);
+  centerpiece.halo.material.opacity = 0.65 + 0.3 * k;
+  centerpiece.tines.forEach((t, i) => { t.rotation.z = (i ? 1 : -1) * 0.006 * Math.sin(T * 40); });
+  centerpiece.rings.forEach((l, i) => { const ph = (T * 0.25 + i / 4) % 1; const r = 0.7 + ph * 9; l.mesh.scale.set(r, 1, r); l.mesh.position.y = 3.3 - ph * 2.8; l.mat.uniforms.uOpacity.value = 0.55 * (1 - ph) * smooth(0, 0.1, ph); });
+}
+
+// entrance gate with a painted banner ---------------------------------------------------------
+{
+  const g = new THREE.Group(); g.position.set(0, 0, -0.8); scene.add(g);
+  const woodG = inkMat({ color: PAL.wood, border: 1.1 });
+  for (const x of [-2.9, 2.9]) {
+    mesh(new THREE.BoxGeometry(0.2, 3.9, 0.2), woodG, g, [x, 1.95, 0], null, 0.014);
+    mesh(new THREE.SphereGeometry(0.17, 12, 10), inkMat({ color: PAL.ochre }), g, [x, 4.0, 0], null, 0.012);
+  }
+  const W = 1400, H = 320, c = paperCanvas(W, H, (gg, w, h) => stripes(gg, w, h, '#1B2350', '#222C5E', 46, -0.52, 2), { seed: 61, vignette: 0.4, warmDark: false });
+  const gg = c.getContext('2d');
+  // little stars on the banner
+  const R = mulberry(5); gg.fillStyle = '#FFF1D0'; for (let i = 0; i < 70; i++) { gg.globalAlpha = 0.3 + R() * 0.6; gg.beginPath(); gg.arc(R() * W, R() * H, 0.8 + R() * 2.2, 0, TAU); gg.fill(); } gg.globalAlpha = 1;
+  inkRect(gg, 18, 18, W - 36, H - 36, 5, PAL.sun, 5);
+  gg.fillStyle = '#FBF1D8'; gg.textAlign = 'center'; gg.font = `700 112px ${SERIF}`; gg.fillText('Космическая октава', W / 2, 160);
+  gg.font = `italic 42px ${SERIF}`; gg.fillStyle = '#C9C1EF'; gg.fillText('сад по книге Ханса Кусто, 1978 · шесть станций', W / 2, 236);
+  // octave staircase motif in the corners
+  for (const [x0, s] of [[70, 1], [W - 70, -1]]) { const pts = []; for (let i = 0; i < 6; i++) { pts.push([x0 + s * i * 22, 250 - i * 30]); pts.push([x0 + s * (i + 1) * 22, 250 - i * 30]); } inkStroke(gg, pts, 5, '#7FE6CC', { seed: x0 }); }
+  mesh(new THREE.PlaneGeometry(5.2, 5.2 * H / W), inkMat({ map: tex(c, { aniso: 8 }), flat: 0.85, hatch: 0, side: THREE.DoubleSide }), g, [0, 3.3, 0.12]);
+  mesh(new THREE.BoxGeometry(6.2, 0.14, 0.14), woodG, g, [0, 4.0, 0], null, 0.012);
+  new Line(4, { strips: [[V3(-2.4, 4.0, 0.1), V3(-2.4, 3.3 + 2.6 * H / W, 0.12)], [V3(2.4, 4.0, 0.1), V3(2.4, 3.3 + 2.6 * H / W, 0.12)]], width: 0.02, parent: g });
+  // hanging paper stars instead of bunting
+  const pts = []; for (let i = 0; i <= 20; i++) { const x = -2.9 + i * 0.29; pts.push(V3(x, 4.6 - 0.25 * Math.sin(i / 20 * Math.PI), 0)); }
+  new Line(24, { pts, width: 0.015, parent: g });
+  const starShape = new THREE.Shape(); for (let i = 0; i <= 10; i++) { const a = i / 10 * TAU + Math.PI / 2, r = i % 2 ? 0.06 : 0.14; i ? starShape.lineTo(Math.cos(a) * r, Math.sin(a) * r) : starShape.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+  const starGeo = new THREE.ShapeGeometry(starShape);
+  const fl = [PAL.sun, '#7FE6CC', PAL.rose, '#C9C1EF'];
+  for (let i = 1; i < 20; i += 2) { const p = pts[i]; mesh(starGeo, inkMat({ color: fl[(i >> 1) % 4], flat: 1, hatch: 0, side: THREE.DoubleSide, emit: 0.6 }), g, [p.x, p.y - 0.22, 0]); }
+}
+
+// ---------------------------------------------------------------------------
+// SOUND: everything synthesised on Web Audio. Off until the user taps ♪.
+// Voices are soft organ tones (fundamental + a few harmonics) so that low
+// planet tones are still heard through a phone speaker.
+// ---------------------------------------------------------------------------
+const AUDIO = (() => {
+  let ctx = null, master, bus, wave, on = false, padGain, padOsc = [];
+  const voices = {};
+  function impulse(sec = 3.2) {
+    const n = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(2, n, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { const d = b.getChannelData(c); for (let i = 0; i < n; i++) { const t = i / n; d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 3.0) * (i < 300 ? i / 300 : 1); } }
+    return b;
+  }
+  function init() {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0;
+    const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3;
+    master.connect(comp); comp.connect(ctx.destination);
+    bus = ctx.createGain(); bus.gain.value = 1; bus.connect(master);
+    const verb = ctx.createConvolver(); verb.buffer = impulse(); const wet = ctx.createGain(); wet.gain.value = 0.38;
+    bus.connect(verb); verb.connect(wet); wet.connect(master);
+    const real = new Float32Array([0, 1, 0.42, 0.2, 0.1, 0.05, 0.025]), imag = new Float32Array(real.length);
+    wave = ctx.createPeriodicWave(real, imag);
+    // the garden's quiet bed: the year tone C# with its fifth, far away
+    padGain = ctx.createGain(); padGain.gain.value = 0;
+    const pf = ctx.createBiquadFilter(); pf.type = 'lowpass'; pf.frequency.value = 520; pf.Q.value = 0.4;
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 0.04; const lg = ctx.createGain(); lg.gain.value = 220; lfo.connect(lg); lg.connect(pf.frequency); lfo.start();
+    [[68.05, 0.6], [136.10, 0.5], [204.15, 0.22], [272.2, 0.12]].forEach(([f, v]) => { for (const det of [-3, 3]) { const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f; o.detune.value = det; const g = ctx.createGain(); g.gain.value = v; o.connect(g); g.connect(pf); o.start(); padOsc.push(o); } });
+    pf.connect(padGain); padGain.connect(bus);
+  }
+  function voice(id) {
+    if (voices[id]) return voices[id];
+    const o = ctx.createOscillator(); o.setPeriodicWave(wave); o.frequency.value = 136.1;
+    const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2400; lp.Q.value = 0.3;
+    const g = ctx.createGain(); g.gain.value = 0;
+    o.connect(lp); lp.connect(g); g.connect(bus); o.start();
+    return (voices[id] = { o, g, f: 136.1, l: 0 });
+  }
+  function note(freq, t, dur, vol, type = 'sine', partials = [1]) {
+    partials.forEach((p, k) => {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq * p;
+      const g = ctx.createGain(); const v = vol / (k + 1) / (k ? 1.6 : 1);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + 0.006); g.gain.exponentialRampToValueAtTime(0.0001, t + dur / (1 + k * 0.6));
+      o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05);
+    });
+  }
+  let noiseBuf = null;
+  function click(t, vol, pitch = 1800, len = 0.03) {
+    if (!noiseBuf) { noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 6); }
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = pitch; f.Q.value = 6;
+    const g = ctx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + len * 3);
+    s.connect(f); f.connect(g); g.connect(bus); s.start(t); s.stop(t + 0.12);
+    const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(pitch * 0.5, t); o.frequency.exponentialRampToValueAtTime(pitch * 0.25, t + len);
+    const og = ctx.createGain(); og.gain.setValueAtTime(vol * 0.6, t); og.gain.exponentialRampToValueAtTime(0.0001, t + len * 2.5);
+    o.connect(og); og.connect(bus); o.start(t); o.stop(t + len * 3);
+  }
+  return {
+    get on() { return on; },
+    get ctx() { return ctx; },
+    toggle(force) {
+      if (!ctx) init();
+      const want = force === undefined ? !on : force;
+      if (want === on) return on;
+      on = want;
+      if (on) ctx.resume();
+      const t = ctx.currentTime;
+      master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value, t); master.gain.linearRampToValueAtTime(on ? 0.85 : 0, t + 0.6);
+      padGain.gain.setTargetAtTime(on ? 0.02 : 0, t, 1.5);
+      if (!on) setTimeout(() => { if (!on) ctx.suspend(); }, 800);
+      return on;
+    },
+    // set a sustained voice: frequency and level (0..1), smoothed
+    tone(id, f, level, glide = 0.05) {
+      if (!ctx || !on) return;
+      const v = voice(id), t = ctx.currentTime;
+      if (Math.abs(v.f - f) > 0.01) { v.o.frequency.setTargetAtTime(f, t, glide); v.f = f; }
+      if (Math.abs(v.l - level) > 0.002) { v.g.gain.setTargetAtTime(level * 0.11, t, 0.12); v.l = level; }
+    },
+    pad(level) { if (ctx && on) padGain.gain.setTargetAtTime(0.02 * level, ctx.currentTime, 0.8); },
+    bell(f, vol = 0.6, delay = 0) { if (!ctx || !on) return; note(f, ctx.currentTime + delay, 2.6, 0.07 * vol, 'sine', [1, 2.0, 3.01, 4.2]); },
+    tick(vol = 0.5, pitch = 1800, at = null) { if (!ctx || !on) return; click(at ?? ctx.currentTime, 0.25 * vol, pitch); },
+    now() { return ctx ? ctx.currentTime : 0; },
+  };
+})();
+
+// ---------------------------------------------------------------------------
+// COUSTO ARITHMETIC: f = 2^n / T. Everything below is computed here, not typed in.
+// ---------------------------------------------------------------------------
+const DAY = 86400, YEAR_T = 365.24219 * DAY, LIGHT_C = 299792458;
+function octaveUp(T, lo = 120, hi = 240) { let f = 1 / T, n = 0; while (f < lo) { f *= 2; n++; } while (f >= hi) { f /= 2; n--; } return { f, n }; }
+const COUSTO = {
+  year: { T: YEAR_T, cousto: 136.10 },
+  day: { T: DAY, cousto: 194.18 },
+  month: { T: 29.530589 * DAY, cousto: 210.42 },
+  plato: { T: 25920 * YEAR_T, cousto: 172.06 },
+  platoModern: { T: 25772 * YEAR_T, cousto: 172.06 },
+  venus: { T: 224.701 * DAY }, mercury: { T: 87.969 * DAY }, mars: { T: 686.98 * DAY },
+  jupiter: { T: 4332.59 * DAY }, saturn: { T: 10759.22 * DAY }, neptune: { T: 60190 * DAY }, pluto: { T: 90560 * DAY },
+  io: { T: 1.769138 * DAY }, europa: { T: 3.551181 * DAY }, ganymede: { T: 7.154553 * DAY },
+};
+for (const k in COUSTO) Object.assign(COUSTO[k], octaveUp(COUSTO[k].T));
+const F = (k) => COUSTO[k].f;
+const NOTE_FULL = ['до', 'до-диез', 'ре', 'ре-диез', 'ми', 'фа', 'фа-диез', 'соль', 'соль-диез', 'ля', 'ля-диез', 'си'];
+function noteName(f) { const m = 69 + 12 * Math.log2(f / 440), r = Math.round(m); const cents = Math.round((m - r) * 100); return { name: NOTE_FULL[((r % 12) + 12) % 12], cents }; }
+// light: the year tone raised until it lands in the visible octave
+const LIGHT = (() => { let n = 0, f = F('year'); while (LIGHT_C / f > 780e-9) { f *= 2; n++; } return { n, f, nm: LIGHT_C / f * 1e9, total: COUSTO.year.n + n }; })();
+function wavelengthRGB(nm) {
+  let r = 0, g = 0, b = 0;
+  if (nm < 440) { r = -(nm - 440) / 60; b = 1; } else if (nm < 490) { g = (nm - 440) / 50; b = 1; } else if (nm < 510) { g = 1; b = -(nm - 510) / 20; }
+  else if (nm < 580) { r = (nm - 510) / 70; g = 1; } else if (nm < 645) { r = 1; g = -(nm - 645) / 65; } else { r = 1; }
+  const k = nm < 420 ? 0.3 + 0.7 * (nm - 380) / 40 : nm > 700 ? 0.3 + 0.7 * (780 - nm) / 80 : 1;
+  const gm = (x) => Math.round(255 * Math.pow(x * k, 0.8));
+  return '#' + [gm(r), gm(g), gm(b)].map((v) => v.toString(16).padStart(2, '0')).join('');
+}
+const LIGHT_HEX = wavelengthRGB(LIGHT.nm);
+const fmtHz = (f) => fmt(f, 2) + ' Гц';
+function rateWords(f) {
+  // a frequency spoken like a musician would: per year / per day / per second
+  if (f < 1 / DAY) { const d = 1 / f / DAY; return d >= 2 ? `раз в ${fmt(d, d < 10 ? 1 : 0)} дн.` : `раз в ${fmt(d * 24, 0)} ч`; }
+  if (f < 1 / 3600) return `раз в ${fmt(1 / f / 3600, 1)} ч`;
+  if (f < 1 / 60) return `раз в ${fmt(1 / f / 60, 1)} мин`;
+  if (f < 1) return `раз в ${fmt(1 / f, 1)} с`;
+  if (f < 20) return `${fmt(f * 60, 0)} ударов в минуту`;
+  if (f < 1e3) return fmt(f, f < 100 ? 1 : 2) + ' Гц';
+  if (f < 1e6) return fmt(f / 1e3, 1) + ' кГц';
+  if (f < 1e9) return fmt(f / 1e6, 1) + ' МГц';
+  if (f < 1e12) return fmt(f / 1e9, 1) + ' ГГц';
+  return fmt(f / 1e12, 1) + ' ТГц';
+}
+function pct(a, b) { const d = (a - b) / b * 100; return (d >= 0 ? '+' : '−') + fmt(Math.abs(d), 2) + '%'; }
+
+// ---------------------------------------------------------------------------
+// STATION KIT: wooden table, paper board, plaque, lantern, platform
+// ---------------------------------------------------------------------------
+const stations = [];
+const woodMat = inkMat({ color: PAL.wood, border: 1.2 });
+const woodDark = inkMat({ color: '#7A5234', border: 1.2 });
+const brass = inkMat({ color: PAL.ochre });
+const inkSolid = inkMat({ color: PAL.ink, flat: 1, hatch: 0 });
+const SND = { prox: [0, 0, 0, 0, 0, 0] };
+const BADGE = [PAL.sun, '#9AA6E8', PAL.duskRose, PAL.orange, PAL.waterLight, '#7FE6CC'];
+
+function makeStation(i, def) {
+  const a = STATION_ANG[i];
+  const P = V3(CENTER.x + Math.sin(a) * RING, 0, CENTER.z + Math.cos(a) * RING);
+  const yaw = Math.atan2(CENTER.x - P.x, CENTER.z - P.z);
+  const g = new THREE.Group(); g.position.copy(P); g.rotation.y = yaw; scene.add(g);
+  const st = Object.assign({ i, g, P, yaw, rects: [], taps: [], dist: 99, reveal: 0 }, def);
+  st.build(st);
+  stations.push(st);
+  return st;
+}
+function platform(st, r, colA, colB, cz = 0.6) {
+  const c = paperCanvas(512, 512, (g, w, h) => stripes(g, w, h, colA, colB, 34, -0.52, st.i * 7 + 3), { seed: st.i + 20, vignette: 0.15 });
+  const m = mesh(new THREE.CircleGeometry(r, 64), inkMat({ map: tex(c), color: '#D9D2E8', flat: 1, hatch: 0 }), st.g, [0, 0.03, cz], [-Math.PI / 2, 0, 0]);
+  m.renderOrder = 2;
+  new Line(130, { pts: wobble(circlePts(0, 0.045, cz, r, 128, 'xz'), 0.02, st.i), width: 0.045, parent: st.g, seed: st.i });
+  new Line(130, { pts: wobble(circlePts(0, 0.045, cz, r - 0.28, 128, 'xz'), 0.02, st.i + 3), width: 0.018, color: PAL.inkSoft, parent: st.g, seed: st.i + 9 });
+}
+// a sturdy work table; returns top height. Inlay is a painted canvas (or colour).
+function table(st, w, d, h = 0.86, inlay = null, pos = [0, 0, 0]) {
+  const G = new THREE.Group(); G.position.set(...pos); st.g.add(G);
+  mesh(new THREE.BoxGeometry(w, 0.09, d), woodMat, G, [0, h - 0.045, 0], null, 0.014);
+  mesh(new THREE.BoxGeometry(w - 0.2, 0.12, d - 0.2), woodDark, G, [0, h - 0.15, 0]);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(0.1, h - 0.09, 0.1), woodMat, G, [sx * (w / 2 - 0.16), (h - 0.09) / 2, sz * (d / 2 - 0.16)], null, 0.01);
+  mesh(new THREE.BoxGeometry(w - 0.3, 0.05, 0.05), woodDark, G, [0, 0.22, d / 2 - 0.16]);
+  if (inlay) {
+    const m = mesh(new THREE.PlaneGeometry(w - 0.16, d - 0.16), inkMat({ map: tex(inlay, { aniso: 8 }), flat: 1, hatch: 0 }), G, [0, h + 0.002, 0], [-Math.PI / 2, 0, 0]);
+    m.renderOrder = 3;
+  }
+  st.rects.push([pos[0] - w / 2, pos[0] + w / 2, pos[2] - d / 2, pos[2] + d / 2]);
+  return h;
+}
+function inlayCanvas(w, h, seed, base = PAL.paper, draw = null) {
+  const c = paperCanvas(w, h, (g, W, H) => { g.fillStyle = base; g.fillRect(0, 0, W, H); if (draw) draw(g, W, H); }, { seed, vignette: 0.35 });
+  inkRect(c.getContext('2d'), 14, 14, w - 28, h - 28, 4, PAL.ink, seed);
+  return c;
+}
+// the paper board behind the table: badge, title, 1-2 simple lines, tiny formula
+function board(st, lines, pos = [0, 0, -1.55], w = 3.4) {
+  const W = 1400, H = 600;
+  const c = paperCanvas(W, H, PAL.paper, { seed: 40 + st.i, vignette: 0.35 });
+  const g = c.getContext('2d');
+  inkRect(g, 26, 26, W - 52, H - 52, 5, PAL.ink, st.i * 4);
+  rulerArc(g, W - 150, H - 46, 100, -Math.PI, 0, 18, PAL.annBlue, 2.5, 3);
+  g.fillStyle = BADGE[st.i]; g.beginPath(); g.arc(120, 140, 58, 0, TAU); g.fill(); inkCircle(g, 120, 140, 58, 5, PAL.ink, st.i + 5);
+  g.fillStyle = PAL.ink; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `700 66px ${SERIF}`; g.fillText(String(st.i + 1), 120, 145);
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+  g.font = `700 64px ${SERIF}`;
+  const tl = wrapText(g, lines.title, W - 290); tl.forEach((l, k) => g.fillText(l, 210, 130 + k * 68));
+  let y = 130 + tl.length * 68 + 50;
+  g.font = `400 44px ${SANS}`; g.fillStyle = PAL.inkSoft;
+  for (const l of wrapText(g, lines.body, W - 170)) { g.fillText(l, 86, y); y += 56; }
+  g.font = `italic 32px ${SERIF}`; g.fillStyle = PAL.inkFaint; g.fillText(lines.formula, 86, H - 62);
+  if (lines.deco) lines.deco(g, W, H);
+  const grp = new THREE.Group(); grp.position.set(...pos); st.g.add(grp);
+  const bh = w * H / W;
+  mesh(new THREE.PlaneGeometry(w, bh), inkMat({ map: tex(c, { aniso: 8 }), flat: 0.9, hatch: 0 }), grp, [0, 1.25 + bh / 2, 0.04], [-0.12, 0, 0]);
+  mesh(new THREE.BoxGeometry(w + 0.14, bh + 0.14, 0.06), woodMat, grp, [0, 1.25 + bh / 2, 0], [-0.12, 0, 0], 0.012);
+  for (const x of [-w / 2 + 0.25, w / 2 - 0.25]) mesh(new THREE.BoxGeometry(0.1, 1.3, 0.1), woodMat, grp, [x, 0.65, -0.05], null, 0.01);
+  st.rects.push([pos[0] - w / 2 - 0.1, pos[0] + w / 2 + 0.1, pos[2] - 0.3, pos[2] + 0.3]);
+  return grp;
+}
+// live paper plaque: redraws only when its text key changes
+function plaque(parent, pos, rot, w, h, px = 1024) {
+  const PW = px, PH = Math.round(px * h / w);
+  const base = paperCanvas(PW, PH, PAL.paper, { seed: 77, vignette: 0.3 });
+  const c = mkCanvas(PW, PH), g = c.getContext('2d'), t = tex(c, { nomip: true });
+  const m = mesh(new THREE.PlaneGeometry(w, h), inkMat({ map: t, flat: 1, hatch: 0 }), parent, pos, rot);
+  mesh(new THREE.BoxGeometry(w + 0.08, h + 0.08, 0.04), woodMat, m, [0, 0, -0.025], null, 0.01);
+  let key = null;
+  return {
+    mesh: m,
+    draw(k, fn) { if (k === key) return; key = k; g.drawImage(base, 0, 0); fn(g, PW, PH); inkRect(g, 10, 10, PW - 20, PH - 20, 3, PAL.ink, 3); t.needsUpdate = true; },
+  };
+}
+function stationLantern(st, x, z) { lantern(0, 0, 2.5, st.g).position.set(x, 0, z); }
+function hitBox(st, w, h, d, pos) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ visible: false }));
+  m.position.set(...pos); m.userData.station = st.i; st.g.add(m); st.hit = m;
+}
+// tappable object: invisible fat hit volume + callback; glow flash on tap
+function tappable(st, obj, size, fn) {
+  const h = new THREE.Mesh(new THREE.SphereGeometry(size, 10, 8), new THREE.MeshBasicMaterial({ visible: false }));
+  obj.add(h); h.userData.tap = fn; h.userData.station = st.i; st.taps.push(h);
+  return h;
+}
+function glowSprite(color, size, parent, pos = [0, 0, 0], op = 0.8) {
+  const [r, g, b] = rgb(color);
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialSprite(`rgba(${r},${g},${b},0.95)`, `rgba(${r},${g},${b},0)`), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: op }));
+  s.position.set(...pos); s.scale.set(size, size, 1); parent.add(s); return s;
+}
+// navy orrery plate with zodiac ticks, used on stations 3–5
+function orreryPlate(st, r, pos, label = '') {
+  const S = 1024, c = paperCanvas(S, S, (g, w, h) => {
+    g.fillStyle = PAL.navy; g.fillRect(0, 0, w, h);
+    const gr = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(60,70,140,0.55)'); gr.addColorStop(1, 'rgba(11,18,48,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    const R = mulberry(st.i + 3); for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(255,245,220,${0.15 + R() * 0.5})`; g.beginPath(); g.arc(R() * w, R() * h, 0.6 + R() * 1.6, 0, TAU); g.fill(); }
+    rulerArc(g, w / 2, h / 2, w * 0.47, 0, TAU, 72, PAL.lavender, 2, 6);
+    rulerArc(g, w / 2, h / 2, w * 0.43, 0, TAU, 12, rgba(PAL.lavender, 0.5), 1.5, 1);
+    for (let k = 1; k <= 3; k++) { g.strokeStyle = rgba(PAL.grid, 0.5); g.lineWidth = 1.2; g.beginPath(); g.arc(w / 2, h / 2, w * 0.12 * k, 0, TAU); g.stroke(); }
+    if (label) { g.fillStyle = rgba(PAL.lavender, 0.8); g.font = `italic 30px ${SERIF}`; g.textAlign = 'center'; g.fillText(label, w / 2, h * 0.93); }
+  }, { seed: 30 + st.i, grain: 0.7, vignette: 0.2, warmDark: false });
+  const G = new THREE.Group(); G.position.set(...pos); st.g.add(G);
+  mesh(new THREE.CylinderGeometry(r + 0.06, r + 0.1, 0.08, 72), brass, G, [0, 0.04, 0], null, 0.012);
+  const top = mesh(new THREE.CircleGeometry(r, 72), inkMat({ map: tex(c, { aniso: 8 }), flat: 1, hatch: 0 }), G, [0, 0.082, 0], [-Math.PI / 2, 0, 0]);
+  top.renderOrder = 3;
+  return G;
+}
+function planet(color, r, parent, ring = false) {
+  const m = mesh(new THREE.SphereGeometry(r, 20, 14), inkMat({ color }), parent, [0, 0, 0], null, 0.01);
+  if (ring) mesh(new THREE.TorusGeometry(r * 1.7, r * 0.18, 6, 32), inkMat({ color: PAL.tan }), m, [0, 0, 0], [Math.PI / 2 - 0.4, 0, 0]);
+  return m;
+}
+function sunOrb(parent, r, pos) {
+  const s = mesh(new THREE.SphereGeometry(r, 24, 16), inkMat({ color: '#FFD978', emit: 1, flat: 1, hatch: 0 }), parent, pos, null, 0.012);
+  glowSprite('#FFC860', r * 9, s, [0, 0, 0], 0.75);
+  return s;
+}
+function faceTo(from, to) { return Math.atan2(to[0] - from[0], to[2] - from[2]); }
+// a small tuning fork standing upright
+function tuningFork(parent, pos, color, scale = 1) {
+  const G = new THREE.Group(); G.position.set(...pos); G.scale.setScalar(scale); parent.add(G);
+  const m = inkMat({ color });
+  mesh(new THREE.CylinderGeometry(0.11, 0.14, 0.05, 20), woodDark, G, [0, 0.025, 0], null, 0.008);
+  mesh(new THREE.CylinderGeometry(0.022, 0.026, 0.22, 10), m, G, [0, 0.16, 0], null, 0.008);
+  mesh(new THREE.TorusGeometry(0.075, 0.022, 8, 20, Math.PI), m, G, [0, 0.27, 0], [0, 0, Math.PI], 0.008);
+  const tines = [];
+  for (const x of [-0.075, 0.075]) tines.push(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.42, 10), m, G, [x, 0.48, 0], null, 0.008));
+  G.userData.tines = tines;
+  return G;
+}
+
+// ===========================================================================
+// 1. ОКТАВНЫЙ ЛИФТ — one turn a year, doubled 32 times, is a note
+// ===========================================================================
+makeStation(0, {
+  title: 'Октавный лифт',
+  text: 'Земля обходит Солнце раз в год. Каждый этаж лифта — та же частота, только в два раза быстрее. На 32-м этаже «раз в год» превращается в ноту до-диез, 136,10 Гц. Ещё 42 этажа вверх — и это уже цвет.',
+  short: 'Каждый этаж — частота вдвое выше. На 32-м этаже «раз в год» звучит как до-диез, 136,10 Гц. Ещё 42 этажа — и это уже бирюзовый свет.',
+  formula: 'f = 2ⁿ / 1 год · n = 32 → 136,10 Гц · n = 74 → 501 нм',
+  view: { pos: [-0.5, 2.6, 8.2], look: [0.45, 3.4, -0.3], mk: 1.08 },
+  build(st) {
+    const G = st.g;
+    platform(st, 4.2, PAL.stripeCream, PAL.stripeSky, 0.4);
+    const TH = table(st, 3.4, 1.7, 0.86, inlayCanvas(1024, 512, 5, PAL.stripeCream, (g, w, h) => {
+      g.strokeStyle = rgba(PAL.inkFaint, 0.25); for (let x = 40; x < w; x += 40) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+      g.fillStyle = PAL.inkSoft; g.font = `italic 30px ${SERIF}`; g.fillText('1 оборот = 1 год', 60, h - 50);
+    }));
+    board(st, { title: 'Октавный лифт', body: 'Год — это очень медленный ритм. Удвой его 32 раза, и он зазвучит нотой.', formula: 'f = 2ⁿ / 1 год' }, [-1.15, 0, -1.4], 2.2);
+    stationLantern(st, -2.4, 1.6);
+    // little sun & earth on the table: the year itself
+    const sun = sunOrb(G, 0.11, [-1.05, TH + 0.25, 0.15]);
+    mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.2, 8), brass, G, [-1.05, TH + 0.1, 0.15]);
+    new Line(70, { pts: circlePts(-1.05, TH + 0.25, 0.15, 0.5, 64, 'xz'), width: 0.012, color: PAL.inkSoft, parent: G, dash: 0.05 });
+    const earth = planet('#4C9AC8', 0.06, G);
+    const blur = new Line(70, { pts: circlePts(-1.05, TH + 0.25, 0.15, 0.5, 64, 'xz'), width: 0.09, color: '#6FC3F0', glow: true, opacity: 0, parent: G });
+    // the tower: floors 0..32 (sound), then a ladder 33..74 into light
+    const X = 0.75, Z = -0.25, Y0 = TH + 0.1, DY = 0.135, YL = Y0 + 32 * DY, DL = 0.05;
+    Object.assign(st, { X, Z, Y0, DY, YL, DL, floor: Q.has('shot') ? 32 : 0, target: Q.has('shot') ? 32 : 0, auto: true, phase: Q.has('shot') ? 1 : 0, hold: 0, earth, blur, earthA: 0, lastInt: 0, nextClick: 0 });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(0.05, YL - TH + 0.2, 0.05), woodMat, G, [X + sx * 0.42, (TH + YL + 0.2) / 2, Z + sz * 0.42], null, 0.008);
+    {
+      const geo = new THREE.BoxGeometry(0.84, 0.022, 0.84);
+      const im = new THREE.InstancedMesh(geo, inkMat({ color: '#ffffff', border: 0 }), 33);
+      const M = new THREE.Matrix4(), cc = new THREE.Color();
+      for (let n = 0; n <= 32; n++) { M.makeTranslation(X, Y0 + n * DY, Z); im.setMatrixAt(n, M); cc.set(n % 8 === 0 ? PAL.ochre : n === 25 || n === 26 ? PAL.rose : PAL.paperDeep); im.setColorAt(n, cc); }
+      G.add(im);
+      const edges = []; for (let n = 0; n <= 32; n++) { const y = Y0 + n * DY; edges.push([V3(X - 0.42, y, Z + 0.42), V3(X + 0.42, y, Z + 0.42)]); }
+      new Line(80, { strips: edges, width: 0.012, parent: G });
+    }
+    // floor strip: what each height means
+    {
+      const PW = 640, PH = 2600, k = PH / (32 * DY + 0.3);
+      const c = paperCanvas(PW, PH, PAL.paper, { seed: 12, vignette: 0.2 }), g = c.getContext('2d');
+      const py = (n) => PH - (0.15 + n * DY) * k;
+      for (let n = 0; n <= 32; n++) { quickStroke(g, [[0, py(n)], [n % 8 === 0 ? 90 : 46, py(n)]], n % 8 === 0 ? 5 : 2.5, PAL.ink); if (n % 4 === 0) { g.fillStyle = PAL.ink; g.font = `700 40px ${SERIF}`; g.fillText(String(n), 100, py(n) + 14); } }
+      const marks = [[0, 'раз в год'], [8.51, 'раз в сутки'], [12.9, 'раз в час'], [18.9, 'раз в минуту'], [25, 'пульс: 64 в мин'], [26, '128 в мин → ст. 6'], [29, '17 Гц: начало слуха'], [32, 'до♯ 136,10 Гц']];
+      for (const [n, s] of marks) { const y = py(n); quickStroke(g, [[170, y], [210, y]], 3, PAL.orange); g.fillStyle = n === 32 ? PAL.teal : PAL.inkSoft; g.font = `${n === 32 ? 700 : 500} ${n === 32 ? 46 : 40}px ${SANS}`; g.fillText(s, 222, y + 14); }
+      inkRect(g, 8, 8, PW - 16, PH - 16, 4, PAL.ink, 4);
+      const h = PH / k;
+      mesh(new THREE.PlaneGeometry(1.3 * PW / 640 * 0.8, h), inkMat({ map: tex(c, { aniso: 8 }), flat: 1, hatch: 0 }), G, [X + 1.0, Y0 - 0.15 + h / 2, Z + 0.05]);
+      mesh(new THREE.BoxGeometry(0.06, h + 0.3, 0.06), woodMat, G, [X + 0.55, Y0 - 0.15 + h / 2, Z + 0.03], null, 0.008);
+    }
+    // the ladder into light: faint rungs, then the visible octave as a colour
+    {
+      const rungs = [], rails = [[], []];
+      for (let n = 33; n <= 74; n++) { const y = YL + (n - 32) * DL, w = 0.42 - (n - 32) * 0.006; rungs.push([V3(X - w, y, Z), V3(X + w, y, Z)]); rails[0].push(V3(X - w, y, Z)); rails[1].push(V3(X + w, y, Z)); }
+      new Line(120, { strips: rungs, width: 0.018, color: '#D8D4FF', glow: true, opacity: 0.55, parent: G });
+      new Line(100, { strips: rails, width: 0.03, color: '#BFB8FF', glow: true, opacity: 0.6, parent: G });
+      const top = YL + 42 * DL;
+      st.lightOrb = mesh(new THREE.SphereGeometry(0.16, 24, 16), inkMat({ color: LIGHT_HEX, emit: 1, flat: 1, hatch: 0 }), G, [X, top + 0.22, Z], null, 0.01);
+      st.lightGlow = glowSprite(LIGHT_HEX, 2.2, st.lightOrb, [0, 0, 0], 0.55);
+      // labels for the invisible floors, on a dark banner
+      const PW = 760, PH = 1300, c = paperCanvas(PW, PH, '#1A2250', { seed: 13, vignette: 0.3, warmDark: false }), g = c.getContext('2d');
+      const hgt = 42 * DL + 0.45, k = PH / hgt, py = (n) => PH - ((n - 32) * DL + 0.05) * k;
+      const L = [[39, '17 кГц — край слуха', '#C9C1EF'], [48, 'ультразвук, радио', '#C9C1EF'], [60, 'микроволны', '#C9C1EF'], [69, 'инфракрасный: тепло', '#F0A090'], [74, `свет: ${fmt(LIGHT.nm, 0)} нм`, LIGHT_HEX]];
+      for (const [n, s, cc] of L) { const y = py(n); quickStroke(g, [[10, y], [60, y]], 4, cc); g.fillStyle = cc; g.font = `${n === 74 ? 700 : 500} ${n === 74 ? 54 : 44}px ${SANS}`; g.fillText(`${n}  ${s}`, 74, y + 16); }
+      const sw = [[30, 1150, 'ухо'], [30, 900, ''], [30, 400, '']];
+      inkRect(g, 8, 8, PW - 16, PH - 16, 4, '#C9C1EF', 6);
+      mesh(new THREE.PlaneGeometry(1.25, hgt), inkMat({ map: tex(c, { aniso: 8 }), flat: 1, hatch: 0 }), G, [X + 1.0, YL + hgt / 2 - 0.05, Z + 0.05]);
+      mesh(new THREE.BoxGeometry(0.06, hgt, 0.06), woodMat, G, [X + 0.55, YL + hgt / 2 - 0.05, Z + 0.03], null, 0.008);
+    }
+    // cabin: a little wooden cage with a lamp inside
+    {
+      const cab = new THREE.Group(); G.add(cab); st.cab = cab;
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) mesh(new THREE.BoxGeometry(0.04, 0.3, 0.04), woodDark, cab, [sx * 0.33, 0.15, sz * 0.33], null, 0.006);
+      mesh(new THREE.BoxGeometry(0.74, 0.04, 0.74), inkMat({ color: PAL.red, border: 1 }), cab, [0, 0.32, 0], null, 0.01);
+      mesh(new THREE.BoxGeometry(0.74, 0.03, 0.74), woodDark, cab, [0, 0.015, 0]);
+      st.cabLamp = mesh(new THREE.SphereGeometry(0.08, 14, 10), inkMat({ color: '#FFE1A0', emit: 1, flat: 1, hatch: 0 }), cab, [0, 0.16, 0]);
+      st.cabGlow = glowSprite('#FFD28A', 1.0, cab, [0, 0.16, 0], 0.8);
+      st.spark = glowSprite('#EDEBFF', 0.7, G, [X, YL, Z], 0);
+    }
+    st.plq = plaque(G, [0.55, TH + 0.32, 0.62], [-0.85, 0, 0], 1.5, 0.56);
+    hitBox(st, 3.6, 9, 2.4, [0.2, 4.5, -0.2]);
+    tappable(st, st.cab, 0.5, () => { st.auto = !st.auto; st.syncBtn && st.syncBtn(); });
+  },
+  update(st, dt) {
+    // automatic ride: up to 32 (hold, the note), on to 74 (hold, the colour), back down
+    if (st.auto) {
+      if (st.phase === 0) { st.target = Math.min(32, st.target + dt * 1.7); if (st.target >= 32) { st.phase = 1; st.hold = 0; } }
+      else if (st.phase === 1) { st.hold += dt; if (st.hold > 5) st.phase = 2; }
+      else if (st.phase === 2) { st.target = Math.min(74, st.target + dt * 6); if (st.target >= 74) { st.phase = 3; st.hold = 0; } }
+      else if (st.phase === 3) { st.hold += dt; if (st.hold > 5) st.phase = 4; }
+      else { st.target = Math.max(0, st.target - dt * 30); if (st.target <= 0) { st.phase = 0; } }
+    }
+    st.floor += (st.target - st.floor) * (1 - Math.exp(-dt * 6));
+    const n = st.floor, f = Math.pow(2, n) / YEAR_T;
+    st.cab.position.set(st.X, st.Y0 + Math.min(n, 32) * st.DY + 0.012, st.Z);
+    const up = smooth(32, 33.5, n);
+    st.spark.position.y = st.YL + Math.max(0, n - 32) * st.DL;
+    st.spark.material.opacity = up * 0.9;
+    st.spark.material.color.set(n > 73.2 ? LIGHT_HEX : '#EDEBFF');
+    const lit = smooth(72.5, 74, n);
+    st.lightGlow.material.opacity = 0.25 + 0.7 * lit;
+    st.lightGlow.scale.setScalar(1.2 + 2.2 * lit);
+    st.cabGlow.material.opacity = 0.5 + 0.4 * smooth(31, 32, n);
+    // the little earth: one lap per 12 s at floor 0, blurs into a ring as it doubles
+    st.earthA += dt * TAU / 12 * Math.min(Math.pow(2, n), 64);
+    st.earth.position.set(-1.05 + Math.cos(st.earthA) * 0.5, 0.86 + 0.25, 0.15 - Math.sin(st.earthA) * 0.5);
+    const bl = smooth(3, 6, n); st.earth.visible = bl < 0.95; st.blur.mat.uniforms.uOpacity.value = bl * 0.8;
+    // floor ticks, a click train while it is a rhythm, then the tone itself
+    const ni = Math.floor(n + 0.001);
+    if (ni !== st.lastInt) { if (ni <= 32 && f < 6) AUDIO.tick(0.35 * SND.prox[0], 900 + ni * 40); st.lastInt = ni; }
+    if (AUDIO.on) {
+      const now = AUDIO.now();
+      if (f >= 0.8 && f < 24) { if (st.nextClick < now) st.nextClick = now; while (st.nextClick < now + 0.1) { AUDIO.tick(0.3 * SND.prox[0] * (1 - smooth(14, 24, f)), 1400, st.nextClick); st.nextClick += 1 / f; } }
+      const tf = n <= 32 ? f : F('year');
+      AUDIO.tone('lift', Math.max(tf, 15), SND.prox[0] * smooth(14, 40, f) * (n > 32 ? 0.85 : 1), 0.03);
+    }
+    const nn = Math.round(n * 10) / 10;
+    st.plq.draw(nn.toFixed(1), (g, w, h) => {
+      const fl = Math.round(n);
+      g.fillStyle = PAL.ink; g.font = `700 92px ${SERIF}`; g.fillText(`этаж ${fl}`, 40, 110);
+      g.font = `500 40px ${SANS}`; g.fillStyle = PAL.inkSoft; g.fillText(`удвоений: ${fl}  ·  ×2 ×2 ×2 …`, 40, 175);
+      const ff = Math.pow(2, fl) / YEAR_T;
+      let s = rateWords(ff), col_ = PAL.ink;
+      if (fl >= 29 && fl <= 32) { const nm = noteName(ff); s += ` · ${nm.name}`; }
+      if (fl > 32 && fl < 74) s = `${rateWords(ff)} · не слышно, не видно`;
+      if (fl >= 74) { s = `${fmt(LIGHT_C / ff * 1e9, 0)} нм · бирюзовый свет`; col_ = '#1E8F7A'; }
+      g.fillStyle = col_; g.font = `700 54px ${SERIF}`; g.fillText(s, 40, 262);
+      if (fl >= 74) { g.fillStyle = LIGHT_HEX; g.fillRect(w - 150, 40, 100, 100); inkRect(g, w - 150, 40, 100, 100, 3, PAL.ink, 9); }
+    });
+  },
+  controls(box) {
+    const st = this;
+    box.innerHTML = `<label>этаж <input type="range" min="0" max="74" step="1" value="${Math.round(st.target)}"><b>${Math.round(st.target)}</b></label>
+      <button class="btn on" data-a="auto">▶ само</button><button class="btn" data-f="32">32: нота</button><button class="btn" data-f="74">74: цвет</button>
+      <div class="note">Считали сами: 2³² / год = ${fmt(F('year'), 3)} Гц (у Кусто 136,10). Ещё +${LIGHT.n} октав: ${fmt(LIGHT.f / 1e12, 1)} ТГц, это ${fmt(LIGHT.nm, 1)} нм, сине-зелёный.</div>`;
+    const inp = box.querySelector('input'), b = box.querySelector('b'), ab = box.querySelector('[data-a]');
+    st.syncBtn = () => ab.classList.toggle('on', st.auto);
+    inp.addEventListener('input', () => { st.auto = false; st.syncBtn(); st.target = +inp.value; b.textContent = inp.value; });
+    ab.addEventListener('click', () => { st.auto = !st.auto; if (st.auto) { st.phase = st.target >= 74 ? 3 : st.target >= 32 ? 2 : 0; st.hold = 0; } st.syncBtn(); });
+    box.querySelectorAll('[data-f]').forEach((bt) => bt.addEventListener('click', () => { st.auto = false; st.syncBtn(); st.target = +bt.dataset.f; inp.value = st.target; b.textContent = st.target; AUDIO.on || toggleSound(); }));
+    st.syncUI = () => { if (st.auto) { inp.value = Math.round(st.target); b.textContent = Math.round(st.target); } };
+  },
+});
+
+// ===========================================================================
+// 2. ТРИ ЧАСА ЗЕМЛИ — day, month, precession as one chord
+// ===========================================================================
+const CLOCKS = [
+  { k: 'day', name: 'сутки', what: 'Земля оборачивается вокруг оси', col: PAL.sun, n: 0 },
+  { k: 'month', name: 'месяц', what: 'Луна: от новолуния до новолуния', col: '#AEB6F0', n: 0 },
+  { k: 'plato', name: 'прецессия', what: 'ось Земли описывает круг за 25 920 лет', col: PAL.rose, n: 0 },
+];
+makeStation(1, {
+  title: 'Три часа Земли — один аккорд',
+  text: 'У Земли три природных часа: сутки, месяц и медленное кружение оси (прецессия, почти 26 тысяч лет). Каждый период удваиваем, пока не зазвучит. Три тона вместе — аккорд. Тапни по камертонам.',
+  short: 'Сутки, месяц и кружение оси Земли, поднятые октавами до звука. Тапни по камертонам: каждый — свой тон, вместе — аккорд.',
+  formula: 'f = 2ⁿ / T · сутки n = 24 · месяц n = 29 · прецессия n = 47',
+  view: { pos: [0, 4.1, 3.3], look: [0, 1.1, -0.3] },
+  build(st) {
+    const G = st.g;
+    platform(st, 3.9, PAL.stripeCream, PAL.stripeSage, 0.5);
+    const TH = table(st, 3.6, 2.0, 0.86, inlayCanvas(1024, 576, 7, PAL.stripeCream, (g, w, h) => {
+      rulerArc(g, w / 2, h * 0.42, h * 0.36, 0, TAU, 48, rgba(PAL.annBlue, 0.6), 2, 4);
+      g.fillStyle = PAL.inkFaint; g.font = `italic 26px ${SERIF}`; g.textAlign = 'center'; g.fillText('скорости в макете условные', w / 2, h - 40);
+    }));
+    board(st, { title: 'Три часа Земли', body: 'Сутки, месяц и кружение оси. Каждый поднят октавами до звука. Вместе — аккорд.', formula: 'f = 2ⁿ / T' });
+    stationLantern(st, 2.4, -1.3);
+    // globe on a brass stand, axis tilted 23,4°
+    const O = V3(0, TH + 0.78, -0.25);
+    mesh(new THREE.CylinderGeometry(0.2, 0.26, 0.06, 24), woodDark, G, [O.x, TH + 0.03, O.z], null, 0.01);
+    mesh(new THREE.CylinderGeometry(0.03, 0.035, 0.3, 10), brass, G, [O.x, TH + 0.2, O.z], null, 0.008);
+    const prec = new THREE.Group(); prec.position.copy(O); G.add(prec);      // precession turns this
+    const tilt = new THREE.Group(); tilt.rotation.z = 23.44 / 180 * Math.PI; prec.add(tilt);
+    const spin = new THREE.Group(); tilt.add(spin);
+    const gc = paperCanvas(1024, 512, (g, w, h) => {
+      g.fillStyle = '#3F7FA8'; g.fillRect(0, 0, w, h);
+      const R = mulberry(4);
+      const land = [[150, 160, 120, 90], [260, 300, 70, 130], [520, 150, 160, 80], [560, 290, 80, 110], [760, 170, 150, 90], [860, 360, 70, 50], [300, 470, 300, 40], [500, 40, 260, 40]];
+      for (const [x, y, rx, ry] of land) { g.fillStyle = R() < 0.5 ? '#C9B27A' : '#8FA872'; g.beginPath(); for (let i = 0; i <= 40; i++) { const a = i / 40 * TAU, rr = 1 + 0.25 * noise1(i * 0.5, x); g.lineTo(x + Math.cos(a) * rx * rr, y + Math.sin(a) * ry * rr); } g.fill(); }
+      hatchRegion(g, (gg) => gg.rect(0, 0, w, h), 10, 1.4, '#1E3F5A', 0.25, -0.8, 3);
+      g.strokeStyle = 'rgba(255,245,220,0.45)'; g.lineWidth = 2; for (let k = 1; k < 6; k++) { g.beginPath(); g.moveTo(0, k * h / 6); g.lineTo(w, k * h / 6); g.stroke(); }
+      for (let k = 0; k < 12; k++) { g.beginPath(); g.moveTo(k * w / 12, 0); g.lineTo(k * w / 12, h); g.stroke(); }
+      g.strokeStyle = PAL.sun; g.lineWidth = 4; g.beginPath(); g.moveTo(0, h / 2); g.lineTo(w, h / 2); g.stroke();
+    }, { seed: 8, vignette: 0, warmDark: false });
+    const globe = mesh(new THREE.SphereGeometry(0.42, 40, 24), inkMat({ map: tex(gc) }), spin, [0, 0, 0], null, 0.014);
+    mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.3, 6), inkSolid, tilt, [0, 0, 0]);
+    // meridian ring
+    mesh(new THREE.TorusGeometry(0.5, 0.014, 6, 64, Math.PI * 1.25), brass, tilt, [0, 0, 0], [0, 0, -Math.PI * 0.62], 0.006);
+    // precession cone: the circle the axis tip draws
+    const axisTip = 0.65 * Math.cos(23.44 / 180 * Math.PI), axisR = 0.65 * Math.sin(23.44 / 180 * Math.PI);
+    st.cone = new Line(70, { pts: circlePts(0, axisTip, 0, axisR, 64, 'xz'), width: 0.035, color: PAL.rose, glow: true, opacity: 0.35, parent: prec });
+    st.coneInk = new Line(70, { pts: circlePts(0, axisTip, 0, axisR, 64, 'xz'), width: 0.008, color: PAL.inkSoft, parent: prec, dash: 0.04 });
+    st.equator = new Line(70, { pts: circlePts(0, 0, 0, 0.445, 64, 'xz'), width: 0.05, color: PAL.sun, glow: true, opacity: 0, parent: tilt });
+    // moon on an arm
+    const mo = new THREE.Group(); mo.position.copy(O); G.add(mo);
+    mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.1, 6), brass, mo, [0.55, 0, 0], [0, 0, Math.PI / 2]);
+    const moon = mesh(new THREE.SphereGeometry(0.1, 20, 14), inkMat({ color: '#E8E2D0' }), mo, [1.1, 0, 0], null, 0.01);
+    st.moonOrbit = new Line(70, { pts: circlePts(O.x, O.y, O.z, 1.1, 64, 'xz'), width: 0.04, color: '#AEB6F0', glow: true, opacity: 0.15, parent: G });
+    new Line(70, { pts: circlePts(O.x, O.y, O.z, 1.1, 64, 'xz'), width: 0.008, color: PAL.inkSoft, parent: G, dash: 0.05 });
+    Object.assign(st, { prec, spin, mo, moon, on: Q.has('shot') ? [true, true, true] : [false, false, false], flash: [0, 0, 0] });
+    // three tuning forks, one per clock
+    st.forks = CLOCKS.map((c, j) => {
+      const x = (j - 1) * 1.15, z = 0.62;
+      const fk = tuningFork(G, [x, TH, z], c.col, 1.25);
+      fk.userData.glow = glowSprite(c.col, 0.9, fk, [0, 0.6, 0], 0);
+      const p = plaque(G, [x, TH + 0.06, z + 0.26], [-1.2, 0, 0], 0.62, 0.22, 512);
+      const cf = COUSTO[c.k];
+      p.draw('x', (g, w, h) => { g.fillStyle = PAL.ink; g.font = `700 50px ${SERIF}`; g.fillText(c.name, 26, 64); g.font = `600 44px ${SANS}`; g.fillStyle = PAL.inkSoft; g.fillText(fmt(cf.f, 2) + ' Гц', 26, 126); g.font = `italic 34px ${SERIF}`; g.fillText(noteName(cf.f).name, 26, 172); });
+      tappable(st, fk, 0.42, () => st.toggle(j));
+      return fk;
+    });
+    hitBox(st, 3.8, 2.6, 2.4, [0, 1.3, 0]);
+    st.toggle = (j, force) => { st.on[j] = force ?? !st.on[j]; st.flash[j] = 1; if (st.on[j] && !AUDIO.on) toggleSound(); st.syncBtns && st.syncBtns(); };
+  },
+  update(st, dt) {
+    st.spin.rotation.y += dt * TAU / 3.2;
+    st.mo.rotation.y += dt * TAU / 24;
+    st.prec.rotation.y -= dt * TAU / 60;
+    st.moon.rotation.y = -st.mo.rotation.y;
+    st.equator.mat.uniforms.uOpacity.value += ((st.on[0] ? 0.8 : 0) - st.equator.mat.uniforms.uOpacity.value) * dt * 4;
+    st.moonOrbit.mat.uniforms.uOpacity.value += ((st.on[1] ? 0.7 : 0.12) - st.moonOrbit.mat.uniforms.uOpacity.value) * dt * 4;
+    st.cone.mat.uniforms.uOpacity.value += ((st.on[2] ? 0.9 : 0.25) - st.cone.mat.uniforms.uOpacity.value) * dt * 4;
+    const T = SH.uTime.value;
+    st.forks.forEach((fk, j) => {
+      st.flash[j] = Math.max(0, st.flash[j] - dt * 1.5);
+      const v = (st.on[j] ? 0.5 : 0) + st.flash[j] * 0.5;
+      fk.userData.glow.material.opacity = v;
+      fk.userData.tines.forEach((t, s) => { t.rotation.z = (s ? 1 : -1) * (st.on[j] ? 0.02 : 0) * Math.sin(T * 50 + j); });
+      AUDIO.tone('clock' + j, F(CLOCKS[j].k), st.on[j] ? 0.75 * Math.max(0.25, SND.prox[1]) : 0);
+    });
+  },
+  controls(box) {
+    const st = this;
+    const row = (c) => { const cf = COUSTO[c.k]; return `${c.name}: 2<sup>${cf.n}</sup>/T = <b>${fmt(cf.f, 2)}</b>, у Кусто ${fmt(cf.cousto, 2)} (${pct(cf.f, cf.cousto)})`; };
+    box.innerHTML = CLOCKS.map((c, j) => `<button class="btn" data-j="${j}">${c.name} ${fmt(F(c.k), 2)}</button>`).join('') + `<button class="btn" data-all="1">♪ аккорд</button>
+      <div class="note">${CLOCKS.map(row).join('<br>')}<br>прецессия по новым данным, 25 772 года: ${fmt(F('platoModern'), 2)} Гц (${pct(F('platoModern'), 172.06)})</div>`;
+    const bs = [...box.querySelectorAll('[data-j]')];
+    st.syncBtns = () => bs.forEach((b, j) => b.classList.toggle('on', st.on[j]));
+    bs.forEach((b, j) => b.addEventListener('click', () => st.toggle(j)));
+    box.querySelector('[data-all]').addEventListener('click', () => { const all = !st.on.every(Boolean); [0, 1, 2].forEach((j) => st.toggle(j, all)); });
+    st.syncBtns();
+  },
+});
+
+// ===========================================================================
+// 3. РОЗА ВЕНЕРЫ — 8 Earth years, 13 Venus years, a five-petal flower
+// ===========================================================================
+makeStation(2, {
+  title: 'Роза Венеры',
+  text: 'Земля и Венера бегут по своим кругам. Соединяем их линией каждые четыре дня. За 8 земных лет Венера делает 13 кругов, и рисунок складывается в цветок с пятью лепестками. Пять — это 13 минус 8.',
+  short: 'Линия между Землёй и Венерой за 8 лет рисует пятилепестковый цветок: 13 кругов Венеры на 8 кругов Земли.',
+  formula: '13 × 224,7 сут ≈ 8 × 365,26 сут · лепестков 13 − 8 = 5',
+  view: { pos: [0, 4.7, 2.5], look: [0, 0.95, -0.35] },
+  build(st) {
+    const G = st.g;
+    platform(st, 3.8, PAL.stripeCream, PAL.stripeApricot, 0.4);
+    const TH = table(st, 3.2, 3.0, 0.82, null, [0, 0, -0.2]);
+    board(st, { title: 'Роза Венеры', body: 'Линия Земля–Венера каждые 4 дня. За 8 лет — пятилепестковая роза.', formula: '13 : 8 · 13 − 8 = 5 лепестков' }, [0, 0, -2.0]);
+    stationLantern(st, -2.2, -1.9);
+    const C = V3(0, TH, -0.2), RE = 1.04, RV = RE * 0.7233, Y = TH + 0.22;
+    orreryPlate(st, 1.22, [C.x, TH, C.z], 'Солнце · Венера · Земля');
+    sunOrb(G, 0.11, [C.x, Y, C.z]);
+    mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.14, 8), brass, G, [C.x, TH + 0.15, C.z]);
+    new Line(130, { pts: circlePts(C.x, TH + 0.1, C.z, RE, 128, 'xz'), width: 0.01, color: '#8FB8E8', parent: G, opacity: 0.8 });
+    new Line(130, { pts: circlePts(C.x, TH + 0.1, C.z, RV, 128, 'xz'), width: 0.01, color: '#F0C9A0', parent: G, opacity: 0.8 });
+    const armE = new THREE.Group(), armV = new THREE.Group(); armE.position.set(C.x, Y, C.z); armV.position.set(C.x, Y - 0.04, C.z); G.add(armE, armV);
+    mesh(new THREE.CylinderGeometry(0.008, 0.008, RE, 6), brass, armE, [RE / 2, 0, 0], [0, 0, Math.PI / 2]);
+    mesh(new THREE.CylinderGeometry(0.008, 0.008, RV, 6), brass, armV, [RV / 2, 0, 0], [0, 0, Math.PI / 2]);
+    const E = planet('#4C9AC8', 0.07, armE); E.position.x = RE;
+    const Vn = planet('#F0D2A8', 0.065, armV); Vn.position.x = RV;
+    glowSprite('#7FC0F0', 0.4, E, [0, 0, 0], 0.5); glowSprite('#FFE0B0', 0.4, Vn, [0, 0, 0], 0.5);
+    st.rose = new Line(1500, { width: 0.003, minPx: 0.55, color: '#FFD9E6', opacity: 0.55, boil: 0, parent: G, pressure: 0 });
+    st.now = new Line(2, { width: 0.02, color: '#FFFFFF', glow: true, opacity: 0.9, parent: G });
+    st.stars = [];
+    for (let i = 0; i < 6; i++) { const s = glowSprite('#FFE7B8', 0.35, G, [0, -5, 0], 0); st.stars.push(s); }
+    Object.assign(st, { C, RE, RV, Y, armE, armV, t: Q.has('shot') ? 7.2 : 0, speed: 0.4, segs: [], lastSeg: -1, conj: 0, lastRel: 0, hold: 0 });
+    st.plq = plaque(G, [1.12, TH + 0.1, 1.02], [-1.15, -0.4, 0], 0.8, 0.36, 768);
+    hitBox(st, 3.4, 2.4, 3.2, [0, 1.2, -0.2]);
+    tappable(st, armE, 0.25, () => { st.speed = st.speed > 1 ? 0.4 : 2; st.syncS && st.syncS(); });
+  },
+  update(st, dt) {
+    if (st.dist > 34) return;
+    const PV = 224.701 / 365.256;
+    if (st.t >= 8) { st.hold += dt; if (st.hold > 3.5) { st.t = 0; st.segs = []; st.lastSeg = -1; st.conj = 0; st.hold = 0; st.stars.forEach((s) => (s.material.opacity = 0)); st.rose.setStrips([]); } }
+    else st.t = Math.min(8, st.t + dt * st.speed);
+    const t = st.t, aE = TAU * t, aV = TAU * t / PV;
+    st.armE.rotation.y = aE; st.armV.rotation.y = aV;
+    const pE = V3(st.C.x + Math.cos(aE) * st.RE, st.C.y + 0.1, st.C.z - Math.sin(aE) * st.RE);
+    const pV = V3(st.C.x + Math.cos(aV) * st.RV, st.C.y + 0.1, st.C.z - Math.sin(aV) * st.RV);
+    const seg = Math.floor(t * 91);
+    if (seg !== st.lastSeg && t < 8) {
+      for (let s = st.lastSeg + 1; s <= seg; s++) { const ts = s / 91, a1 = TAU * ts, a2 = TAU * ts / PV; st.segs.push([V3(st.C.x + Math.cos(a1) * st.RE, st.C.y + 0.098, st.C.z - Math.sin(a1) * st.RE), V3(st.C.x + Math.cos(a2) * st.RV, st.C.y + 0.098, st.C.z - Math.sin(a2) * st.RV)]); }
+      st.lastSeg = seg; st.rose.setStrips(st.segs);
+    }
+    st.now.set([pE, pV]);
+    // inferior conjunction: Venus overtakes Earth → a star and a bell
+    const rel = ((aV - aE) % TAU + TAU) % TAU;
+    if (rel < st.lastRel && t > 0.1 && t < 8) { const s = st.stars[st.conj % 6]; s.position.copy(pV); s.position.y += 0.02; s.material.opacity = 0.95; st.conj++; AUDIO.bell(F('venus') * 2, 0.8 * SND.prox[2]); AUDIO.bell(F('year') * 2, 0.5 * SND.prox[2], 0.12); }
+    st.lastRel = rel;
+    AUDIO.tone('earth3', F('year'), 0.5 * SND.prox[2]);
+    AUDIO.tone('venus3', F('venus'), 0.42 * SND.prox[2]);
+    const key = (Math.round(t * 10) / 10) + ':' + st.conj;
+    st.plq.draw(key, (g, w, h) => {
+      g.fillStyle = PAL.ink; g.font = `700 52px ${SERIF}`; g.fillText(`${fmt(t, 1)} года`, 30, 70);
+      g.font = `500 36px ${SANS}`; g.fillStyle = '#2C6F98'; g.fillText(`Земля: ${fmt(t, 1)} круга`, 30, 140);
+      g.fillStyle = '#A0602A'; g.fillText(`Венера: ${fmt(t / PV, 1)} круга`, 30, 196);
+      g.fillStyle = PAL.inkSoft; g.font = `italic 34px ${SERIF}`; g.fillText(`встреч: ${st.conj} из 5`, 30, 262);
+    });
+  },
+  controls(box) {
+    const st = this;
+    const r = F('venus') / F('year');
+    box.innerHTML = `<label>скорость <input type="range" min="5" max="300" value="${Math.round(st.speed * 100)}"><b>${fmt(st.speed, 1)}</b></label><button class="btn" data-r="1">↺ заново</button>
+      <div class="note">Тоны: Земля ${fmt(F('year'), 2)} Гц, Венера ${fmt(F('venus'), 2)} Гц. Отношение ${fmt(r, 3)}: почти малая секста (8:5 = 1,6) и золотое сечение (1,618).</div>`;
+    const inp = box.querySelector('input'), b = box.querySelector('b');
+    st.syncS = () => { inp.value = Math.round(st.speed * 100); b.textContent = fmt(st.speed, 1); };
+    inp.addEventListener('input', () => { st.speed = inp.value / 100; b.textContent = fmt(st.speed, 1); });
+    box.querySelector('[data-r]').addEventListener('click', () => { st.t = 8; st.hold = 99; });
+  },
+});
+
+// ===========================================================================
+// 4. РЕЗОНАНСЫ ОРБИТ — orbital ratios heard as musical intervals
+// ===========================================================================
+function keplerE(M, e) { let E = M; for (let k = 0; k < 6; k++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E)); return E; }
+function orbitPos(b, t, out) {
+  const M = TAU * t / b.T + (b.M0 || 0), E = keplerE(M, b.e || 0);
+  const x = b.a * (Math.cos(E) - (b.e || 0)), y = b.a * Math.sqrt(1 - (b.e || 0) ** 2) * Math.sin(E);
+  const w = b.w || 0, cx = x * Math.cos(w) - y * Math.sin(w), cy = x * Math.sin(w) + y * Math.cos(w);
+  const inc = b.inc || 0;
+  return out.set(cx, cy * Math.sin(inc), -cy * Math.cos(inc));
+}
+const PAIRS = [
+  { name: 'Нептун и Плутон', ratio: '3 : 2', interval: 'квинта', unit: 'лет', center: 'sun',
+    text: 'Плутон делает 2 круга, пока Нептун делает 3. Орбиты пересекаются, но они никогда не встречаются: ритм 3:2 их разводит.',
+    bodies: [{ k: 'neptune', T: 164.79, a: 30.07, col: '#5C8FE0', r: 0.075 }, { k: 'pluto', T: 247.94, a: 39.48, e: 0.2488, w: 0.0, inc: 17.1 / 180 * Math.PI, M0: Math.PI, col: '#D9C2A6', r: 0.05 }],
+    links: [[0, 1]], span: 2 * 247.94, max: 49.3 },
+  { name: 'Юпитер и Сатурн', ratio: '≈ 5 : 2', interval: 'октава + большая терция', unit: 'лет', center: 'sun',
+    text: 'Юпитер делает почти 5 кругов на 2 круга Сатурна. Их встречи рисуют треугольник, который медленно поворачивается: это заметил ещё Кеплер.',
+    bodies: [{ k: 'jupiter', T: 11.862, a: 5.20, col: '#D8A070', r: 0.1 }, { k: 'saturn', T: 29.457, a: 9.58, col: '#E6CF8F', r: 0.085, ring: true }],
+    links: [[0, 1]], span: 4 * 29.457, max: 9.58 },
+  { name: 'Ио, Европа, Ганимед', ratio: '1 : 2 : 4', interval: 'две октавы', unit: 'суток', center: 'jupiter',
+    text: 'Три луны Юпитера: пока Ганимед делает круг, Европа делает два, а Ио четыре. Чистые октавы, прямо в небе.',
+    bodies: [{ k: 'io', T: 1.769138, a: 421.7, col: '#E8D070', r: 0.05 }, { k: 'europa', T: 3.551181, a: 671.0, col: '#D8D0C0', r: 0.048 }, { k: 'ganymede', T: 7.154553, a: 1070.4, col: '#A89A88', r: 0.065 }],
+    links: [[0, 1], [1, 2]], span: 2 * 7.154553, max: 1070.4 },
+];
+for (const p of PAIRS) {
+  // same number of doublings for every body in the set → ratios stay exact
+  const outer = p.bodies[p.bodies.length - 1]; let n = 0; while (Math.pow(2, n) / (outer.T * (p.unit === 'лет' ? 365.25 : 1) * DAY) < 100) n++;
+  p.n = n; p.bodies.forEach((b) => (b.f = Math.pow(2, n) / (b.T * (p.unit === 'лет' ? 365.25 : 1) * DAY)));
+}
+makeStation(3, {
+  title: 'Резонансы орбит — интервалы',
+  text: 'Некоторые планеты ходят в простом ритме, как ноты в интервале. Две планеты кружат, линия между ними рисует узор, и звучит их интервал. Переключай пары.',
+  short: 'Пары планет ходят в простом ритме, как интервал: 3:2 — квинта. Линия между ними рисует узор, слышен их интервал.',
+  formula: 'Плутон : Нептун = 2 : 3 (квинта) · Сатурн : Юпитер ≈ 2 : 5',
+  view: { pos: [0, 4.7, 2.5], look: [0, 0.95, -0.35] },
+  build(st) {
+    const G = st.g;
+    platform(st, 3.8, PAL.stripeCream, PAL.stripeYellow, 0.4);
+    const TH = table(st, 3.2, 3.0, 0.82, null, [0, 0, -0.2]);
+    board(st, { title: 'Резонансы орбит', body: 'Планеты в простом ритме звучат как интервал. 3:2 — квинта.', formula: 'отношение периодов = интервал' }, [0, 0, -2.0]);
+    stationLantern(st, 2.2, -1.9);
+    const C = V3(0, TH + 0.35, -0.2);
+    orreryPlate(st, 1.22, [0, TH, -0.2], 'резонансы');
+    st.sun = sunOrb(G, 0.1, [C.x, C.y, C.z]);
+    mesh(new THREE.CylinderGeometry(0.02, 0.03, 0.3, 8), brass, G, [C.x, TH + 0.2, C.z]);
+    const jc = paperCanvas(256, 128, (g, w, h) => { const cs = ['#E8C9A0', '#C8925E', '#F0DCC0', '#B0784A', '#E8C9A0', '#D8A878']; cs.forEach((c, i) => { g.fillStyle = c; g.fillRect(0, i * h / 6, w, h / 6 + 1); }); g.fillStyle = '#B05A3A'; g.beginPath(); g.ellipse(170, 80, 22, 12, 0, 0, TAU); g.fill(); }, { seed: 3, vignette: 0 });
+    st.jup = mesh(new THREE.SphereGeometry(0.16, 28, 18), inkMat({ map: tex(jc) }), G, [C.x, C.y, C.z], null, 0.012);
+    st.orbitLines = []; st.bodyMeshes = []; st.drops = [];
+    for (let i = 0; i < 3; i++) {
+      st.orbitLines.push(new Line(200, { width: 0.008, color: PAL.lavender, opacity: 0.75, parent: G }));
+      const m = mesh(new THREE.SphereGeometry(1, 20, 14), inkMat({ color: '#fff' }), G, [0, 0, 0], null, 0.01);
+      m.userData.ring = mesh(new THREE.TorusGeometry(1.7, 0.18, 6, 32), inkMat({ color: PAL.tan }), m, [0, 0, 0], [Math.PI / 2 - 0.4, 0, 0]);
+      m.userData.glow = glowSprite('#ffffff', 5, m, [0, 0, 0], 0.4);
+      st.bodyMeshes.push(m);
+      st.drops.push(new Line(2, { width: 0.006, color: PAL.lavender, opacity: 0.6, parent: G, dash: 0.03 }));
+    }
+    st.patterns = [new Line(1000, { width: 0.006, minPx: 0.9, color: '#F6D3B4', opacity: 0.85, boil: 0, parent: G, pressure: 0 }), new Line(1000, { width: 0.006, minPx: 0.9, color: '#A8E8D8', opacity: 0.8, boil: 0, parent: G, pressure: 0 })];
+    st.nowL = [new Line(2, { width: 0.02, color: '#fff', glow: true, opacity: 0.9, parent: G }), new Line(2, { width: 0.02, color: '#BFF', glow: true, opacity: 0.9, parent: G })];
+    Object.assign(st, { C, pair: 0, t: 0, speed: 1, segs: [[], []], lastSeg: -1, hold: 0, tmp: V3() });
+    st.plq = plaque(G, [-1.12, TH + 0.1, 1.02], [-1.15, 0.4, 0], 0.8, 0.36, 768);
+    st.setPair = (k) => {
+      st.pair = k; const p = PAIRS[k], sc = 1.1 / p.max;
+      st.sun.visible = p.center === 'sun'; st.jup.visible = p.center === 'jupiter';
+      p.bodies.forEach((b, i) => {
+        const pts = []; for (let j = 0; j <= 192; j++) { const tt = j / 192 * b.T; const q = orbitPos(b, tt, V3()).multiplyScalar(sc).add(C); pts.push(q); }
+        st.orbitLines[i].set(pts); st.orbitLines[i].mesh.visible = true;
+        const m = st.bodyMeshes[i]; m.visible = true; m.scale.setScalar(b.r); m.material.uniforms.uColor.value.set(b.col); m.userData.ring.visible = !!b.ring; m.userData.glow.material.color.set(b.col);
+        st.drops[i].mesh.visible = !!b.inc;
+      });
+      for (let i = p.bodies.length; i < 3; i++) { st.orbitLines[i].mesh.visible = false; st.bodyMeshes[i].visible = false; st.drops[i].mesh.visible = false; }
+      st.patterns.forEach((l, j) => { l.setStrips([]); l.mesh.visible = j < p.links.length; st.nowL[j].mesh.visible = j < p.links.length; });
+      st.segs = [[], []]; st.lastSeg = -1; st.t = 0; st.hold = 0; st.sc = sc;
+      st.syncPair && st.syncPair();
+    };
+    st.setPair(0);
+    if (Q.has('shot')) st.t = PAIRS[0].span * 0.8;
+    hitBox(st, 3.4, 2.4, 3.2, [0, 1.2, -0.2]);
+    tappable(st, st.sun, 0.3, () => st.setPair((st.pair + 1) % PAIRS.length));
+    tappable(st, st.jup, 0.3, () => st.setPair((st.pair + 1) % PAIRS.length));
+  },
+  update(st, dt) {
+    if (st.dist > 34) return;
+    const p = PAIRS[st.pair], N = 360;
+    if (st.t >= p.span) { st.hold += dt; if (st.hold > 3) st.setPair(st.pair); }
+    else st.t = Math.min(p.span, st.t + dt * st.speed * p.span / 22);
+    const pos = p.bodies.map((b, i) => { const q = orbitPos(b, st.t, V3()).multiplyScalar(st.sc).add(st.C); st.bodyMeshes[i].position.copy(q); if (b.inc) st.drops[i].set([q, V3(q.x, st.C.y - 0.24, q.z)]); return q; });
+    const seg = Math.floor(st.t / p.span * N);
+    if (seg !== st.lastSeg && st.t < p.span) {
+      for (let s = st.lastSeg + 1; s <= seg; s++) {
+        const ts = s / N * p.span; const ps = p.bodies.map((b) => orbitPos(b, ts, V3()).multiplyScalar(st.sc).add(st.C));
+        p.links.forEach(([a, b], j) => st.segs[j].push([ps[a], ps[b]]));
+      }
+      st.lastSeg = seg; p.links.forEach((_, j) => st.patterns[j].setStrips(st.segs[j]));
+    }
+    p.links.forEach(([a, b], j) => st.nowL[j].set([pos[a], pos[b]]));
+    for (let i = 0; i < 3; i++) AUDIO.tone('res' + i, p.bodies[i] ? p.bodies[i].f : 200, p.bodies[i] ? 0.42 * SND.prox[3] : 0);
+    const key = st.pair + ':' + Math.round(st.t / p.span * 100);
+    st.plq.draw(key, (g, w, h) => {
+      g.fillStyle = PAL.ink; g.font = `700 46px ${SERIF}`; g.fillText(p.name, 28, 64);
+      g.font = `700 64px ${SERIF}`; g.fillStyle = PAL.orange; g.fillText(p.ratio, 28, 150);
+      g.font = `italic 40px ${SERIF}`; g.fillStyle = PAL.inkSoft; g.fillText(p.interval, 28, 210);
+      g.font = `500 32px ${SANS}`; g.fillText(`прошло ${fmt(st.t, st.t < 20 ? 1 : 0)} ${p.unit}`, 28, 268);
+    });
+  },
+  controls(box) {
+    const st = this;
+    box.innerHTML = PAIRS.map((p, k) => `<button class="btn" data-k="${k}">${p.ratio.replace('≈ ', '≈')} ${p.name.split(' ')[0]}</button>`).join('') +
+      `<label>скорость <input type="range" min="20" max="300" value="100"><b>1×</b></label><div class="note" id="resnote"></div>`;
+    const bs = [...box.querySelectorAll('[data-k]')], note = box.querySelector('#resnote');
+    st.syncPair = () => { bs.forEach((b, k) => b.classList.toggle('on', k === st.pair)); const p = PAIRS[st.pair]; note.innerHTML = p.text + '<br>Тоны (' + p.n + ' октав вверх): ' + p.bodies.map((b) => fmt(b.f, 1)).join(' · ') + ' Гц'; };
+    bs.forEach((b, k) => b.addEventListener('click', () => st.setPair(k)));
+    const inp = box.querySelector('input'), b = box.querySelector('b');
+    inp.addEventListener('input', () => { st.speed = inp.value / 100; b.textContent = fmt(st.speed, 1) + '×'; });
+    st.syncPair();
+  },
+});
+
+// ===========================================================================
+// 5. КЕПЛЕР, «ГАРМОНИЯ МИРА» — near the Sun faster, the tone climbs
+// ===========================================================================
+const KPL = [
+  { k: 'mercury', name: 'Меркурий', e: 0.2056, aAU: 0.3871, col: '#C8A47A', kepler: 'у Кеплера 5:12, больше октавы' },
+  { k: 'venus', name: 'Венера', e: 0.0068, aAU: 0.7233, col: '#F0D2A8', kepler: 'у Кеплера 24:25, почти одна нота' },
+  { k: 'year', name: 'Земля', e: 0.0167, aAU: 1.0, col: '#4C9AC8', kepler: 'у Кеплера 15:16, «ми-фа-ми»' },
+  { k: 'mars', name: 'Марс', e: 0.0934, aAU: 1.5237, col: '#D0643C', kepler: 'у Кеплера 2:3, квинта' },
+];
+function intervalName(r) {
+  const c = 1200 * Math.log2(r);
+  const names = [[25, 'почти унисон'], [70, 'четверть тона'], [150, 'полутон'], [250, 'тон'], [350, 'малая терция'], [450, 'большая терция'], [550, 'кварта'], [650, 'тритон'], [750, 'квинта'], [850, 'малая секста'], [950, 'большая секста'], [1050, 'малая септима'], [1150, 'большая септима'], [1250, 'октава'], [1450, 'октава и тон'], [1550, 'октава и малая терция'], [1650, 'октава и большая терция'], [9e9, 'больше октавы']];
+  for (const [lim, n] of names) if (c < lim) return n;
+}
+makeStation(4, {
+  title: 'Кеплер: гармония мира',
+  text: 'Орбита планеты — не круг, а вытянутый овал. Возле Солнца планета летит быстрее, и тон ползёт вверх; вдали замедляется, и тон опускается. Кеплер в 1619 году записал это нотами. Цветные доли — равные площади за равное время.',
+  short: 'Ближе к Солнцу планета летит быстрее, тон ползёт вверх; вдали тон опускается. Кеплер записал это нотами в 1619 году.',
+  formula: 'скорость вращения ∝ 1 / r² · размах = ((1 + e) / (1 − e))²',
+  view: { pos: [0.2, 4.7, 2.5], look: [0.2, 0.95, -0.3] },
+  build(st) {
+    const G = st.g;
+    platform(st, 3.8, PAL.stripeCream, PAL.stripeSky, 0.4);
+    const TH = table(st, 3.4, 3.0, 0.82, null, [0, 0, -0.2]);
+    board(st, { title: 'Кеплер: гармония мира', body: 'У Солнца планета летит быстрее, и тон ползёт вверх. Вдали — вниз.', formula: 'скорость вращения ∝ 1 / r²' }, [0, 0, -2.0]);
+    stationLantern(st, -2.3, -1.9);
+    const C = V3(-0.25, TH + 0.12, -0.2);
+    orreryPlate(st, 1.22, [C.x, TH, C.z], 'вторая заповедь Кеплера');
+    st.sunM = sunOrb(G, 0.09, [0, 0, 0]);
+    st.orbit = new Line(260, { width: 0.012, color: PAL.lavender, opacity: 0.9, parent: G });
+    st.trail = new Line(60, { width: 0.05, color: '#FFE9B8', glow: true, opacity: 0.9, parent: G });
+    st.body = mesh(new THREE.SphereGeometry(0.075, 20, 14), inkMat({ color: '#fff' }), G, [0, 0, 0], null, 0.01);
+    st.bodyGlow = glowSprite('#FFE9B8', 0.5, st.body, [0, 0, 0], 0.6);
+    // equal-area wedges: one fan, coloured by twelfths of the year
+    const NS = 240;
+    const wg = new THREE.BufferGeometry(); wg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(NS * 9), 3)); wg.setAttribute('color', new THREE.BufferAttribute(new Float32Array(NS * 9), 3));
+    st.wedge = new THREE.Mesh(wg, new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.55, depthWrite: false, side: THREE.DoubleSide }));
+    st.wedge.renderOrder = 4; st.wedge.frustumCulled = false; G.add(st.wedge);
+    // pitch tube: a glass column, the glow height is the tone
+    const TX = 1.25, TZ = 0.25, TB = TH + 0.08, TL = 1.25;
+    mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.08, 24), woodDark, G, [TX, TH + 0.04, TZ], null, 0.01);
+    mesh(new THREE.CylinderGeometry(0.09, 0.09, TL, 24, 1, true), inkMat({ color: '#CFE8F0', opacity: 0.22, transparent: true, depthWrite: false, flat: 1, hatch: 0, side: THREE.DoubleSide }), G, [TX, TB + TL / 2, TZ]);
+    st.col = mesh(new THREE.CylinderGeometry(0.06, 0.06, 1, 20), inkMat({ color: '#FFD98A', emit: 1, flat: 1, hatch: 0 }), G, [TX, TB, TZ]);
+    st.colTop = glowSprite('#FFD070', 0.6, G, [TX, TB, TZ], 0.8);
+    new Line(4, { pts: circlePts(TX, TB + TL, TZ, 0.09, 24, 'xz'), width: 0.012, parent: G });
+    st.marks = [new Line(2, { width: 0.012, color: PAL.teal, parent: G }), new Line(2, { width: 0.012, color: PAL.orange, parent: G })];
+    Object.assign(st, { C, NS, TX, TZ, TB, TL, k: 2, ph: 0, period: 9, speed: 1, hist: [] });
+    st.plq = plaque(G, [1.12, TH + 0.1, 1.02], [-1.15, -0.4, 0], 0.8, 0.36, 768);
+    st.setPlanet = (k) => {
+      st.k = k; const p = KPL[k], a = 1.0, e = p.e, b = a * Math.sqrt(1 - e * e);
+      st.a = a; st.b = b; st.e = e;
+      // the sun sits at the focus; ellipse centre shifted
+      st.sunM.position.set(C.x + a * e * 1.03, C.y + 0.1, C.z);
+      const pts = []; for (let j = 0; j <= 256; j++) { const E = j / 256 * TAU; pts.push(st.posAtE(E, V3())); } st.orbit.set(pts);
+      // fan
+      const P = st.wedge.geometry.attributes.position.array, Cc = st.wedge.geometry.attributes.color.array, s = st.sunM.position, c1 = col('#F1BF4A'), c2 = col('#5BA8C8');
+      const q0 = V3(), q1 = V3();
+      for (let i = 0; i < st.NS; i++) {
+        st.posAtM(i / st.NS * TAU, q0); st.posAtM((i + 1) / st.NS * TAU, q1);
+        const cc = Math.floor(i / (st.NS / 12)) % 2 ? c2 : c1;
+        [s, q0, q1].forEach((v, j) => { P[i * 9 + j * 3] = v.x; P[i * 9 + j * 3 + 1] = st.C.y + 0.004; P[i * 9 + j * 3 + 2] = v.z; Cc[i * 9 + j * 3] = cc.r; Cc[i * 9 + j * 3 + 1] = cc.g; Cc[i * 9 + j * 3 + 2] = cc.b; });
+      }
+      st.wedge.geometry.attributes.position.needsUpdate = st.wedge.geometry.attributes.color.needsUpdate = true;
+      st.body.material.uniforms.uColor.value.set(p.col);
+      // pitch marks for aphelion / perihelion
+      const fa = F(p.k), fp = fa * Math.pow((1 + e) / (1 - e), 2);
+      st.marks[0].set([V3(st.TX - 0.16, st.pitchY(fa), st.TZ), V3(st.TX + 0.16, st.pitchY(fa), st.TZ)]);
+      st.marks[1].set([V3(st.TX - 0.16, st.pitchY(fp), st.TZ), V3(st.TX + 0.16, st.pitchY(fp), st.TZ)]);
+      st.ph = 0; st.hist = []; st.syncK && st.syncK();
+    };
+    st.posAtE = (E, out) => out.set(st.C.x + st.a * Math.cos(E) * 1.03, st.C.y + 0.1, st.C.z - st.b * Math.sin(E) * 1.03);
+    st.posAtM = (M, out) => st.posAtE(keplerE(M, st.e), out);
+    st.pitchY = (f) => st.TB + 0.05 + (Math.log2(f / 120) / Math.log2(360 / 120)) * (st.TL - 0.1);
+    hitBox(st, 3.6, 2.4, 3.2, [0, 1.2, -0.2]);
+    tappable(st, st.sunM, 0.3, () => st.setPlanet((st.k + 1) % KPL.length));
+    st.setPlanet(0);
+    if (Q.has('shot')) st.ph = 0.55;
+  },
+  update(st, dt) {
+    if (st.dist > 34) return;
+    const p = KPL[st.k];
+    st.ph += dt * st.speed / st.period;
+    if (st.ph >= 1) { st.ph -= 1; }
+    const M = st.ph * TAU, E = keplerE(M, st.e);
+    const q = st.posAtE(E, V3()); st.body.position.copy(q);
+    st.hist.push(q.clone()); if (st.hist.length > 26) st.hist.shift();
+    if (st.hist.length > 1) st.trail.set(st.hist);
+    st.wedge.geometry.setDrawRange(0, Math.floor(st.ph * st.NS) * 3);
+    // the focus at a·e from the centre: put the sun there (scaled)
+    st.sunM.position.set(st.C.x + st.a * st.e * 1.03, st.C.y + 0.1, st.C.z);
+    const r = 1 - st.e * Math.cos(E); // in units of a
+    const ra = 1 + st.e, w = (ra / r) * (ra / r);
+    const f = F(p.k) * w;
+    const y = st.pitchY(f);
+    st.col.scale.y = Math.max(0.01, y - st.TB); st.col.position.y = st.TB + (y - st.TB) / 2; st.colTop.position.y = y;
+    AUDIO.tone('kepler', f, 0.55 * SND.prox[4], 0.04);
+    const GM = 1.32712e20, aM = p.aAU * 1.495978707e11, v = Math.sqrt(GM * (2 / (r * aM) - 1 / aM)) / 1000;
+    const key = st.k + ':' + Math.round(f * 2);
+    st.plq.draw(key, (g, W, H) => {
+      g.fillStyle = PAL.ink; g.font = `700 48px ${SERIF}`; g.fillText(p.name, 28, 62);
+      g.font = `600 40px ${SANS}`; g.fillStyle = PAL.inkSoft; g.fillText(`${fmt(v, 1)} км/с`, 28, 128);
+      g.fillStyle = PAL.orange; g.font = `700 52px ${SERIF}`; g.fillText(`${fmt(f, 1)} Гц`, 28, 200);
+      g.fillStyle = PAL.inkFaint; g.font = `italic 30px ${SERIF}`; g.fillText(r < 1 ? 'близко к Солнцу: выше' : 'вдали: ниже', 28, 262);
+    });
+  },
+  controls(box) {
+    const st = this;
+    box.innerHTML = KPL.map((p, k) => `<button class="btn" data-k="${k}">${p.name}</button>`).join('') + `<label>скорость <input type="range" min="20" max="300" value="100"><b>1×</b></label><div class="note" id="kepnote"></div>`;
+    const bs = [...box.querySelectorAll('[data-k]')], note = box.querySelector('#kepnote');
+    st.syncK = () => { bs.forEach((b, k) => b.classList.toggle('on', k === st.k)); const p = KPL[st.k], r = Math.pow((1 + p.e) / (1 - p.e), 2); note.textContent = `${p.name}: вытянутость ${fmt(p.e, 3)}. Тон гуляет в ${fmt(r, 2)} раза — ${intervalName(r)} (${p.kepler}).`; };
+    bs.forEach((b, k) => b.addEventListener('click', () => st.setPlanet(k)));
+    const inp = box.querySelector('input'), b = box.querySelector('b');
+    inp.addEventListener('input', () => { st.speed = inp.value / 100; b.textContent = fmt(st.speed, 1) + '×'; });
+    st.syncK();
+  },
+});
+
+// ===========================================================================
+// 6. ТОН В РИТМ — the year tone lowered by octaves into a tempo
+// ===========================================================================
+const BPM_YEAR = F('year') / 64 * 60;
+makeStation(5, {
+  title: 'Тон в ритм',
+  text: 'Тот же тон года, 136,10 Гц, опускаем октавами: каждый шаг вниз — вдвое медленнее. Через 6 шагов звук становится ударами: 127,6 в минуту. Метроном качается, лампа мигает. Постучи по барабану в такт.',
+  short: 'Тон года, опущенный на 6 октав, — это темп 127,6 удара в минуту. Метроном качается, лампа мигает. Постучи по барабану в такт.',
+  formula: '136,10 Гц ÷ 2⁶ × 60 = 127,6 удара в минуту',
+  view: { pos: [0, 3.9, 3.3], look: [0, 1.1, -0.3] },
+  build(st) {
+    const G = st.g;
+    platform(st, 3.9, PAL.stripeCream, PAL.stripeSage, 0.5);
+    const TH = table(st, 4.0, 2.0, 0.86, inlayCanvas(1024, 512, 9, PAL.stripeCream, (g, w, h) => {
+      for (let i = 0; i < 16; i++) { const x = 60 + i * 58; g.fillStyle = i % 4 === 0 ? rgba(PAL.orange, 0.5) : rgba(PAL.inkFaint, 0.35); g.beginPath(); g.arc(x, h - 60, i % 4 === 0 ? 10 : 6, 0, TAU); g.fill(); }
+    }));
+    board(st, { title: 'Тон в ритм', body: 'Шесть шагов вниз по октавам — и нота становится пульсом: 127,6 ударов в минуту.', formula: '136,10 ÷ 2⁶ × 60 = 127,6' }, [0, 0, -1.55], 3.6);
+    stationLantern(st, -2.5, -1.4);
+    // octave staircase: from the tone down to the beat
+    const steps = []; for (let k = 0; k <= 6; k++) steps.push(F('year') / Math.pow(2, k));
+    steps.forEach((f, k) => {
+      const x = -1.7 + k * 0.24, h = 0.75 - k * 0.1;
+      const c = paperCanvas(128, 256, k === 6 ? PAL.sun : k === 0 ? '#9FE8D6' : PAL.paper, { seed: 50 + k, vignette: 0.2 }), g = c.getContext('2d');
+      g.fillStyle = PAL.ink; g.textAlign = 'center'; g.font = `700 ${k === 6 ? 30 : 34}px ${SERIF}`; g.save(); g.translate(64, 128); g.rotate(-Math.PI / 2);
+      g.fillText(k === 6 ? fmt(f * 60, 1) + '/мин' : fmt(f, f < 10 ? 2 : 1) + ' Гц', 0, 10); g.restore(); inkRect(g, 6, 6, 116, 244, 3, PAL.ink, k);
+      const m = mesh(new THREE.BoxGeometry(0.22, h, 0.42), [woodMat, woodMat, woodMat, woodMat, inkMat({ map: tex(c), flat: 0.6, hatch: 0 }), woodMat], G, [x, TH + h / 2, -0.25], null, 0.01);
+    });
+    st.forkTop = tuningFork(G, [-1.7, TH + 0.75, -0.25], '#9FE8D6', 0.8);
+    new Line(10, { pts: steps.map((_, k) => V3(-1.7 + k * 0.24, TH + 0.75 - k * 0.1 + 0.03, -0.03)), width: 0.012, color: PAL.orange, parent: G, dash: 0.05 });
+    // metronome
+    const MX = 0.3, MZ = -0.15;
+    const body = mesh(new THREE.CylinderGeometry(0.11, 0.3, 1.05, 4, 1), inkMat({ color: '#8A4E2C', border: 0 }), G, [MX, TH + 0.525, MZ], [0, Math.PI / 4, 0], 0.014);
+    const sc = paperCanvas(128, 512, PAL.paper, { seed: 61, vignette: 0.2 }), sg = sc.getContext('2d');
+    for (let i = 0; i < 20; i++) { const y = 40 + i * 22; quickStroke(sg, [[40, y], [i % 4 === 0 ? 90 : 70, y]], i % 4 === 0 ? 3 : 1.6, PAL.ink); }
+    sg.fillStyle = PAL.orange; sg.font = `700 26px ${SANS}`; sg.fillText('128', 48, 290);
+    mesh(new THREE.PlaneGeometry(0.1, 0.62), inkMat({ map: tex(sc), flat: 1, hatch: 0 }), G, [MX, TH + 0.55, MZ + 0.16], [-0.18, 0, 0]);
+    mesh(new THREE.BoxGeometry(0.5, 0.06, 0.4), woodDark, G, [MX, TH + 0.03, MZ], null, 0.01);
+    st.arm = new THREE.Group(); st.arm.position.set(MX, TH + 0.16, MZ + 0.2); G.add(st.arm);
+    mesh(new THREE.CylinderGeometry(0.011, 0.011, 0.95, 8), inkMat({ color: '#D8D8E0' }), st.arm, [0, 0.475, 0], null, 0.005);
+    mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.08, 6), brass, st.arm, [0, 0.62, 0], null, 0.008);
+    // pulsing lamp in the year colour
+    const LX = 1.25, LZ = -0.25;
+    mesh(new THREE.CylinderGeometry(0.12, 0.17, 0.12, 20), woodDark, G, [LX, TH + 0.06, LZ], null, 0.01);
+    mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.22, 8), brass, G, [LX, TH + 0.22, LZ]);
+    mesh(new THREE.TorusGeometry(0.1, 0.025, 8, 24), brass, G, [LX, TH + 0.33, LZ], [Math.PI / 2, 0, 0], 0.006);
+    const glass = mesh(new THREE.SphereGeometry(0.3, 28, 18), inkMat({ color: '#DDEFF0', opacity: 0.28, transparent: true, depthWrite: false, flat: 1, hatch: 0 }), G, [LX, TH + 0.62, LZ]);
+    new Line(50, { pts: circlePts(LX, TH + 0.62, LZ, 0.3, 48, 'xy'), width: 0.014, color: PAL.inkSoft, parent: G });
+    new Line(50, { pts: circlePts(LX, TH + 0.62, LZ, 0.3, 48, 'xz'), width: 0.008, color: PAL.inkSoft, parent: G, opacity: 0.6 });
+    st.core = mesh(new THREE.SphereGeometry(0.13, 18, 12), inkMat({ color: LIGHT_HEX, emit: 1, flat: 1, hatch: 0 }), G, [LX, TH + 0.62, LZ]);
+    st.lampGlow = glowSprite(LIGHT_HEX, 2.4, G, [LX, TH + 0.62, LZ], 0.3);
+    // hand drum for tapping along
+    const DX = 1.15, DZ = 0.52;
+    const drum = new THREE.Group(); drum.position.set(DX, TH, DZ); G.add(drum);
+    mesh(new THREE.CylinderGeometry(0.24, 0.22, 0.16, 28), inkMat({ color: PAL.red, border: 0 }), drum, [0, 0.08, 0], null, 0.01);
+    const dc = paperCanvas(256, 256, PAL.paper, { seed: 63, vignette: 0.1 }); inkCircle(dc.getContext('2d'), 128, 128, 60, 3, PAL.inkFaint, 2);
+    st.drumTop = mesh(new THREE.CircleGeometry(0.235, 28), inkMat({ map: tex(dc), flat: 1, hatch: 0 }), drum, [0, 0.162, 0], [-Math.PI / 2, 0, 0]);
+    st.drumRing = new Line(40, { pts: circlePts(0, 0.17, 0, 0.26, 36, 'xz'), width: 0.04, color: PAL.sun, glow: true, opacity: 0, parent: drum });
+    Object.assign(st, { bpm: BPM_YEAR, beat: 0, pulse: 0, tapT: [], tapBpm: 0, hitT: 0, drone: false });
+    st.plq = plaque(G, [-0.55, TH + 0.12, 0.6], [-1.2, 0.05, 0], 1.15, 0.42, 768);
+    st.tap = () => {
+      const now = performance.now() / 1000; if (!AUDIO.on) toggleSound();
+      st.tapT.push(now); while (st.tapT.length > 6) st.tapT.shift();
+      st.tapT = st.tapT.filter((t) => now - t < 4);
+      if (st.tapT.length >= 3) { const iv = []; for (let i = 1; i < st.tapT.length; i++) iv.push(st.tapT[i] - st.tapT[i - 1]); st.tapBpm = 60 / (iv.reduce((a, b) => a + b, 0) / iv.length); }
+      st.hitT = 1; AUDIO.tick(0.9, 260);
+    };
+    tappable(st, drum, 0.32, st.tap);
+    hitBox(st, 4.2, 2.6, 2.4, [0, 1.3, 0]);
+  },
+  update(st, dt) {
+    const prev = st.beat;
+    st.beat += dt * st.bpm / 60;
+    if (Math.floor(st.beat) !== Math.floor(prev)) { st.pulse = 1; if (SND.prox[5] > 0.05) AUDIO.tick(0.7 * SND.prox[5], Math.floor(st.beat) % 4 === 0 ? 2400 : 1700); }
+    st.pulse = Math.max(0, st.pulse - dt * 3.5);
+    st.arm.rotation.z = 0.42 * Math.sin(Math.PI * st.beat);
+    st.lampGlow.material.opacity = 0.15 + 0.8 * st.pulse;
+    st.lampGlow.scale.setScalar(1.6 + 1.6 * st.pulse);
+    st.core.scale.setScalar(0.8 + 0.4 * st.pulse);
+    st.hitT = Math.max(0, st.hitT - dt * 3);
+    st.drumRing.mat.uniforms.uOpacity.value = st.hitT * 0.9; st.drumTop.position.y = 0.162 - st.hitT * 0.01;
+    AUDIO.tone('drone6', F('year'), st.drone ? 0.5 * SND.prox[5] : 0);
+    const recent = st.tapT.length && performance.now() / 1000 - st.tapT[st.tapT.length - 1] < 3;
+    const key = Math.round(st.bpm * 10) + ':' + (recent ? Math.round(st.tapBpm) : '-');
+    st.plq.draw(key, (g, W, H) => {
+      g.fillStyle = PAL.ink; g.font = `700 70px ${SERIF}`; g.fillText(`${fmt(st.bpm, 1)}`, 28, 86); g.font = `500 34px ${SANS}`; g.fillStyle = PAL.inkSoft; g.fillText('ударов в минуту', 28 + g.measureText('').width + 230, 84);
+      g.font = `500 32px ${SANS}`; g.fillText(`= 136,10 Гц, опущенный на ${st.bpm < 100 ? 7 : 6} октав`, 28, 146);
+      if (recent && st.tapT.length >= 3) { const d = (st.tapBpm - st.bpm) / st.bpm; g.fillStyle = Math.abs(d) < 0.04 ? '#2E8B57' : PAL.orange; g.font = `700 44px ${SERIF}`; g.fillText(`ты: ${Math.round(st.tapBpm)} ${Math.abs(d) < 0.04 ? '— в такт!' : d > 0 ? '— чуть быстрее' : '— чуть медленнее'}`, 28, 226); }
+      else { g.fillStyle = PAL.inkFaint; g.font = `italic 36px ${SERIF}`; g.fillText('постучи по барабану', 28, 226); }
+    });
+  },
+  controls(box) {
+    const st = this;
+    box.innerHTML = `<button class="btn on" data-b="${BPM_YEAR}">${fmt(BPM_YEAR, 1)}</button><button class="btn" data-b="${BPM_YEAR / 2}">${fmt(BPM_YEAR / 2, 1)} (октавой ниже)</button><button class="btn" data-d="1">♪ тон года</button><button class="btn" data-t="1" style="background:var(--sun)">● стучать</button>
+      <div class="note">${steps6()}</div>`;
+    const bb = [...box.querySelectorAll('[data-b]')];
+    bb.forEach((b) => b.addEventListener('click', () => { st.bpm = +b.dataset.b; bb.forEach((x) => x.classList.toggle('on', x === b)); }));
+    const d = box.querySelector('[data-d]'); d.addEventListener('click', () => { st.drone = !st.drone; d.classList.toggle('on', st.drone); if (st.drone && !AUDIO.on) toggleSound(); });
+    box.querySelector('[data-t]').addEventListener('pointerdown', (e) => { e.preventDefault(); st.tap(); });
+  },
+});
+function steps6() { const a = []; for (let k = 0; k <= 6; k++) a.push(fmt(F('year') / Math.pow(2, k), 2)); return 'Гц: ' + a.join(' → ') + ` = ${fmt(BPM_YEAR, 1)} в минуту. Октавой ниже ${fmt(BPM_YEAR / 2, 1)}: спокойный пульс.`; }
+const $ = (id) => document.getElementById(id);
+
+// ---------------------------------------------------------------------------
+// CAMERA & INPUT
+// ---------------------------------------------------------------------------
+const cam = { hy: 1.7, pos: V3(0, 1.7, 6.5), yaw: 0, pitch: -0.04, tyaw: 0, tpitch: -0.04, vel: V3(), fly: null, walk: 0 };
+{ const d = V3(CENTER.x - 0, 2.6 - 1.7, CENTER.z - 6.5); cam.yaw = cam.tyaw = Math.atan2(-d.x, -d.z); }
+const input = { keys: {}, joy: { x: 0, y: 0 } };
+let PORTRAIT = false;
+
+function viewPose(i) {
+  const st = stations[i];
+  const p = st.g.localToWorld(V3(...st.view.pos)), l = st.g.localToWorld(V3(...st.view.look));
+  if (PORTRAIT) p.sub(l).multiplyScalar(st.view.mk || 1.12).add(l);
+  else if (camera.aspect > 1.25) { p.sub(l).multiplyScalar(1.22).add(l); l.y += 0.25; }
+  let d = l.clone().sub(p);
+  if (camera.aspect > 1.25 && !$('card').classList.contains('min')) {
+    // wide screens: slide sideways so the station sits right of the paper card
+    const r = V3(-d.z, 0, d.x).normalize().multiplyScalar(-1.25);
+    p.add(r); l.add(r); d = l.clone().sub(p);
+  }
+  let pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
+  if (camera.aspect < 1.25) {
+    // tall screens: aim so the stand lands in the free band between card and buttons
+    const cb = $('card').getBoundingClientRect().bottom / innerHeight, nb = $('nav').getBoundingClientRect().top / innerHeight;
+    const yc = (cb + nb) / 2;
+    pitch += Math.atan(Math.tan(camera.fov / 360 * Math.PI) * (yc - 0.5) * 2);
+  }
+  return { pos: p, yaw: Math.atan2(-d.x, -d.z), pitch };
+}
+function angDiff(a, b) { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; }
+function flyTo(i) {
+  cam.fly = null;
+  setActive(i, true);
+  const v = viewPose(i);
+  const dist = cam.pos.distanceTo(v.pos);
+  cam.fly = { i, from: cam.pos.clone(), fy: cam.yaw, fp: cam.pitch, to: v.pos, ty: cam.yaw + angDiff(cam.yaw, v.yaw), tp: v.pitch, t: 0, dur: clamp(1.1 + dist * 0.06, 1.2, 3.2) };
+}
+function nearestStation() { let b = -1, bd = 1e9; stations.forEach((s, i) => { if (s.dist < bd) { bd = s.dist; b = i; } }); return { i: b, d: bd }; }
+
+window.addEventListener('keydown', (e) => {
+  input.keys[e.code] = true;
+  if (e.code === 'KeyN' || e.code === 'Enter') nextStation();
+  if (e.code === 'KeyM') toggleSound();
+  if (e.code === 'Space' && active === 5) { e.preventDefault(); stations[5].tap(); }
+});
+window.addEventListener('keyup', (e) => { input.keys[e.code] = false; });
+window.addEventListener('blur', () => { input.keys = {}; });
+
+const joyEl = document.getElementById('joy'), knob = document.getElementById('knob');
+const ptrs = new Map();
+const ray = new THREE.Raycaster();
+function tapAt(x, y) {
+  const r = canvas.getBoundingClientRect();
+  ray.setFromCamera(new THREE.Vector2((x - r.left) / r.width * 2 - 1, -((y - r.top) / r.height) * 2 + 1), camera);
+  const taps = ray.intersectObjects(stations.filter((s) => s.dist < 16).flatMap((s) => s.taps), false);
+  if (taps.length) { const o = taps[0].object, i = o.userData.station; if (active !== i && !(cam.fly && cam.fly.i === i)) flyTo(i); o.userData.tap(); hideHint(); return; }
+  const hits = ray.intersectObjects(stations.map((s) => s.hit), false);
+  if (hits.length) { flyTo(hits[0].object.userData.station); hideHint(); }
+}
+canvas.addEventListener('pointerdown', (e) => {
+  try { canvas.setPointerCapture(e.pointerId); } catch (_) {}
+  const touch = e.pointerType !== 'mouse';
+  const isJoy = touch && e.clientX < innerWidth * 0.45 && e.clientY > innerHeight * 0.32 && ![...ptrs.values()].some((p) => p.joy);
+  ptrs.set(e.pointerId, { x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY, t0: performance.now(), joy: isJoy, moved: 0 });
+  if (isJoy) { joyEl.style.display = 'block'; joyEl.style.left = e.clientX + 'px'; joyEl.style.top = e.clientY + 'px'; knob.style.transform = ''; }
+});
+canvas.addEventListener('pointermove', (e) => {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY;
+  p.moved = Math.max(p.moved, Math.hypot(e.clientX - p.x0, e.clientY - p.y0));
+  if (p.joy) {
+    let jx = e.clientX - p.x0, jy = e.clientY - p.y0; const L = Math.hypot(jx, jy), M = 52;
+    if (L > M) { jx *= M / L; jy *= M / L; }
+    knob.style.transform = `translate(${jx}px,${jy}px)`;
+    input.joy.x = jx / M; input.joy.y = -jy / M;
+    if (L > 6) { cam.fly = null; hideHint(); }
+  } else if (p.moved > 4) {
+    const k = e.pointerType === 'mouse' ? 0.0042 : 0.0058;
+    cam.tyaw -= dx * k; cam.tpitch = clamp(cam.tpitch - dy * k * 0.8, -1.1, 1.0);
+    cam.fly = null; hideHint();
+  }
+});
+function endPtr(e) {
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  ptrs.delete(e.pointerId);
+  if (p.joy) { joyEl.style.display = 'none'; input.joy.x = input.joy.y = 0; }
+  if (p.moved < 10 && performance.now() - p.t0 < 350) tapAt(p.x0, p.y0);
+}
+canvas.addEventListener('pointerup', endPtr); canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+document.addEventListener('gesturestart', (e) => e.preventDefault());
+document.addEventListener('touchmove', (e) => { if (e.target === canvas) e.preventDefault(); }, { passive: false });
+
+function collide(p) {
+  // world bound
+  const dx = p.x - CENTER.x, dz = p.z - CENTER.z, d = Math.hypot(dx, dz), MAXR = 44;
+  if (d > MAXR) { p.x = CENTER.x + dx / d * MAXR; p.z = CENTER.z + dz / d * MAXR; }
+  if (d < 2.4) { p.x = CENTER.x + dx / (d || 1) * 2.4; p.z = CENTER.z + dz / (d || 1) * 2.4; }
+  const pad = 0.3;
+  for (const st of stations) {
+    if (st.dist > 16) continue;
+    const l = st.g.worldToLocal(p.clone());
+    for (const [x0, x1, z0, z1] of st.rects) {
+      if (l.x > x0 - pad && l.x < x1 + pad && l.z > z0 - pad && l.z < z1 + pad) {
+        const opts = [[l.x - (x0 - pad), 'x', x0 - pad], [(x1 + pad) - l.x, 'x', x1 + pad], [l.z - (z0 - pad), 'z', z0 - pad], [(z1 + pad) - l.z, 'z', z1 + pad]];
+        opts.sort((a, b) => a[0] - b[0]); l[opts[0][1]] = opts[0][2];
+        const w = st.g.localToWorld(l); p.x = w.x; p.z = w.z;
+      }
+    }
+  }
+}
+function updateCamera(dt) {
+  if (cam.fly) {
+    const f = cam.fly; f.t += dt / f.dur; const k = ease(Math.min(1, f.t));
+    cam.pos.lerpVectors(f.from, f.to, k);
+    cam.pos.y += Math.sin(k * Math.PI) * Math.min(3, f.from.distanceTo(f.to) * 0.12);
+    cam.yaw = cam.tyaw = lerp(f.fy, f.ty, k); cam.pitch = cam.tpitch = lerp(f.fp, f.tp, k);
+    cam.vel.set(0, 0, 0);
+    if (f.t >= 1) { cam.fly = null; cam.hy = f.to.y; }
+  } else {
+    let mx = input.joy.x, mz = input.joy.y;
+    const K = input.keys;
+    if (K.KeyW || K.ArrowUp) mz += 1; if (K.KeyS || K.ArrowDown) mz -= 1;
+    if (K.KeyA) mx -= 1; if (K.KeyD) mx += 1;
+    if (K.ArrowLeft) cam.tyaw += dt * 1.8; if (K.ArrowRight) cam.tyaw -= dt * 1.8;
+    const L = Math.hypot(mx, mz); if (L > 1) { mx /= L; mz /= L; }
+    const speed = (K.ShiftLeft || K.ShiftRight) ? 7 : 3.6;
+    const fx = -Math.sin(cam.yaw), fz = -Math.cos(cam.yaw), rx = Math.cos(cam.yaw), rz = -Math.sin(cam.yaw);
+    const tv = V3((fx * mz + rx * mx) * speed, 0, (fz * mz + rz * mx) * speed);
+    cam.vel.lerp(tv, 1 - Math.exp(-dt * 7));
+    cam.pos.addScaledVector(cam.vel, dt);
+    const sp = cam.vel.length(); cam.walk += sp * dt * 2.2;
+    if (L > 0.05) cam.hy = lerp(cam.hy, 1.7, 1 - Math.exp(-dt * 1.5));
+    cam.pos.y = lerp(cam.pos.y, cam.hy + Math.sin(cam.walk) * 0.03 * Math.min(1, sp / 3), 1 - Math.exp(-dt * 8));
+    collide(cam.pos);
+    if (L > 0.05 && (Math.abs(K.KeyW || 0) || input.joy.y)) hideHint();
+    const kk = 1 - Math.exp(-dt * 16);
+    cam.yaw += (cam.tyaw - cam.yaw) * kk; cam.pitch += (cam.tpitch - cam.pitch) * kk;
+  }
+  camera.position.copy(cam.pos); camera.rotation.set(cam.pitch, cam.yaw, 0);
+}
+
+// ---------------------------------------------------------------------------
+// UI
+// ---------------------------------------------------------------------------
+function paperURL(color, seed, grain = 1) { return paperCanvas(256, 256, color, { seed, grain, vignette: 0 }).toDataURL(); }
+{
+  $('card').style.backgroundImage = `url(${paperURL(PAL.paper, 91)})`;
+  document.querySelectorAll('#nav .btn').forEach((b, i) => (b.style.backgroundImage = `url(${paperURL(i ? PAL.sun : PAL.paper, 92 + i)})`));
+  const c = mkCanvas(256, 256), g = c.getContext('2d'), im = g.createImageData(256, 256), R = mulberry(7);
+  for (let i = 0; i < im.data.length; i += 4) { const v = 128 + (R() - 0.5) * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+  g.putImageData(im, 0, 0);
+  $('grain').style.backgroundImage = `url(${c.toDataURL()})`;
+}
+let active = -2;
+const ctrlCache = {};
+function setActive(i, open) {
+  if (open) $('card').classList.remove('min');
+  if (i === active) return;
+  active = i;
+  const box = $('cctrls');
+  [...box.children].forEach((c) => c.remove());
+  if (i < 0) {
+    $('cnum').textContent = '♪'; $('cnum').style.background = '#9FE8D6';
+    $('ctitle').textContent = 'Космическая октава';
+    $('ctext').textContent = 'Шесть станций по книге Ханса Кусто: как движения Земли и планет становятся нотами, если удваивать их частоту. Иди к любой или жми «к станции».';
+    $('cformula').textContent = 'Это красивая арифметика и настоящая астрономия, а не медицина.';
+  } else {
+    const st = stations[i];
+    $('cnum').textContent = i + 1; $('cnum').style.background = BADGE[i];
+    $('ctitle').textContent = st.title; $('ctext').textContent = innerWidth < 600 ? st.short : st.text; $('cformula').textContent = 'для любопытных: ' + st.formula;
+    if (!ctrlCache[i]) { const d = document.createElement('div'); d.style.display = 'contents'; st.controls(d); ctrlCache[i] = d; }
+    box.appendChild(ctrlCache[i]);
+  }
+  updateNext();
+}
+function updateNext() {
+  const n = nextIndex();
+  $('next').textContent = `к станции ${n + 1} →`;
+}
+function nextIndex() {
+  const cur = cam.fly ? cam.fly.i : active;
+  return cur < 0 ? 0 : (cur + 1) % stations.length;
+}
+function nextStation() { flyTo(nextIndex()); hideHint(); }
+$('next').addEventListener('click', nextStation);
+$('tog').addEventListener('click', () => { $('card').classList.toggle('min'); $('tog').textContent = $('card').classList.contains('min') ? '+' : '–'; });
+function toggleSound() { const on = AUDIO.toggle(); $('snd').textContent = on ? '♪ звук вкл' : '♪ звук'; $('snd').classList.toggle('on', on); }
+$('snd').addEventListener('click', toggleSound);
+let hintShown = true;
+$('hint').innerHTML = IS_TOUCH
+  ? '<span>левый палец — идти</span><span>правый — осмотреться</span><span>тап по станции — перелёт</span><span>♪ — включить звук</span>'
+  : '<span>WASD — идти</span><span>мышь с зажатой кнопкой — смотреть</span><span>клик по станции — перелёт</span><span>N — дальше</span><span>M — звук</span>';
+function hideHint() { if (!hintShown) return; hintShown = false; $('hint').style.opacity = 0; }
+setTimeout(hideHint, 12000);
+if (Q.has('shot')) { $('hint').style.display = 'none'; }
+
+// ---------------------------------------------------------------------------
+// resize & loop
+// ---------------------------------------------------------------------------
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  PORTRAIT = w / h < 0.8;
+  const minH = 60 / 180 * Math.PI; // keep at least ~60° horizontally
+  let v = 2 * Math.atan(Math.tan(minH / 2) / camera.aspect) * 180 / Math.PI;
+  camera.fov = clamp(v, 58, 92);
+  camera.updateProjectionMatrix();
+  const b = renderer.getDrawingBufferSize(new THREE.Vector2()); SH.uRes.value.copy(b);
+}
+addEventListener('resize', resize); resize();
+
+// start pose (optionally at a station, for links and screenshots)
+{
+  const s = parseInt(Q.get('st') || '0', 10);
+  if (s >= 1 && s <= 6) { setActive(s - 1, true); const v = viewPose(s - 1); cam.pos.copy(v.pos); cam.hy = v.pos.y; cam.yaw = cam.tyaw = v.yaw; cam.pitch = cam.tpitch = v.pitch; }
+}
+let last = performance.now(), T = 0, frames = 0, fpsAcc = 0, fpsN = 0;
+const showFps = Q.has('fps'); if (showFps) $('fps').style.display = 'block';
+function loop(now) {
+  const dt = clamp((now - last) / 1000, 0, 0.05); last = now; T += dt; frames++;
+  SH.uTime.value = T;
+  updateCamera(dt);
+  for (const st of stations) {
+    st.dist = Math.hypot(cam.pos.x - st.P.x, cam.pos.z - st.P.z);
+    SND.prox[st.i] = smooth(14, 5, st.dist);
+    st.update(st, dt);
+  }
+  if (stations[0].syncUI && active === 0) stations[0].syncUI();
+  updateCenterpiece(T);
+  AUDIO.pad(0.35 + 0.65 * smooth(20, 4, Math.hypot(cam.pos.x - CENTER.x, cam.pos.z - CENTER.z)));
+  const n = nearestStation();
+  if (!cam.fly) setActive(n.d < 12.5 ? n.i : -1, false);
+  sky.position.copy(camera.position);
+
+  renderer.render(scene, camera);
+  if (showFps) { fpsAcc += dt; fpsN++; if (fpsAcc > 0.5) { $('fps').textContent = Math.round(fpsN / fpsAcc) + ' fps · ' + renderer.info.render.triangles + ' tri · ' + renderer.info.render.calls + ' calls'; fpsAcc = 0; fpsN = 0; } }
+  if (frames === 20) window.__ready = true;
+  requestAnimationFrame(loop);
+}
+if (!(parseInt(Q.get('st') || '0', 10) >= 1)) setActive(-1);
+requestAnimationFrame(loop);
+window.__stats = () => ({ tri: renderer.info.render.triangles, calls: renderer.info.render.calls });
+window.__flyTo = flyTo; window.__st = stations; window.__cam = cam; window.__nan = () => { const out = []; scene.traverse((o) => { const p = o.geometry && o.geometry.attributes.position; if (p) { for (let i = 0; i < p.array.length; i++) if (isNaN(p.array[i])) { out.push(o.type + ':' + JSON.stringify(o.geometry.parameters) + (o.parent && o.parent.type) + ':' + p.array.length + ':' + i + ':' + JSON.stringify(o.position)); break; } } }); return out; };
+
+// Ручки для живой правки (19.10.2026): garden.js снимает камеру перед перезагрузкой и ставит обратно.
+window.__gardenState = () => ({ p: [cam.pos.x, cam.pos.y, cam.pos.z], y: cam.yaw, pi: cam.pitch });
+window.__gardenRestore = s => { if (!s || !s.p) return; cam.fly = null; cam.vel.set(0, 0, 0); cam.pos.set(s.p[0], s.p[1], s.p[2]); cam.yaw = cam.tyaw = s.y; cam.pitch = cam.tpitch = s.pi; };
+</script>
+</body></html>

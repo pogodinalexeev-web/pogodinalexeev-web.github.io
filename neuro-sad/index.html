@@ -140,8 +140,8 @@
     body #card.lesson{height:calc(100dvh - 140px)}
   }
 </style>
-</head>
-<body>
+<style id="no-zoom-select">/* 19.10.2026: двойной тап не зумит, долгое нажатие не выделяет кнопки */html,body,body *{touch-action:manipulation}canvas{touch-action:none}button,a,label,select,summary,[role=button],[onclick],input[type=range],input[type=button]{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}</style></head>
+<body><script src="/f/garden.js?v=12"></script>
 <canvas id="gl"></canvas>
 <div id="vig"></div>
 <div id="grain"></div>
@@ -157,9 +157,9 @@
   </div>
   <div class="body hidden" id="lnav"><button id="lprev">← назад</button><button id="lnext">дальше →</button></div>
 </div>
-<div id="dock"><button class="btn" id="dmic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z" fill="currentColor"/></svg>спросить</button><button class="btn" id="reopen" style="display:none">💬</button><button class="btn" id="snd">♪</button><button class="btn" id="next">стенд 1 →</button></div>
+<div id="dock"><button class="btn" id="dmic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z" fill="currentColor"/></svg>спросить ассистента</button><button class="btn" id="reopen" style="display:none">💬</button><button class="btn" id="snd">♪</button><button class="btn" id="next">стенд 1 →</button></div>
 <div id="chat" class="paper hidden">
-  <div class="chead"><b>Прохор</b><span id="cwhere"></span><button id="cmin">свернуть ▾</button></div>
+  <div class="chead"><b>Ассистент</b><span id="cwhere"></span><button id="cmin">свернуть ▾</button></div>
   <div id="clog"><div class="msg hello">Спроси голосом или текстом что угодно про стенд, у которого стоишь. Отвечаю коротко и по-простому.</div></div>
   <div id="cstat"></div>
   <div class="crow"><input id="cin" type="text" maxlength="600" placeholder="или напиши вопрос…" enterkeyhint="send" autocomplete="off"><button id="csend" aria-label="отправить">➤</button></div>
@@ -1279,7 +1279,7 @@ function setActive(i, open) {
   if (i < 0) {
     $('cnum').textContent = '✦'; $('cnum').style.background = PAL.sun;
     $('ctitle').textContent = 'Курс нейросетей';
-    $('ctext').textContent = 'Тринадцать стендов по одной тропе, и по всей тропе с тобой идёт одна картинка: ромашка 8 на 8 клеток, 64 числа. На каждом стенде с ней делают следующее дело, а её саму не подменяют: от «картинка это 64 числа» до «пчела нашла ромашку в лабиринте». На каждом живая модель, все числа считаются по-настоящему. Жми «стенд 1 →» и иди вперёд. Непонятно, жми «спросить» внизу и задай вопрос Прохору голосом.';
+    $('ctext').textContent = 'Тринадцать стендов по одной тропе, и по всей тропе с тобой идёт одна картинка: ромашка 8 на 8 клеток, 64 числа. На каждом стенде с ней делают следующее дело, а её саму не подменяют: от «картинка это 64 числа» до «пчела нашла ромашку в лабиринте». На каждом живая модель, все числа считаются по-настоящему. Жми «стенд 1 →» и иди вперёд. Непонятно, жми «спросить ассистента» внизу и задай вопрос голосом.';
     $('cformula').textContent = '';
   } else if (i === FINAL_I) {
     $('cnum').textContent = '✦'; $('cnum').style.background = PAL.sun;
@@ -1397,7 +1397,7 @@ setTimeout(hideHint, 14000);
 if (Q.has('shot')) $('hint').style.display = 'none';
 
 // ---------------------------------------------------------------------------
-// CHAT: голосовой вопрос Прохору
+// CHAT: голосовой вопрос ассистенту
 // ---------------------------------------------------------------------------
 const MIC_SVG = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2z" fill="currentColor"/></svg>';
 const API = location.hostname === 'vladdervish.duckdns.org' ? (() => { const p = location.pathname, k = p.indexOf('/neuro-sad'); return k >= 0 ? p.slice(0, k) + '/neuro-sad/api/' : './api/'; })() : 'https://vladdervish.duckdns.org/demo/neuro-sad/api/';
@@ -1415,7 +1415,7 @@ function status(s) { $('cstat').textContent = s || ''; }
 function micUI(state) {
   const b = $('cmic');
   b.classList.toggle('rec', state === 'rec'); b.disabled = state === 'busy';
-  b.innerHTML = state === 'rec' ? '■ готово, отправить' : state === 'busy' ? '… Прохор занят' : MIC_SVG + 'нажми и говори';
+  b.innerHTML = state === 'rec' ? '■ готово, отправить' : state === 'busy' ? '… Ассистент занят' : MIC_SVG + 'нажми и говори';
   $('dmic').classList.toggle('rec', state === 'rec');
 }
 async function startRec() {
@@ -1456,14 +1456,14 @@ async function ask(text) {
   if (text.length > 600) { addMsg('err', 'Вопрос длиннее 600 знаков, сократи.'); return; }
   CHAT.busy = true; micUI('busy');
   addMsg('q', text);
-  const pend = addMsg('a wait', 'Прохор думает…'); status('');
+  const pend = addMsg('a wait', 'Ассистент думает…'); status('');
   const t0 = performance.now();
   const cur = cam.fly ? cam.fly.i : active, station = cur >= 0 && cur < NST ? cur + 1 : cur === FINAL_I ? 14 : 0;
   const step = cur >= 0 && cur < NST ? (LSTEP[cur] || 0) + 1 : 0;
   try {
     const r = await fetch(API + 'ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ station, step, text, history: CHAT.history.slice(-3) }) });
     const j = await r.json().catch(() => ({ error: 'Сервер ответил непонятно.' }));
-    if (!r.ok || j.error) { pend.className = 'msg err'; pend.textContent = j.error || 'Прохор не ответил.'; }
+    if (!r.ok || j.error) { pend.className = 'msg err'; pend.textContent = j.error || 'Ассистент не ответил.'; }
     else { pend.className = 'msg a'; pend.innerHTML = esc(j.answer).replace(/\n/g, '<br>'); CHAT.history.push([text, j.answer]); status(`ответ за ${Math.round((performance.now() - t0) / 100) / 10} с`); }
   } catch (e) { pend.className = 'msg err'; pend.textContent = 'Нет связи с сервером. Попробуй ещё раз.'; }
   CHAT.busy = false; micUI('idle'); $('clog').scrollTop = 1e9;
@@ -1530,6 +1530,10 @@ updateNav();
 requestAnimationFrame(loop);
 window.__flyTo = flyTo; window.__tap = tapAt; window.__st = stations; window.__cam = cam; window.__models = MODELS; window.__camera = camera;
 
+
+// Ручки для живой правки (19.10.2026): garden.js снимает камеру перед перезагрузкой и ставит обратно.
+window.__gardenState = () => ({ p: [cam.pos.x, cam.pos.y, cam.pos.z], y: cam.yaw, pi: cam.pitch });
+window.__gardenRestore = s => { if (!s || !s.p) return; cam.fly = null; cam.vel.set(0, 0, 0); cam.pos.set(s.p[0], s.p[1], s.p[2]); cam.yaw = cam.tyaw = s.y; cam.pitch = cam.tpitch = s.pi; };
 </script>
 </body>
 </html>

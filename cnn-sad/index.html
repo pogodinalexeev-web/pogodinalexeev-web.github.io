@@ -84,8 +84,8 @@
     #nav .btn{font-size:14px;padding:10px 13px}
   }
 </style>
-</head>
-<body>
+<style id="no-zoom-select">/* 19.10.2026: двойной тап не зумит, долгое нажатие не выделяет кнопки */html,body,body *{touch-action:manipulation}canvas{touch-action:none}button,a,label,select,summary,[role=button],[onclick],input[type=range],input[type=button]{-webkit-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}</style></head>
+<body><script src="/f/garden.js?v=12"></script>
 <canvas id="gl"></canvas>
 <div id="vig"></div>
 <div id="grain"></div>
@@ -2133,5 +2133,9 @@ setActive(-1);
 requestAnimationFrame(loop);
 window.__stats = () => ({ tri: renderer.info.render.triangles, calls: renderer.info.render.calls });
 window.__flyTo = flyTo; window.__tap = tapAt; window.__ray = ray; window.__camera = camera; window.__st = stations; window.__cam = cam; window.__setPicture = setPicture;
+
+// Ручки для живой правки (19.10.2026): garden.js снимает камеру перед перезагрузкой и ставит обратно.
+window.__gardenState = () => ({ p: [cam.pos.x, cam.pos.y, cam.pos.z], y: cam.yaw, pi: cam.pitch });
+window.__gardenRestore = s => { if (!s || !s.p) return; cam.fly = null; cam.vel.set(0, 0, 0); cam.pos.set(s.p[0], s.p[1], s.p[2]); cam.yaw = cam.tyaw = s.y; cam.pitch = cam.tpitch = s.pi; };
 </script>
 </body></html>
