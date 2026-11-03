@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ru"><head><meta charset="utf-8">
-<title>Круг в лесу</title>
+<title>Круг: годичные кольца</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <style>
 html,body{margin:0;height:100%;background:#020403;color:#dfe9d4;font:15px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
@@ -99,7 +99,14 @@ const texDisk=tex('disk'),texBtn=tex('knopka');
 const camera=new THREE.PerspectiveCamera(66,innerWidth/innerHeight,.03,120);
 // 03.11.2026, слово Влада: при подходе видно и лес, и пень, и кнопки; на узком экране стоим дальше
 const NARROW=innerWidth/innerHeight<1,BACK=NARROW?1.55:.55;camera.position.set(0,1.55+BACK*.4,.62+BACK);
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+// 03.11.2026, слово Влада: подошёл к пню или тыкнул кнопку издалека, камера сама встаёт туда, где удобно натыкивать (как в саду Жоры)
+const PZ=-.38,DOCK_R=4.5;let fly=null,walked=0,idle=0;
+function dockPose(){const n=innerWidth/innerHeight<1,z=n?1.85:.95;return{x:0,z,pitch:Math.atan2(.93-1.55,z-PZ)+(n?.05:.04)}}
+function dock(){const D=dockPose(),dx=camera.position.x-D.x,dz=camera.position.z-D.z,T=Math.PI*2;let dy=(-yaw)%T;if(dy>Math.PI)dy-=T;if(dy<-Math.PI)dy+=T;
+  if(Math.hypot(dx,dz)<.03&&Math.abs(dy)<.02&&Math.abs(D.pitch-pitch)<.02)return false;
+  fly={t:0,x:camera.position.x,z:camera.position.z,y0:yaw,p0:pitch,D,dy,dur:Math.min(1.6,.6+Math.hypot(dx,dz)*.25)};return true}
+const offDock=()=>{const D=dockPose();return Math.hypot(camera.position.x-D.x,camera.position.z-D.z)>.5};
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);if(!renderer.xr.isPresenting&&!offDock())dock()});
 
 const rng=(s=>()=>(s=(s*16807)%2147483647)/2147483647)(7321);
 const R=(a,b)=>a+(b-a)*rng();
@@ -289,7 +296,7 @@ stone('Быстрее',0x9fd0ff,()=>{bpm=Math.min(150,bpm+6)},.44,.05,'r');
 stone('Медленнее',0x9fd0ff,()=>{bpm=Math.max(60,bpm-6)},.44,-.05,'r');
 stone('На меня',0xffffff,()=>{calib=1},.44,-.15,'r');
 stone('Сброс',0xff8a7a,()=>pat[active].fill(0),.44,-.25,'r');
-const stoneGeo=new THREE.CylinderGeometry(.03,.034,.02,28),stoneSide=barkS,coreGeo=new THREE.CircleGeometry(.0095,16);let recS;ring.updateMatrix();
+const stoneGeo=new THREE.CylinderGeometry(.041,.045,.022,28),stoneSide=barkS,coreGeo=new THREE.CircleGeometry(.012,16);let recS;ring.updateMatrix();
 const capM=new THREE.MeshStandardMaterial({map:texBtn,bumpMap:texBtn,bumpScale:3,roughness:.7});
 [[-.44,.0,.68,0],[.44,.03,.62,0],[0,R1+.1,.72,1]].forEach(([x,y,l,h])=>{const g=new THREE.CylinderGeometry(.058,.062,l,16,14);const p=g.attributes.position;
   for(let i=0;i<p.count;i++){const a=Math.atan2(p.getZ(i),p.getX(i)),k=1+.05*Math.sin(p.getY(i)*17+a*2)+.03*Math.sin(a*9+p.getY(i)*31);if(Math.hypot(p.getX(i),p.getZ(i))>.03){p.setX(i,p.getX(i)*k);p.setZ(i,p.getZ(i)*k)}}g.computeVertexNormals();
@@ -298,9 +305,9 @@ const capM=new THREE.MeshStandardMaterial({map:texBtn,bumpMap:texBtn,bumpScale:3
   ring.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(q.map(a=>new THREE.Vector3(...a))),16,.019,7),barkS))});
 stones.forEach(t=>{t.mesh=new THREE.Mesh(stoneGeo,[stoneSide,new THREE.MeshStandardMaterial({map:texBtn,bumpMap:texBtn,bumpScale:3,roughness:.6,color:new THREE.Color(t.col).multiplyScalar(TH.btn),emissive:t.col,emissiveMap:texBtn,emissiveIntensity:.22}),stoneSide]);t.mesh.rotation.x=Math.PI/2;t.mesh.position.set(t.lx,t.ly,.03);{const c=new THREE.Mesh(coreGeo,new THREE.MeshBasicMaterial({color:t.col}));c.rotation.x=-Math.PI/2;c.position.y=.0105;t.mesh.add(c)}t.mesh.userData.stone=t;ring.add(t.mesh);
   t.rp=t.mesh.position.clone().applyMatrix4(ring.matrix);
-  const l=label(t.name,t.col,t.side==='t'?.13:.15);l.position.set(t.lx+(t.side==='l'?-.1:t.side==='r'?.1:0),t.ly+(t.side==='t'?.05:0),.03);ring.add(l);if(t.name==='Запись')recS=l;t.glow=0;t.inside=new Set()});
+  const l=label(t.name,t.col,t.side==='t'?.13:.15);l.position.set(t.lx+(t.side==='l'?-.115:t.side==='r'?.115:0),t.ly+(t.side==='t'?.05:0),.03);ring.add(l);if(t.name==='Запись')recS=l;t.glow=0;t.inside=new Set()});
 
-const selRing=new THREE.Mesh(new THREE.RingGeometry(.05,.06,40),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,transparent:true,opacity:.95}));selRing.position.z=.045;ring.add(selRing);
+const selRing=new THREE.Mesh(new THREE.RingGeometry(.058,.07,40),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,transparent:true,opacity:.95}));selRing.position.z=.045;ring.add(selRing);
 // ---- арфы ----------------------------------------------------------------
 const harps=[{x:.6,z0:-.18,dz:.058,notes:HARP.map(m=>m),col:0xbfe6ff,key:m=>m,top:.12,bot:-.82},
              {x:-.6,z0:-.18,dz:.105,notes:BHARP,col:0xff9ccb,key:m=>'b'+m,top:.12,bot:-.82}];
@@ -354,7 +361,7 @@ function touch(){const loc=v1.clone();
       if(Math.abs(q.z)<.05){if(++f.inRing>=2||id==='mi')paint(q.x,q.y)}else f.inRing=0}
     // камни
     stones.forEach(t=>{const d=t.rp.distanceTo(f.p);
-      if(t.inside.has(id)){if(d>.075)t.inside.delete(id)}else if(d<.05&&f.paint){t.inside.add(id);t.fn();t.glow=1;if(t.isLayer==null)click()}});
+      if(t.inside.has(id)){if(d>.09)t.inside.delete(id)}else if(d<.064&&f.paint){t.inside.add(id);t.fn();t.glow=1;if(t.isLayer==null)click()}});
     // струны
     if(f.fresh)harps.forEach(h=>{if(Math.abs(f.p.x-h.x)>.1||f.p.y>h.top+.03||f.p.y<h.bot-.03)return;
       const n=h.notes.length;for(let i=0;i<n;i++){const z=h.z0+i*h.dz;if((f.prev.z-z)*(f.p.z-z)<0&&Math.abs(f.p.z-f.prev.z)<.3&&f.p.y<h.top_(i)+.02)strum(h,i)}})}
@@ -366,15 +373,15 @@ const instr=()=>[ringPad,...stones.map(t=>t.mesh),...harps.map(x=>x.pad)];
 let yaw=0,pitch=Math.atan2(.9-camera.position.y,camera.position.z+.38)+(NARROW?.14:.1),look=null,moved=0,mouseHold=0,letGo=false,jx=0,jy=0;const keys={};
 camera.rotation.order='YXZ';
 const aim=e=>{ndc.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(ndc,camera)};
-function pick(e){aim(e);const h=ray.intersectObjects(instr(),false)[0];return h||null}
+function pick(e){for(const[ox,oy]of[[0,0],[12,0],[-12,0],[0,12],[0,-12]]){aim({clientX:e.clientX+ox,clientY:e.clientY+oy});const h=ray.intersectObjects(instr(),false)[0];if(h)return h}return null}
 function worldTap(e){aim(e);const h=ray.intersectObjects([trunkM,rockM,groundM],false)[0];if(!h||!ac)return;
   const l=h.object===trunkM?2:h.object===rockM?0:1,id=LAYERS[l].id;VOICE[id](ac.currentTime,.9);hit[l*STEPS]=1;lay(l,.85);
   if(id==='kick')react(id,h.point.x,h.point.z);else react(id)}
 function harpTap(h){const H=harps.find(x=>x.pad===h.object);if(!H)return;const q=rig.worldToLocal(h.point.clone());let i=Math.round((q.z-H.z0)/H.dz);
   if(i<0||i>=H.notes.length)return;strum(H,i)}
 cv.addEventListener('pointerdown',e=>{initAudio();try{cv.setPointerCapture(e.pointerId)}catch(_){}
-  moved=0;letGo=false;const h=pick(e);if(h){mouseF=h.point.clone();mouseHold=2;harpTap(h);look=null}else look={x:e.clientX,y:e.clientY}});
-cv.addEventListener('pointermove',e=>{if(look){const dx=e.clientX-look.x,dy=e.clientY-look.y;look={x:e.clientX,y:e.clientY};moved+=Math.abs(dx)+Math.abs(dy);
+  moved=0;letGo=false;fly=null;const h=pick(e);if(h&&offDock()){dock();look=null;return}if(h){mouseF=h.point.clone();mouseHold=2;harpTap(h);look=null}else look={x:e.clientX,y:e.clientY}});
+cv.addEventListener('pointermove',e=>{if(look){const dx=e.clientX-look.x,dy=e.clientY-look.y;look={x:e.clientX,y:e.clientY};moved+=Math.abs(dx)+Math.abs(dy);fly=null;
     yaw-=dx*.0042;pitch=Math.max(-1.35,Math.min(1.2,pitch-dy*.0042))}
   else if(mouseF){const h=pick(e);if(h)mouseF=h.point.clone()}});
 cv.addEventListener('pointerup',e=>{if(look&&moved<8)worldTap(e);look=null;letGo=true});
@@ -386,6 +393,8 @@ addEventListener('keydown',e=>{keys[e.code]=1});addEventListener('keyup',e=>{key
  J.addEventListener('pointerdown',e=>{J.setPointerCapture(e.pointerId);mv(e)});J.addEventListener('pointermove',e=>{if(e.buttons)mv(e)});
  const end=()=>{jx=jy=0;K.style.transform=''};J.addEventListener('pointerup',end);J.addEventListener('pointercancel',end)}
 function walk(dt){const f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-jy,r=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+jx;
+  if(Math.abs(f)+Math.abs(r)>.05){fly=null;walked=1;idle=0}else if(walked&&!look&&(idle+=dt)>.35){walked=0;if(Math.hypot(camera.position.x,camera.position.z-PZ)<DOCK_R)dock()}
+  if(fly){fly.t=Math.min(1,fly.t+dt/fly.dur);const e=fly.t<.5?2*fly.t*fly.t:1-Math.pow(2-2*fly.t,2)/2;camera.position.x=fly.x+(fly.D.x-fly.x)*e;camera.position.z=fly.z+(fly.D.z-fly.z)*e;yaw=fly.y0+fly.dy*e;pitch=fly.p0+(fly.D.pitch-fly.p0)*e;if(fly.t>=1)fly=null}
   const c=Math.cos(yaw),n=Math.sin(yaw),sp=2.4*dt;camera.position.x+=(-n*f+c*r)*sp;camera.position.z+=(-c*f-n*r)*sp;
   const q=Math.hypot(camera.position.x,camera.position.z);if(q>11.5){camera.position.x*=11.5/q;camera.position.z*=11.5/q}
   camera.position.y=1.55+H(camera.position.x,camera.position.z);camera.rotation.set(pitch,yaw,0)}
@@ -421,8 +430,8 @@ function loop(now){frame++;const dt=Math.min(.05,(now-last)/1000);last=now;const
   readHands();touch();
   if(letGo&&--mouseHold<=0){letGo=false;mouseF=null;if(fingers.mi)fingers.mi.seen=-9;stones.forEach(t=>t.inside.delete('mi'))}
   drawRing();harps.forEach(h=>drawHarp(h,dt,t));
-  {const S=stones.find(s=>s.isLayer===active);selRing.visible=!!S;if(S)selRing.position.set(S.lx,S.ly,.045)}stones.forEach(s=>{s.glow*=Math.exp(-dt*5);const on=s.isLayer===active||(s.name==='Запись'&&rec&&Math.sin(t*9)>0);s.mesh.scale.setScalar((on?1.4:1)+s.glow*.7)});
+  {const S=stones.find(s=>s.isLayer===active);selRing.visible=!!S;if(S)selRing.position.set(S.lx,S.ly,.045)}stones.forEach(s=>{s.glow*=Math.exp(-dt*5);const on=s.isLayer===active||(s.name==='Запись'&&rec&&Math.sin(t*9)>0);s.mesh.scale.setScalar((on?1.12:1)+s.glow*.35)});
   renderer.render(scene,camera)}
 renderer.setAnimationLoop(loop);
-window.__krug={pat,rig,ring,stones,harps,fingers,U,get active(){return active},get hasHands(){return hasHands},get frame(){return frame},get audio(){return ac&&ac.state},stepNow:()=>step,renderer,camera,keys,bones,dots,get rec(){return rec},peak(){if(!peakA)return 0;peakA.getFloatTimeDomainData(peakD);return Math.max(...peakD.map(Math.abs))}};
+window.__dock=()=>({fly,x:camera.position.x,z:camera.position.z,yaw,pitch,D:dockPose()});window.__krug={pat,rig,ring,stones,harps,fingers,U,get active(){return active},get hasHands(){return hasHands},get frame(){return frame},get audio(){return ac&&ac.state},stepNow:()=>step,renderer,camera,keys,bones,dots,get rec(){return rec},peak(){if(!peakA)return 0;peakA.getFloatTimeDomainData(peakD);return Math.max(...peakD.map(Math.abs))}};
 </script></body></html>
