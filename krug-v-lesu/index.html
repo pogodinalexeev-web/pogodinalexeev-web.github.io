@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8">
+<title>Круг в лесу</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+html,body{margin:0;height:100%;background:#020403;color:#dfe9d4;font:15px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;overflow:hidden}
+canvas{position:fixed;inset:0;display:block;touch-action:none}
+#ui{position:fixed;left:14px;top:12px;max-width:340px;z-index:5;font-size:13px;text-shadow:0 1px 3px #000;pointer-events:none}#ui button{pointer-events:auto}
+#joy{position:fixed;right:22px;bottom:26px;width:120px;height:120px;border-radius:50%;border:1px solid #9cff6a88;z-index:6;display:none;touch-action:none}
+#joy i{position:absolute;left:40px;top:40px;width:40px;height:40px;border-radius:50%;background:#9cff6a66}
+#ui b{display:inline;font-size:20px}#help summary{list-style:none;cursor:pointer;pointer-events:auto;margin-bottom:4px}#help summary::-webkit-details-marker{display:none}.how{margin-left:8px;font-size:12px;color:#9cff6a;border:1px solid #9cff6a88;border-radius:99px;padding:1px 8px;vertical-align:3px}#help[open] .how::after{content:" ▴"}#help:not([open]) .how::after{content:" ▾"}#vr{display:block}
+#vr{margin-top:10px;padding:12px 18px;border:1px solid #9cff6a;background:#0b1508;color:#d9ffc4;font:inherit;border-radius:8px;cursor:pointer}
+#vr[disabled]{opacity:.45;cursor:default}
+</style></head>
+<body><div id="chat" hidden></div><script src="/f/garden.js?v=12"></script>
+<div id="ui"><details id="help"><summary><b>Круг в лесу</b><span class="how">как играть</span></summary>
+Тяни по пустому месту, чтобы осмотреться, WASD или стрелки, чтобы идти. Слева от круга камни дорожек: тык выбирает дорожку, она обводится кольцом. Сверху рисунки на выбранную дорожку. Справа «Запись»: всё сыгранное ложится в круг. Арфы по бокам, мох, стволы и камни тоже играют.
+</details><button id="vr" disabled>Проверяю шлем…</button></div>
+<div id="joy"><i></i></div>
+<script type="module">
+import * as THREE from './lib/three.module.js';
+
+// ---- дорожки и рисунки --------------------------------------------------
+const LAYERS=[
+  {id:'drum',name:'Рамочный',col:0xffb347},
+  {id:'kick',name:'Бочка',col:0x9cff6a},
+  {id:'snare',name:'Рабочий',col:0xede9ff},
+  {id:'shaker',name:'Шейкер',col:0x6fe3ff},
+  {id:'bass',name:'Бас',col:0xff6fa8,notes:6},
+  {id:'harp',name:'Арфа',col:0x8fb8ff,notes:10}];
+const STEPS=16, pat=LAYERS.map(()=>new Float32Array(STEPS));
+const set=(l,steps,v=.8)=>{pat[l].fill(0);steps.forEach(s=>pat[l][s]=v)};
+const RH={ 'Тресильо':[0,6,12], 'Клаве 3-2':[0,3,6,10,12], 'Румба':[0,3,7,10,12], 'Синквильо':[0,4,6,10,12] };
+let active=0, bpm=96;
+set(1,[0,4,8,12],.85); set(0,RH['Тресильо'],.9);
+// минорная пентатоника от ре
+const hz=m=>440*Math.pow(2,(m-69)/12);
+const BASS=[38,41,43,45,48,50], HARP=[62,65,67,69,72,74,77,79,81,84], BHARP=[38,41,43,45,48,50];
+
+// ---- звук ---------------------------------------------------------------
+let ac,out,noise,kbuf={};
+function ks(f,dur,b){const sr=ac.sampleRate,n=Math.round(sr/f),len=Math.floor(sr*dur),B=ac.createBuffer(1,len,sr),d=B.getChannelData(0),r=new Float32Array(n);
+  let p=0;for(let i=0;i<n;i++){p=p*(1-b)+(Math.random()*2-1)*b;r[i]=p}
+  let k=0,dec=.9965+Math.min(.0034,f/90000*-1+.0034);
+  for(let i=0;i<len;i++){const j=(k+1)%n,v=r[k];d[i]=v;r[k]=(v+r[j])*.5*dec;k=j}
+  B.rate=f*n/sr;return B}
+let peakA,peakD;
+function initAudio(){if(ac){if(ac.state!=='running')ac.resume();return}
+  ac=new (window.AudioContext||window.webkitAudioContext)();
+  const c=ac.createDynamicsCompressor();c.threshold.value=-16;c.ratio.value=4;
+  const lim=ac.createDynamicsCompressor();lim.threshold.value=-4;lim.knee.value=0;lim.ratio.value=20;lim.attack.value=.002;lim.release.value=.12;
+  out=ac.createGain();out.gain.value=.55;out.connect(c);c.connect(lim);lim.connect(ac.destination);ac.resume();
+  peakA=ac.createAnalyser();peakA.fftSize=2048;peakD=new Float32Array(2048);lim.connect(peakA);
+  const sr=ac.sampleRate,I=ac.createBuffer(2,sr*2.4,sr);
+  for(let ch=0;ch<2;ch++){const d=I.getChannelData(ch);let lp=0;for(let i=0;i<d.length;i++){lp+=.35*((Math.random()*2-1)-lp);d[i]=lp*Math.pow(1-i/d.length,3)}}
+  const v=ac.createConvolver();v.buffer=I;const g=ac.createGain();g.gain.value=.3;out.connect(g);g.connect(v);v.connect(c);
+  noise=ac.createBuffer(1,sr,sr);const nd=noise.getChannelData(0);for(let i=0;i<sr;i++)nd[i]=Math.random()*2-1;
+  HARP.forEach(m=>kbuf[m]=ks(hz(m),2.6,.75));BHARP.forEach(m=>kbuf['b'+m]=ks(hz(m),3.4,.45));
+  nextT=ac.currentTime+.08;timer=setInterval(tick,25)}
+function env(g,t,a,d){g.gain.setValueAtTime(a,t);g.gain.exponentialRampToValueAtTime(.0008,t+d)}
+function tone(type,f0,f1,t,a,d){const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);if(f1)o.frequency.exponentialRampToValueAtTime(f1,t+d*.6);env(g,t,a,d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.02)}
+function hiss(ft,fr,t,a,d){const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();s.buffer=noise;s.loop=true;f.type=ft;f.frequency.value=fr;env(g,t,a,d);s.connect(f);f.connect(g);g.connect(out);s.start(t,Math.random()*.8);s.stop(t+d+.02)}
+const VOICE={
+  kick(t,l){tone('sine',150,44,t,1.1*l,.3)},
+  snare(t,l){hiss('bandpass',1900,t,.8*l,.17);tone('triangle',200,150,t,.3*l,.1)},
+  shaker(t,l){hiss('highpass',6500,t,.34*l,.055)},
+  drum(t,l){if(l>.6){tone('sine',112,76,t,.95*l,.4);hiss('lowpass',900,t,.2*l,.03)}else{tone('triangle',540,390,t,.42+.3*l,.08);hiss('bandpass',2600,t,.3*l,.04)}},
+  harp(t,l){pluck(HARP[Math.max(0,Math.min(9,Math.round(l*10)-1))],.6,t)},
+  bass(t,l){const m=BASS[bassIdx(l)],o=ac.createOscillator(),f=ac.createBiquadFilter(),g=ac.createGain();o.type='sawtooth';o.frequency.value=hz(m);f.type='lowpass';f.frequency.setValueAtTime(900,t);f.frequency.exponentialRampToValueAtTime(180,t+.3);env(g,t,.55,.5);o.connect(f);f.connect(g);g.connect(out);o.start(t);o.stop(t+.52)}
+};
+const bassIdx=l=>Math.max(0,Math.min(5,Math.round(l*6)-1));
+function pluck(key,loud,t){if(!ac||!kbuf[key])return;const s=ac.createBufferSource(),g=ac.createGain();s.buffer=kbuf[key];s.playbackRate.value=kbuf[key].rate;g.gain.value=loud;s.connect(g);g.connect(out);s.start(t||0)}
+function click(){if(ac)tone('sine',880,0,ac.currentTime,.12,.05)}
+let nextT=0,step=0,timer,events=[];
+function tick(){const sd=60/bpm/4;while(nextT<ac.currentTime+.12){
+  LAYERS.forEach((L,i)=>{const v=pat[i][step];if(v>0){VOICE[L.id](nextT,L.notes?v:.45+.55*v);events.push({t:nextT,l:i,s:step})}});
+  events.push({t:nextT,l:-1,s:step});step=(step+1)%STEPS;nextT+=sd}}
+
+// ---- сцена --------------------------------------------------------------
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);
+renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local-floor');
+if(renderer.xr.setFramebufferScaleFactor)renderer.xr.setFramebufferScaleFactor(.9);
+document.body.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x020403);
+const camera=new THREE.PerspectiveCamera(66,innerWidth/innerHeight,.03,60);
+camera.position.set(0,1.55,.62);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+
+const rng=(s=>()=>(s=(s*16807)%2147483647)/2147483647)(7321);
+const R=(a,b)=>a+(b-a)*rng();
+const sm=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t)};
+const H=(x,z)=>{const r=Math.hypot(x,z);return sm(1.6,6,r)*(.34*Math.sin(.62*x+1)*Math.cos(.55*z)+.16*Math.sin(1.4*z+x*.7))};
+
+const P=[],C=[],K=[],S=[],Z=[],D=[];
+const pt=(x,y,z,c,k,s,d)=>{P.push(x,y,z);C.push(c[0],c[1],c[2]);K.push(k);S.push(rng());Z.push(s);d=d||[0,1,0];D.push(d[0],d[1],d[2])};
+// мох
+for(let i=0;i<27000;i++){const r=13*Math.pow(rng(),.72)+.1,a=rng()*6.283,x=Math.cos(a)*r,z=Math.sin(a)*r,g=R(.35,1),w=rng()<.05?.8:.1;
+  pt(x,H(x,z)+R(0,.05),z,[.2*g+w,.62*g+w*.7,.12*g+w*.3],0,R(.012,.026))}
+// стволы
+const trunks=[];
+for(let i=0;i<32;i++){const a=rng()*6.283,r=R(3.2,13),x=Math.cos(a)*r,z=Math.sin(a)*r,tr=R(.13,.3);trunks.push([x,H(x,z),z,tr]);
+  for(let j=0;j<400;j++){const f=rng()*6.283,h=Math.pow(rng(),1.7)*12,lit=Math.max(.15,Math.cos(f-a-3.14));pt(x+Math.cos(f)*tr,H(x,z)+h,z+Math.sin(f)*tr,[.75*lit,.8*lit,.7*lit],1,R(.014,.03),[Math.cos(f),0,Math.sin(f)])}}
+// камни
+const rocks=[];
+for(let i=0;i<7;i++){const a=rng()*6.283,r=R(2.2,7),x=Math.cos(a)*r,z=Math.sin(a)*r,s=R(.3,.8);rocks.push([x,H(x,z)+s*.2,z,s]);
+  for(let j=0;j<850;j++){const v=new THREE.Vector3(R(-1,1),R(-.2,1),R(-1,1)).normalize().multiplyScalar(s);v.y*=.68;const b=.25+.75*Math.max(0,v.y/s);pt(x+v.x,H(x,z)+s*.2+v.y,z+v.z,[b*.9,b*.92,b*.8],2,R(.012,.026),[v.x/s,v.y/s,v.z/s])}}
+// папоротники
+for(let i=0;i<30;i++){const a=rng()*6.283,r=R(1.5,6.5),x=Math.cos(a)*r,z=Math.sin(a)*r;
+  for(let f=0;f<7;f++){const d=f/7*6.283+R(-.2,.2),L=R(.35,.65);for(let j=0;j<24;j++){const t=j/23,q=t*L;pt(x+Math.cos(d)*q+R(-.01,.01),H(x,z)+Math.sin(t*2.5)*L*.42,z+Math.sin(d)*q+R(-.01,.01),[.45,1,.25],3,.02)}}}
+// светлячки
+for(let i=0;i<260;i++){const a=rng()*6.283,r=R(1.2,9);pt(Math.cos(a)*r,R(.7,3.4),Math.sin(a)*r,[1,.75,.28],4,R(.03,.06))}
+// звёзды
+for(let i=0;i<1400;i++){const a=rng()*6.283,e=R(.2,1.45),r=34;pt(Math.cos(a)*Math.cos(e)*r,Math.sin(e)*r+2,Math.sin(a)*Math.cos(e)*r,[.75,.85,1],5,R(.1,.2))}
+
+const pg=new THREE.BufferGeometry();
+pg.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
+pg.setAttribute('aCol',new THREE.Float32BufferAttribute(C,3));
+pg.setAttribute('aKind',new THREE.Float32BufferAttribute(K,1));
+pg.setAttribute('aSeed',new THREE.Float32BufferAttribute(S,1));
+pg.setAttribute('aSize',new THREE.Float32BufferAttribute(Z,1));
+pg.setAttribute('aDir',new THREE.Float32BufferAttribute(D,3));
+const PAL=LAYERS.map(L=>new THREE.Color(L.col));
+const U={uT:{value:0},uF:{value:0},uK:{value:0},uS:{value:0},uSn:{value:0},uH:{value:0},uD:{value:0},uB:{value:0},uA:{value:0},uM:{value:0},uRec:{value:0},uKeep:{value:1},uScale:{value:900},
+  uR:{value:Array.from({length:8},()=>new THREE.Vector4(0,0,-99,0))},uP:{value:PAL}};
+const WHITE=new THREE.Color(0xffffff);
+const pm=new THREE.ShaderMaterial({uniforms:U,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
+vertexShader:`attribute vec3 aCol,aDir;attribute float aKind,aSeed,aSize;
+uniform float uT,uF,uK,uS,uSn,uH,uD,uB,uA,uM,uRec,uKeep,uScale;uniform vec4 uR[8];uniform vec3 uP[6];varying vec3 vC;
+void main(){if(aKind<1.5&&aSeed>uKeep){gl_Position=vec4(2.,2.,2.,1.);gl_PointSize=0.;vC=vec3(0.);return;}vec3 p=position,c=aCol;float g=1.;
+ if(aKind<.5){c=mix(c,c.gbr*1.1,uM*.55);g+=uB*.8*aSeed+uK*.25;
+  for(int i=0;i<8;i++){float a=uT-uR[i].z;if(a<2.4){float d=length(p.xz-uR[i].xy),w=d-a*5.5,e=exp(-w*w*1.4)*(1.-a/2.4);c+=uP[int(uR[i].w)]*e*1.6;p.y+=e*.34;}}
+  p.y+=sin(p.x*1.1+uT*2.)*sin(p.z*.9-uT*1.6)*.05*uB;}
+ else if(aKind<1.5){float w=p.y-uSn*13.;float e=exp(-w*w*.45)*uS;g+=e*5.+uK*.3;c=mix(c,vec3(1.,.95,1.),e);p+=aDir*e*.05*step(.4,aSeed);p.xz+=aDir.xz*uK*.03*aSeed;}
+ else if(aKind<2.5){g+=uD*2.6;p+=aDir*uD*(.1+aSeed*.22);c=mix(c,uP[0],uD*.7);}
+ else if(aKind<3.5){p.x+=sin(uT*.9+aSeed*6.)*.06*position.y;p.y+=uA*.16*position.y;g+=uA*3.5;c=mix(c,uP[5],uA*.6);}
+ else if(aKind<4.5){p+=vec3(sin(uF*.3+aSeed*40.),.5*sin(uF*.21+aSeed*17.),cos(uF*.27+aSeed*29.))*(.9+uH*.5+uB*.6);g=.5+.5*sin(uT*1.6+aSeed*50.)+uH*3.;}
+ else{g=.45+.3*sin(uT*.8+aSeed*80.)+uB*1.2+uA*1.3*step(.6,aSeed);p.y+=sin(uT*.1+aSeed*9.)*.3;c=mix(c,uP[5],uA*.5);}
+ c=mix(c,c*vec3(1.25,.72,.72),uRec*.5);
+ vec4 mv=modelViewMatrix*vec4(p,1.);float z=-mv.z;
+ vC=c*g*(aKind>4.5?1.:(1.-smoothstep(5.,14.,z)*.75));
+ gl_PointSize=clamp(aSize*uScale*(1.+.25*min(g,3.))/z,1.,22.);gl_Position=projectionMatrix*mv;}`,
+fragmentShader:`varying vec3 vC;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,.08,d);gl_FragColor=vec4(vC*a,a);}`});
+const forest=new THREE.Points(pg,pm);forest.frustumCulled=false;scene.add(forest);
+
+// тёмная земля, стволы и камни, чтобы точки лежали на чём-то
+const dark=new THREE.MeshBasicMaterial({color:0x030604});
+let groundM,trunkM,rockM;
+{const g=new THREE.PlaneGeometry(34,34,54,54);g.rotateX(-Math.PI/2);const p=g.attributes.position;for(let i=0;i<p.count;i++)p.setY(i,H(p.getX(i),p.getZ(i))-.02);groundM=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x061006}));scene.add(groundM);
+ const t=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,8,1,true),dark,trunks.length),m=new THREE.Matrix4();
+ trunks.forEach(([x,y,z,r],i)=>{m.makeScale(r*.97,14,r*.97);m.setPosition(x,y+7,z);t.setMatrixAt(i,m)});scene.add(t);trunkM=t;
+ const k=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),dark,rocks.length);
+ rocks.forEach(([x,y,z,s],i)=>{m.makeScale(s*.96,s*.65,s*.96);m.setPosition(x,y,z);k.setMatrixAt(i,m)});scene.add(k);rockM=k}
+
+// столбы света и искры
+const pillars=[0,1,2].map(()=>{const g=new THREE.CylinderGeometry(1.1,.16,15,12,6,true);const n=g.attributes.position.count,cc=new Float32Array(n*3);for(let i=0;i<n;i++){const v=Math.pow(1-(g.attributes.position.getY(i)+7.5)/15,2.4);cc.set([v,v,v],i*3)}g.setAttribute('color',new THREE.BufferAttribute(cc,3));
+  const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({vertexColors:true,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));m.visible=false;m.a=0;m.tint=new THREE.Color();scene.add(m);return m});
+let pil=0;function pillar(x,z,col,a=.55){const m=pillars[pil=(pil+1)%3];m.position.set(x,H(x,z)+7.5,z);m.a=a;m.tint.set(col);m.visible=true}
+const SP=800,spP=new Float32Array(SP*3),spC=new Float32Array(SP*3),spV=new Float32Array(SP*3),spL=new Float32Array(SP);let spI=0;
+const spG=new THREE.BufferGeometry();spG.setAttribute('position',new THREE.BufferAttribute(spP,3).setUsage(THREE.DynamicDrawUsage));spG.setAttribute('color',new THREE.BufferAttribute(spC,3).setUsage(THREE.DynamicDrawUsage));
+const spCv=document.createElement('canvas');spCv.width=spCv.height=32;{const c=spCv.getContext('2d'),g=c.createRadialGradient(16,16,0,16,16,16);g.addColorStop(0,'#fff');g.addColorStop(.35,'#fff');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,32,32)}
+const sparks=new THREE.Points(spG,new THREE.PointsMaterial({size:.07,map:new THREE.CanvasTexture(spCv),vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));sparks.frustumCulled=false;scene.add(sparks);
+function burst(x,y,z,col,n){const c=new THREE.Color(col);for(let i=0;i<n;i++){const k=spI=(spI+1)%SP;spP.set([x,y,z],k*3);const a=Math.random()*6.283,u=Math.random()*1.6;spV.set([Math.cos(a)*u,.9+Math.random()*2.6,Math.sin(a)*u],k*3);spL[k]=1;spC.set([c.r,c.g,c.b],k*3)}}
+function drawSparks(dt){for(let k=0;k<SP;k++){if(spL[k]<=0)continue;spL[k]-=dt*.8;const i=k*3;spV[i+1]-=dt*1.6;spP[i]+=spV[i]*dt;spP[i+1]+=spV[i+1]*dt;spP[i+2]+=spV[i+2]*dt;const f=spL[k]<=0?0:1-dt*.9;spC[i]*=f;spC[i+1]*=f;spC[i+2]*=f}spG.attributes.position.needsUpdate=true;spG.attributes.color.needsUpdate=true}
+let rip=0;function ripple(x,z,c){U.uR.value[rip].set(x,z,U.uT.value,c);rip=(rip+1)%8}
+let snT=9;
+function react(id,x,z){const L=LAYERS.findIndex(q=>q.id===id),col=LAYERS[L].col;
+  const pick=a=>a[Math.floor(Math.random()*a.length)];
+  if(id==='kick'){if(x===undefined){const a=Math.random()*6.283,r=2+Math.random()*5;x=Math.cos(a)*r;z=Math.sin(a)*r}ripple(x,z,L);pillar(x,z,col);burst(x,H(x,z)+.1,z,col,24);U.uK.value=1}
+  else if(id==='snare'){const t=pick(trunks);ripple(t[0],t[2],L);burst(t[0],1+Math.random()*3,t[2],col,16);U.uS.value=1;snT=0}
+  else if(id==='drum'){const r=pick(rocks);ripple(r[0],r[2],L);burst(r[0],r[1]+r[3]*.6,r[2],col,26);U.uD.value=1}
+  else if(id==='shaker'){U.uH.value=.7;const a=Math.random()*6.283,r=1+Math.random()*4;burst(Math.cos(a)*r,.4+Math.random(),Math.sin(a)*r,col,4)}
+  else if(id==='bass'){ripple(0,-1,L);pillar(0,-3.5,col,.4);U.uB.value=1}
+  else{const a=Math.random()*6.283,r=1.5+Math.random()*4;ripple(Math.cos(a)*r,Math.sin(a)*r,L);burst(Math.cos(a)*r,1,Math.sin(a)*r,col,14);U.uA.value=1}}
+
+// всё, до чего дотягивается рука, живёт в rig: начало в голове, смотрим в -z
+const rig=new THREE.Group();rig.position.set(0,1.55,0);scene.add(rig);
+function label(text,col,w=.11){const c=document.createElement('canvas');c.width=256;c.height=72;const x=c.getContext('2d');
+  const m=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false});const s=new THREE.Sprite(m);s.scale.set(w,w*72/256,1);
+  s.draw=(t,cl)=>{x.clearRect(0,0,256,72);x.font='600 42px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillStyle='#'+new THREE.Color(cl).getHexString();x.fillText(t,128,36);m.map.needsUpdate=true};s.draw(text,col);return s}
+
+// ---- круг ---------------------------------------------------------------
+const R0=.09,R1=.33;
+const ring=new THREE.Group();ring.position.set(0,-.62,-.38);ring.rotation.x=-50*Math.PI/180;rig.add(ring);
+{const slab=new THREE.Mesh(new THREE.CylinderGeometry(R1+.045,R1+.075,.05,48),new THREE.MeshBasicMaterial({color:0x0b1409}));slab.rotation.x=Math.PI/2;slab.position.z=-.03;ring.add(slab);
+ const leg=new THREE.Mesh(new THREE.CylinderGeometry(.06,.14,1,10),new THREE.MeshBasicMaterial({color:0x10190d}));leg.position.set(0,-1.13,-.41);rig.add(leg)}
+const ang=s=>s/STEPS*Math.PI*2, spoke=(s,r)=>[Math.sin(ang(s))*r,Math.cos(ang(s))*r,0];
+{const v=[];for(let s=0;s<STEPS;s++){v.push(...spoke(s,R0),...spoke(s,R1))}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
+ ring.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x2f4a2a})));
+ [R0,(R0+R1)/2,R1].forEach(r=>{const q=[];for(let i=0;i<64;i++)q.push(Math.sin(i/64*6.283)*r,Math.cos(i/64*6.283)*r,0);const c=new THREE.BufferGeometry();c.setAttribute('position',new THREE.Float32BufferAttribute(q,3));ring.add(new THREE.LineLoop(c,new THREE.LineBasicMaterial({color:0x3f6438})))});
+ for(let b=0;b<4;b++){const m=new THREE.Mesh(new THREE.SphereGeometry(.007,6,4),new THREE.MeshBasicMaterial({color:0xcfe8c0}));m.position.set(...spoke(b*4,R1+.022));ring.add(m)}}
+const curves=LAYERS.map(L=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(STEPS*3),3));const l=new THREE.LineLoop(g,new THREE.LineBasicMaterial({color:L.col,transparent:true}));ring.add(l);return l});
+const beads=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),new THREE.MeshBasicMaterial({color:0xffffff}),STEPS*LAYERS.length);
+beads.frustumCulled=false;beads.instanceMatrix.setUsage(THREE.DynamicDrawUsage);ring.add(beads);
+const hit=new Float32Array(STEPS*LAYERS.length),beadCol=new THREE.Color();
+const headG=new THREE.BufferGeometry();headG.setAttribute('position',new THREE.BufferAttribute(new Float32Array(6),3));
+const playhead=new THREE.Line(headG,new THREE.LineBasicMaterial({color:0xffffff}));ring.add(playhead);
+const layerName=label(LAYERS[0].name,LAYERS[0].col,.15);layerName.position.set(0,0,.01);ring.add(layerName);
+const m4=new THREE.Matrix4();
+function drawRing(){LAYERS.forEach((L,i)=>{const a=curves[i].geometry.attributes.position,on=i===active;curves[i].material.opacity=on?1:.34;
+  for(let s=0;s<STEPS;s++){const v=pat[i][s],r=R0+v*(R1-R0),[x,y]=spoke(s,r);a.setXYZ(s,x,y,on?.004:0);
+    const j=i*STEPS+s,q=(v>0?(on?.0115:.0075):(on?.0045:0))*(1+hit[j]*1.1);
+    m4.makeScale(q,q,q);m4.setPosition(x,y,.002);beads.setMatrixAt(j,m4);
+    beadCol.setHex(L.col).multiplyScalar(v>0?1:.45);beads.setColorAt(j,beadCol)}
+  a.needsUpdate=true});beads.instanceMatrix.needsUpdate=true;beads.instanceColor.needsUpdate=true}
+function paint(x,y){const r=Math.hypot(x,y);if(r<R0-.03||r>R1+.035)return;
+  let s=Math.round(Math.atan2(x,y)/(Math.PI*2)*STEPS);s=(s+STEPS)%STEPS;
+  let v=Math.max(0,Math.min(1,(r-R0)/(R1-R0)));if(v<.1)v=0;else if(LAYERS[active].notes){const n=LAYERS[active].notes;v=Math.max(1,Math.round(v*n))/n}
+  pat[active][s]=v}
+const ringPad=new THREE.Mesh(new THREE.CircleGeometry(R1+.05,32),new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));ringPad.visible=false;ring.add(ringPad);
+
+// ---- кнопки вокруг круга --------------------------------------------------
+const stones=[];let rec=false;
+function stone(name,col,fn,lx,ly,side,isLayer){stones.push({name,col,fn,lx,ly,side,isLayer})}
+function nowStep(){const sd=60/bpm/4,k=Math.round((ac.currentTime-nextT)/sd);return (step+k+STEPS*8)%STEPS}
+function lay(l,v){if(rec&&ac){pat[l][nowStep()]=v;return true}return false}
+// 03.11.2026, слово Влада: камни слева только выбирают дорожку, без звука, выбранный обведён кольцом
+LAYERS.forEach((L,i)=>stone(L.name,L.col,()=>{active=i;layerName.draw(L.name,L.col)},-.44,.25-i*.1,'l',i));
+[['Ровно',()=>set(active,[0,4,8,12],.85)],...Object.keys(RH).map(n=>[n,()=>set(active,RH[n],.9)]),['Сброс',()=>pat[active].fill(0)]]
+  .forEach(([n,fn],i,A)=>stone(n,n==='Сброс'?0xff8a7a:0xffd9a0,fn,(i-(A.length-1)/2)*.112,R1+.1,'t'));
+stone('Запись',0xff3b30,()=>{rec=!rec;recS.draw(rec?'Пишу':'Запись',0xff3b30)},.44,.25,'r');
+stone('Бит',0xcfe8c0,()=>{set(1,[0,4,8,12],.85);set(2,[4,12],.8);set(3,[0,2,4,6,8,10,12,14],.55)},.44,.13,'r');
+stone('Быстрее',0x9fd0ff,()=>{bpm=Math.min(150,bpm+6)},.44,.01,'r');
+stone('Медленнее',0x9fd0ff,()=>{bpm=Math.max(60,bpm-6)},.44,-.11,'r');
+stone('На меня',0xffffff,()=>{calib=1},.44,-.23,'r');
+const stoneGeo=new THREE.IcosahedronGeometry(.026,1);let recS;ring.updateMatrix();
+stones.forEach(t=>{t.mesh=new THREE.Mesh(stoneGeo,new THREE.MeshBasicMaterial({color:t.col}));t.mesh.position.set(t.lx,t.ly,.03);t.mesh.userData.stone=t;ring.add(t.mesh);
+  t.rp=t.mesh.position.clone().applyMatrix4(ring.matrix);
+  const l=label(t.name,t.col,t.side==='t'?.13:.15);l.position.set(t.lx+(t.side==='l'?-.1:t.side==='r'?.1:0),t.ly+(t.side==='t'?.05:0),.03);ring.add(l);if(t.name==='Запись')recS=l;t.glow=0;t.inside=new Set()});
+
+const selRing=new THREE.Mesh(new THREE.RingGeometry(.046,.056,40),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,transparent:true,opacity:.95}));selRing.position.z=.032;ring.add(selRing);
+
+// ---- арфы ----------------------------------------------------------------
+const harps=[{x:.6,z0:-.18,dz:.058,notes:HARP.map(m=>m),col:0xbfe6ff,key:m=>m,top:.12,bot:-.82},
+             {x:-.6,z0:-.18,dz:.105,notes:BHARP,col:0xff9ccb,key:m=>'b'+m,top:.12,bot:-.82}];
+const SEG=12;
+harps.forEach((h,hi)=>{h.layer=hi?4:5;h.vib=new Float32Array(h.notes.length);h.ph=new Float32Array(h.notes.length);
+  const n=h.notes.length,g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(n*SEG*2*3),3));
+  h.top_=i=>h.top-.28*i/(n-1)*(h===harps[0]?1:.8);
+  h.line=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:h.col}));h.line.frustumCulled=false;rig.add(h.line);
+  const q=[];for(let i=0;i<n;i++)q.push(h.x,h.top_(i)+.02,h.z0+i*h.dz);for(let i=n-1;i>=0;i--)q.push(h.x,h.bot-.02,h.z0+i*h.dz);
+  const f=new THREE.BufferGeometry();f.setAttribute('position',new THREE.Float32BufferAttribute(q,3));rig.add(new THREE.LineLoop(f,new THREE.LineBasicMaterial({color:0x8a6a3c})));
+  {const pts=[];for(let i=0;i<q.length;i+=3)pts.push(new THREE.Vector3(q[i],q[i+1],q[i+2]));rig.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,true,'catmullrom',.05),90,.013,6,true),new THREE.MeshBasicMaterial({color:0x6b4f2a})))}
+  const pad=new THREE.Mesh(new THREE.PlaneGeometry((n-1)*h.dz+.06,h.top-h.bot),new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));pad.rotation.y=Math.PI/2;pad.position.set(h.x,(h.top+h.bot)/2,h.z0+(n-1)*h.dz/2);pad.visible=false;rig.add(pad);h.pad=pad;
+  const l=label(h===harps[0]?'Арфа':'Бас-арфа',h.col,.14);l.position.set(h.x,h.top+.07,h.z0+h.dz*(n-1)/2);rig.add(l)});
+function strum(h,i){h.vib[i]=1;pluck(h.key(h.notes[i]),.7);react(LAYERS[h.layer].id);lay(h.layer,(i+1)/h.notes.length)}
+function drawHarp(h,dt,t){const a=h.line.geometry.attributes.position,n=h.notes.length;let k=0;
+  for(let i=0;i<n;i++){h.vib[i]*=Math.exp(-dt*(h===harps[0]?2.2:1.4));const z=h.z0+i*h.dz,T=h.top_(i),A=h.vib[i]*.012*Math.sin(t*(70-i*2));
+    for(let j=0;j<SEG;j++)for(const e of [j,j+1]){const u=e/SEG;a.setXYZ(k++,h.x+A*Math.sin(u*Math.PI),h.bot+(T-h.bot)*u,z)}}
+  a.needsUpdate=true}
+
+// ---- руки ----------------------------------------------------------------
+const hands=[renderer.xr.getHand(0),renderer.xr.getHand(1)];hands.forEach(h=>scene.add(h));
+const grips=[renderer.xr.getController(0),renderer.xr.getController(1)];grips.forEach(g=>scene.add(g));
+const dots=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,0),new THREE.MeshBasicMaterial({color:0xe8ffd8}),50);dots.frustumCulled=false;dots.count=0;scene.add(dots);
+const FG=['index-finger','middle-finger','ring-finger','pinky-finger'],BONES=[];
+{const ch=a=>{for(let i=0;i<a.length-1;i++)BONES.push([a[i],a[i+1]])};ch(['wrist','thumb-metacarpal','thumb-phalanx-proximal','thumb-phalanx-distal','thumb-tip']);
+ FG.forEach(n=>ch(['wrist',...['metacarpal','phalanx-proximal','phalanx-intermediate','phalanx-distal','tip'].map(k=>n+'-'+k)]))}
+const boneM=new THREE.MeshBasicMaterial({color:0xe8ffd8,transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false});
+const bones=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,6,1,true),boneM,48);bones.frustumCulled=false;bones.count=0;scene.add(bones);
+const bQ=new THREE.Quaternion(),bUp=new THREE.Vector3(0,1,0),bA=new THREE.Vector3(),bB=new THREE.Vector3(),bS=new THREE.Vector3();
+const fingers={};           // id -> {p,prev,frames}
+const v1=new THREE.Vector3(),v2=new THREE.Vector3();
+function feed(id,world){let f=fingers[id];if(!f)f=fingers[id]={p:new THREE.Vector3(),prev:new THREE.Vector3(),seen:-9,inRing:0,paint:id.endsWith('i')};
+  f.prev.copy(f.p);f.p.copy(rig.worldToLocal(v1.copy(world)));f.fresh=frame-f.seen<3;f.seen=frame}
+let mouseF=null,hasHands=false;
+function readHands(){hasHands=false;let n=0,nb=0;
+  hands.forEach((h,i)=>{const J=h.joints,tip=J&&J['index-finger-tip'];
+    if(tip&&tip.visible&&tip.position.lengthSq()>0){hasHands=true;
+      feed('h'+i+'i',tip.getWorldPosition(v2));
+      const mid=J['middle-finger-tip'];if(mid)feed('h'+i+'m',mid.getWorldPosition(v2));
+      for(const k in J){const j=J[k];if(!j.visible)continue;j.getWorldPosition(v2);m4.makeScale(.0085,.0085,.0085);m4.setPosition(v2);dots.setMatrixAt(n++,m4)}
+      BONES.forEach(([a,b])=>{const A=J[a],B=J[b];if(!A||!B||!A.visible||!B.visible)return;A.getWorldPosition(bA);B.getWorldPosition(bB);v2.subVectors(bB,bA);const l=v2.length();if(!l)return;
+        bQ.setFromUnitVectors(bUp,v2.divideScalar(l));bS.set(.0065,l,.0065);bA.lerp(bB,.5);m4.compose(bA,bQ,bS);bones.setMatrixAt(nb++,m4)});
+    }else if(renderer.xr.isPresenting&&grips[i].visible){m4.makeScale(.015,.015,.015);v2.set(0,0,-.05).applyMatrix4(grips[i].matrixWorld);feed('c'+i+'i',v2);m4.setPosition(v2);dots.setMatrixAt(n++,m4)}});
+  dots.count=Math.min(n,50);dots.instanceMatrix.needsUpdate=true;bones.count=Math.min(nb,48);bones.instanceMatrix.needsUpdate=true;boneM.color.copy(PAL[active]).lerp(WHITE,.35);
+  if(mouseF)feed('mi',mouseF)}
+
+function touch(){const loc=v1.clone();
+  for(const id in fingers){const f=fingers[id];if(f.seen!==frame)continue;
+    // круг
+    if(f.paint){const q=ring.worldToLocal(rig.localToWorld(v2.copy(f.p)));
+      if(Math.abs(q.z)<.05){if(++f.inRing>=2||id==='mi')paint(q.x,q.y)}else f.inRing=0}
+    // камни
+    stones.forEach(t=>{const d=t.rp.distanceTo(f.p);
+      if(t.inside.has(id)){if(d>.075)t.inside.delete(id)}else if(d<.05&&f.paint){t.inside.add(id);t.fn();t.glow=1;if(t.isLayer==null)click()}});
+    // струны
+    if(f.fresh)harps.forEach(h=>{if(Math.abs(f.p.x-h.x)>.1||f.p.y>h.top+.03||f.p.y<h.bot-.03)return;
+      const n=h.notes.length;for(let i=0;i<n;i++){const z=h.z0+i*h.dz;if((f.prev.z-z)*(f.p.z-z)<0&&Math.abs(f.p.z-f.prev.z)<.3&&f.p.y<h.top_(i)+.02)strum(h,i)}})}
+  v1.copy(loc)}
+
+// ---- экран: осмотр, ходьба, клики ----------------------------------------
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),cv=renderer.domElement;
+const instr=()=>[ringPad,...stones.map(t=>t.mesh),...harps.map(x=>x.pad)];
+let yaw=0,pitch=-.42,look=null,moved=0,mouseHold=0,letGo=false,jx=0,jy=0;const keys={};
+camera.rotation.order='YXZ';
+const aim=e=>{ndc.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(ndc,camera)};
+function pick(e){aim(e);const h=ray.intersectObjects(instr(),false)[0];return h||null}
+function worldTap(e){aim(e);const h=ray.intersectObjects([trunkM,rockM,groundM],false)[0];if(!h||!ac)return;
+  const l=h.object===trunkM?2:h.object===rockM?0:1,id=LAYERS[l].id;VOICE[id](ac.currentTime,.9);hit[l*STEPS]=1;lay(l,.85);
+  if(id==='kick')react(id,h.point.x,h.point.z);else react(id)}
+function harpTap(h){const H=harps.find(x=>x.pad===h.object);if(!H)return;const q=rig.worldToLocal(h.point.clone());let i=Math.round((q.z-H.z0)/H.dz);
+  if(i<0||i>=H.notes.length)return;strum(H,i)}
+cv.addEventListener('pointerdown',e=>{initAudio();try{cv.setPointerCapture(e.pointerId)}catch(_){}
+  moved=0;letGo=false;const h=pick(e);if(h){mouseF=h.point.clone();mouseHold=2;harpTap(h);look=null}else look={x:e.clientX,y:e.clientY}});
+cv.addEventListener('pointermove',e=>{if(look){const dx=e.clientX-look.x,dy=e.clientY-look.y;look={x:e.clientX,y:e.clientY};moved+=Math.abs(dx)+Math.abs(dy);
+    yaw-=dx*.0042;pitch=Math.max(-1.35,Math.min(1.2,pitch-dy*.0042))}
+  else if(mouseF){const h=pick(e);if(h)mouseF=h.point.clone()}});
+cv.addEventListener('pointerup',e=>{if(look&&moved<8)worldTap(e);look=null;letGo=true});
+cv.addEventListener('pointercancel',()=>{look=null;letGo=true});
+['pointerup','touchend','click','keydown'].forEach(n=>addEventListener(n,()=>initAudio(),true));
+addEventListener('keydown',e=>{keys[e.code]=1});addEventListener('keyup',e=>{keys[e.code]=0});
+{const J=document.getElementById('joy'),K=J.firstChild;if('ontouchstart' in window)J.style.display='block';
+ const mv=e=>{const r=J.getBoundingClientRect();let x=(e.clientX-r.left-60)/60,y=(e.clientY-r.top-60)/60,m=Math.hypot(x,y);if(m>1){x/=m;y/=m}jx=x;jy=y;K.style.transform=`translate(${x*40}px,${y*40}px)`};
+ J.addEventListener('pointerdown',e=>{J.setPointerCapture(e.pointerId);mv(e)});J.addEventListener('pointermove',e=>{if(e.buttons)mv(e)});
+ const end=()=>{jx=jy=0;K.style.transform=''};J.addEventListener('pointerup',end);J.addEventListener('pointercancel',end)}
+function walk(dt){const f=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-jy,r=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+jx;
+  const c=Math.cos(yaw),n=Math.sin(yaw),sp=2.4*dt;camera.position.x+=(-n*f+c*r)*sp;camera.position.z+=(-c*f-n*r)*sp;
+  const q=Math.hypot(camera.position.x,camera.position.z);if(q>11.5){camera.position.x*=11.5/q;camera.position.z*=11.5/q}
+  camera.position.y=1.55+H(camera.position.x,camera.position.z);camera.rotation.set(pitch,yaw,0)}
+
+// ---- вход в шлем ---------------------------------------------------------
+const btn=document.getElementById('vr');let calib=0,fpsW=0,fpsN=0,fpsL=0;
+function fit(){if(navigator.xr)navigator.xr.isSessionSupported('immersive-vr').then(ok=>{btn.disabled=!ok;btn.textContent=ok?'Войти в лес (шлем)':'Шлема нет, играй мышью'}).catch(()=>{btn.textContent='Шлема нет, играй мышью'});else btn.textContent='Шлема нет, играй мышью'}
+fit();
+btn.onclick=async()=>{initAudio();const s=await navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','hand-tracking']});
+  await renderer.xr.setSession(s);if(renderer.xr.setFoveation)renderer.xr.setFoveation(1);calib=30;fpsW=-3;fpsN=0;s.addEventListener('end',()=>{rig.position.set(0,1.55,0);rig.rotation.y=0;U.uKeep.value=1})};
+function recenter(){const c=renderer.xr.getCamera(camera),d=new THREE.Vector3();c.getWorldPosition(rig.position);c.getWorldDirection(d);rig.rotation.y=Math.atan2(-d.x,-d.z)}
+
+// ---- кадр ----------------------------------------------------------------
+let frame=0,last=performance.now();
+function loop(now){frame++;const dt=Math.min(.05,(now-last)/1000);last=now;const t=now/1000;U.uT.value=t;
+  if(calib>0&&renderer.xr.isPresenting&&--calib===0)recenter();else if(calib>0&&!renderer.xr.isPresenting)calib=0;
+  if(ac)while(events.length&&events[0].t<=ac.currentTime){const e=events.shift();
+    if(e.l<0){const a=headG.attributes.position,[x,y]=spoke(e.s,R0),[X,Y]=spoke(e.s,R1+.02);a.setXYZ(0,x,y,.004);a.setXYZ(1,X,Y,.004);a.needsUpdate=true;continue}
+    hit[e.l*STEPS+e.s]=1;const id=LAYERS[e.l].id;react(id);
+    if(id==='harp'){const H=harps[0],i=Math.round(pat[e.l][e.s]*10)-1;if(i>=0)H.vib[i]=1}}
+  for(let i=0;i<hit.length;i++)hit[i]*=Math.exp(-dt*9);
+  snT+=dt;U.uSn.value=Math.min(1,snT*1.1);U.uF.value+=dt*(1+U.uH.value*7+U.uB.value*2);
+  U.uK.value*=Math.exp(-dt*5);U.uS.value*=Math.exp(-dt*2.6);U.uH.value*=Math.exp(-dt*9);U.uD.value*=Math.exp(-dt*5);U.uB.value*=Math.exp(-dt*3.5);U.uA.value*=Math.exp(-dt*2.2);
+  U.uM.value=.5+.5*Math.sin(t*.17);U.uRec.value+=((rec?1:0)-U.uRec.value)*Math.min(1,dt*5);
+  pillars.forEach(m=>{m.a*=Math.exp(-dt*3.2);m.material.opacity=m.a;m.material.color.copy(m.tint);m.visible=m.a>.01});
+  scene.background.setRGB(.008+U.uB.value*.03+U.uRec.value*.02,.016+U.uK.value*.018,.012+U.uA.value*.05);drawSparks(dt);
+  if(!renderer.xr.isPresenting)walk(dt);
+  if(renderer.xr.isPresenting){const pn=performance.now(),w=Math.min(.2,(pn-fpsL)/1e3);fpsL=pn;fpsW+=w;if(fpsW>0)fpsN++;
+    if(fpsW>=1.5){if(fpsN/fpsW<64)U.uKeep.value=Math.max(.3,U.uKeep.value-.15);fpsW=0;fpsN=0}}
+  readHands();touch();
+  if(letGo&&--mouseHold<=0){letGo=false;mouseF=null;if(fingers.mi)fingers.mi.seen=-9;stones.forEach(t=>t.inside.delete('mi'))}
+  drawRing();harps.forEach(h=>drawHarp(h,dt,t));
+  {const S=stones.find(s=>s.isLayer===active);selRing.visible=!!S;if(S)selRing.position.set(S.lx,S.ly,.032)}stones.forEach(s=>{s.glow*=Math.exp(-dt*5);const on=s.isLayer===active||(s.name==='Запись'&&rec&&Math.sin(t*9)>0);s.mesh.scale.setScalar((on?1.4:1)+s.glow*.7)});
+  renderer.render(scene,camera)}
+renderer.setAnimationLoop(loop);
+window.__krug={pat,rig,ring,stones,harps,fingers,U,get active(){return active},get hasHands(){return hasHands},get frame(){return frame},get audio(){return ac&&ac.state},stepNow:()=>step,renderer,camera,keys,bones,dots,get rec(){return rec},peak(){if(!peakA)return 0;peakA.getFloatTimeDomainData(peakD);return Math.max(...peakD.map(Math.abs))}};
+</script></body></html>
