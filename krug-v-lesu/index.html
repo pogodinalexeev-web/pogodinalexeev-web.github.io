@@ -15,7 +15,7 @@ canvas{position:fixed;inset:0;display:block;touch-action:none}
 <body><div id="chat" hidden></div><script src="/f/garden.js?v=12"></script>
 <div id="ui"><details id="help"><summary><b>Круг в лесу</b><span class="how">как играть</span></summary>
 Тяни по пустому месту, чтобы осмотреться, WASD или стрелки, чтобы идти. Слева от круга камни дорожек: тык выбирает дорожку, она обводится кольцом. Сверху рисунки на выбранную дорожку. Справа «Запись»: всё сыгранное ложится в круг. Арфы по бокам, мох, стволы и камни тоже играют.
-</details><button id="vr" disabled>Проверяю шлем…</button></div>
+<button id="vr" disabled>Проверяю шлем…</button></details></div>
 <div id="joy"><i></i></div>
 <script type="module">
 import * as THREE from './lib/three.module.js';
@@ -32,7 +32,7 @@ const STEPS=16, pat=LAYERS.map(()=>new Float32Array(STEPS));
 const set=(l,steps,v=.8)=>{pat[l].fill(0);steps.forEach(s=>pat[l][s]=v)};
 const RH={ 'Тресильо':[0,6,12], 'Клаве 3-2':[0,3,6,10,12], 'Румба':[0,3,7,10,12], 'Синквильо':[0,4,6,10,12] };
 let active=0, bpm=96;
-set(1,[0,4,8,12],.85); set(0,RH['Тресильо'],.9);
+// 03.11.2026, слово Влада: на старте круг пустой, ритм ставит человек
 // минорная пентатоника от ре
 const hz=m=>440*Math.pow(2,(m-69)/12);
 const BASS=[38,41,43,45,48,50], HARP=[62,65,67,69,72,74,77,79,81,84], BHARP=[38,41,43,45,48,50];
@@ -82,8 +82,8 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth
 renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local-floor');
 if(renderer.xr.setFramebufferScaleFactor)renderer.xr.setFramebufferScaleFactor(.9);
 document.body.appendChild(renderer.domElement);
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x020403);
-const camera=new THREE.PerspectiveCamera(66,innerWidth/innerHeight,.03,60);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x020403);scene.fog=new THREE.Fog(0x020403,9,46);
+const camera=new THREE.PerspectiveCamera(66,innerWidth/innerHeight,.03,160);
 camera.position.set(0,1.55,.62);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
@@ -97,10 +97,13 @@ const pt=(x,y,z,c,k,s,d)=>{P.push(x,y,z);C.push(c[0],c[1],c[2]);K.push(k);S.push
 // мох
 for(let i=0;i<27000;i++){const r=13*Math.pow(rng(),.72)+.1,a=rng()*6.283,x=Math.cos(a)*r,z=Math.sin(a)*r,g=R(.35,1),w=rng()<.05?.8:.1;
   pt(x,H(x,z)+R(0,.05),z,[.2*g+w,.62*g+w*.7,.12*g+w*.3],0,R(.012,.026))}
+// 03.11.2026: дальний мох до 48, чтобы волны уходили в темноту
+for(let i=0;i<22000;i++){const r=13+35*Math.pow(rng(),.85),a=rng()*6.283,x=Math.cos(a)*r,z=Math.sin(a)*r,g=R(.35,1),w=rng()<.04?.7:.08;
+  pt(x,H(x,z)+R(0,.05),z,[.2*g+w,.62*g+w*.7,.12*g+w*.3],0,R(.016,.032))}
 // стволы
 const trunks=[];
-for(let i=0;i<32;i++){const a=rng()*6.283,r=R(3.2,13),x=Math.cos(a)*r,z=Math.sin(a)*r,tr=R(.13,.3);trunks.push([x,H(x,z),z,tr]);
-  for(let j=0;j<400;j++){const f=rng()*6.283,h=Math.pow(rng(),1.7)*12,lit=Math.max(.15,Math.cos(f-a-3.14));pt(x+Math.cos(f)*tr,H(x,z)+h,z+Math.sin(f)*tr,[.75*lit,.8*lit,.7*lit],1,R(.014,.03),[Math.cos(f),0,Math.sin(f)])}}
+for(let i=0;i<96;i++){const a=rng()*6.283,r=i<32?R(3.2,13):R(13,46),x=Math.cos(a)*r,z=Math.sin(a)*r,tr=R(.13,.3);trunks.push([x,H(x,z),z,tr]);
+  for(let j=0,nj=r<13?400:220;j<nj;j++){const f=rng()*6.283,h=Math.pow(rng(),1.7)*12,lit=Math.max(.15,Math.cos(f-a-3.14));pt(x+Math.cos(f)*tr,H(x,z)+h,z+Math.sin(f)*tr,[.75*lit,.8*lit,.7*lit],1,R(.014,.03),[Math.cos(f),0,Math.sin(f)])}}
 // камни
 const rocks=[];
 for(let i=0;i<7;i++){const a=rng()*6.283,r=R(2.2,7),x=Math.cos(a)*r,z=Math.sin(a)*r,s=R(.3,.8);rocks.push([x,H(x,z)+s*.2,z,s]);
@@ -111,7 +114,7 @@ for(let i=0;i<30;i++){const a=rng()*6.283,r=R(1.5,6.5),x=Math.cos(a)*r,z=Math.si
 // светлячки
 for(let i=0;i<260;i++){const a=rng()*6.283,r=R(1.2,9);pt(Math.cos(a)*r,R(.7,3.4),Math.sin(a)*r,[1,.75,.28],4,R(.03,.06))}
 // звёзды
-for(let i=0;i<1400;i++){const a=rng()*6.283,e=R(.2,1.45),r=34;pt(Math.cos(a)*Math.cos(e)*r,Math.sin(e)*r+2,Math.sin(a)*Math.cos(e)*r,[.75,.85,1],5,R(.1,.2))}
+for(let i=0;i<1400;i++){const a=rng()*6.283,e=R(.2,1.45),r=110;pt(Math.cos(a)*Math.cos(e)*r,Math.sin(e)*r+2,Math.sin(a)*Math.cos(e)*r,[.75,.85,1],5,R(.1,.2))}
 
 const pg=new THREE.BufferGeometry();
 pg.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
@@ -122,14 +125,14 @@ pg.setAttribute('aSize',new THREE.Float32BufferAttribute(Z,1));
 pg.setAttribute('aDir',new THREE.Float32BufferAttribute(D,3));
 const PAL=LAYERS.map(L=>new THREE.Color(L.col));
 const U={uT:{value:0},uF:{value:0},uK:{value:0},uS:{value:0},uSn:{value:0},uH:{value:0},uD:{value:0},uB:{value:0},uA:{value:0},uM:{value:0},uRec:{value:0},uKeep:{value:1},uScale:{value:900},
-  uR:{value:Array.from({length:8},()=>new THREE.Vector4(0,0,-99,0))},uP:{value:PAL}};
+  uR:{value:Array.from({length:16},()=>new THREE.Vector4(0,0,-99,0))},uP:{value:PAL}};
 const WHITE=new THREE.Color(0xffffff);
 const pm=new THREE.ShaderMaterial({uniforms:U,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
 vertexShader:`attribute vec3 aCol,aDir;attribute float aKind,aSeed,aSize;
-uniform float uT,uF,uK,uS,uSn,uH,uD,uB,uA,uM,uRec,uKeep,uScale;uniform vec4 uR[8];uniform vec3 uP[6];varying vec3 vC;
+uniform float uT,uF,uK,uS,uSn,uH,uD,uB,uA,uM,uRec,uKeep,uScale;uniform vec4 uR[16];uniform vec3 uP[6];varying vec3 vC;
 void main(){if(aKind<1.5&&aSeed>uKeep){gl_Position=vec4(2.,2.,2.,1.);gl_PointSize=0.;vC=vec3(0.);return;}vec3 p=position,c=aCol;float g=1.;
  if(aKind<.5){c=mix(c,c.gbr*1.1,uM*.55);g+=uB*.8*aSeed+uK*.25;
-  for(int i=0;i<8;i++){float a=uT-uR[i].z;if(a<2.4){float d=length(p.xz-uR[i].xy),w=d-a*5.5,e=exp(-w*w*1.4)*(1.-a/2.4);c+=uP[int(uR[i].w)]*e*1.6;p.y+=e*.34;}}
+  for(int i=0;i<16;i++){float a=uT-uR[i].z;if(a<8.){float d=length(p.xz-uR[i].xy),w=d-a*5.5,e=exp(-w*w*1.4)*(1.-a/8.);c+=uP[int(uR[i].w)]*e*1.6;p.y+=e*.34;}}
   p.y+=sin(p.x*1.1+uT*2.)*sin(p.z*.9-uT*1.6)*.05*uB;}
  else if(aKind<1.5){float w=p.y-uSn*13.;float e=exp(-w*w*.45)*uS;g+=e*5.+uK*.3;c=mix(c,vec3(1.,.95,1.),e);p+=aDir*e*.05*step(.4,aSeed);p.xz+=aDir.xz*uK*.03*aSeed;}
  else if(aKind<2.5){g+=uD*2.6;p+=aDir*uD*(.1+aSeed*.22);c=mix(c,uP[0],uD*.7);}
@@ -138,7 +141,7 @@ void main(){if(aKind<1.5&&aSeed>uKeep){gl_Position=vec4(2.,2.,2.,1.);gl_PointSiz
  else{g=.45+.3*sin(uT*.8+aSeed*80.)+uB*1.2+uA*1.3*step(.6,aSeed);p.y+=sin(uT*.1+aSeed*9.)*.3;c=mix(c,uP[5],uA*.5);}
  c=mix(c,c*vec3(1.25,.72,.72),uRec*.5);
  vec4 mv=modelViewMatrix*vec4(p,1.);float z=-mv.z;
- vC=c*g*(aKind>4.5?1.:(1.-smoothstep(5.,14.,z)*.75));
+ vC=c*g*(aKind>4.5?1.:(1.-smoothstep(4.,44.,z)*.97));
  gl_PointSize=clamp(aSize*uScale*(1.+.25*min(g,3.))/z,1.,22.);gl_Position=projectionMatrix*mv;}`,
 fragmentShader:`varying vec3 vC;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,.08,d);gl_FragColor=vec4(vC*a,a);}`});
 const forest=new THREE.Points(pg,pm);forest.frustumCulled=false;scene.add(forest);
@@ -146,7 +149,7 @@ const forest=new THREE.Points(pg,pm);forest.frustumCulled=false;scene.add(forest
 // тёмная земля, стволы и камни, чтобы точки лежали на чём-то
 const dark=new THREE.MeshBasicMaterial({color:0x030604});
 let groundM,trunkM,rockM;
-{const g=new THREE.PlaneGeometry(34,34,54,54);g.rotateX(-Math.PI/2);const p=g.attributes.position;for(let i=0;i<p.count;i++)p.setY(i,H(p.getX(i),p.getZ(i))-.02);groundM=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x061006}));scene.add(groundM);
+{const g=new THREE.PlaneGeometry(110,110,90,90);g.rotateX(-Math.PI/2);const p=g.attributes.position;for(let i=0;i<p.count;i++)p.setY(i,H(p.getX(i),p.getZ(i))-.02);groundM=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x061006}));scene.add(groundM);
  const t=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,8,1,true),dark,trunks.length),m=new THREE.Matrix4();
  trunks.forEach(([x,y,z,r],i)=>{m.makeScale(r*.97,14,r*.97);m.setPosition(x,y+7,z);t.setMatrixAt(i,m)});scene.add(t);trunkM=t;
  const k=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),dark,rocks.length);
@@ -162,12 +165,12 @@ const spCv=document.createElement('canvas');spCv.width=spCv.height=32;{const c=s
 const sparks=new THREE.Points(spG,new THREE.PointsMaterial({size:.07,map:new THREE.CanvasTexture(spCv),vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));sparks.frustumCulled=false;scene.add(sparks);
 function burst(x,y,z,col,n){const c=new THREE.Color(col);for(let i=0;i<n;i++){const k=spI=(spI+1)%SP;spP.set([x,y,z],k*3);const a=Math.random()*6.283,u=Math.random()*1.6;spV.set([Math.cos(a)*u,.9+Math.random()*2.6,Math.sin(a)*u],k*3);spL[k]=1;spC.set([c.r,c.g,c.b],k*3)}}
 function drawSparks(dt){for(let k=0;k<SP;k++){if(spL[k]<=0)continue;spL[k]-=dt*.8;const i=k*3;spV[i+1]-=dt*1.6;spP[i]+=spV[i]*dt;spP[i+1]+=spV[i+1]*dt;spP[i+2]+=spV[i+2]*dt;const f=spL[k]<=0?0:1-dt*.9;spC[i]*=f;spC[i+1]*=f;spC[i+2]*=f}spG.attributes.position.needsUpdate=true;spG.attributes.color.needsUpdate=true}
-let rip=0;function ripple(x,z,c){U.uR.value[rip].set(x,z,U.uT.value,c);rip=(rip+1)%8}
+let rip=0;function ripple(x,z,c){U.uR.value[rip].set(x,z,U.uT.value,c);rip=(rip+1)%16}
 let snT=9;
 function react(id,x,z){const L=LAYERS.findIndex(q=>q.id===id),col=LAYERS[L].col;
   const pick=a=>a[Math.floor(Math.random()*a.length)];
   if(id==='kick'){if(x===undefined){const a=Math.random()*6.283,r=2+Math.random()*5;x=Math.cos(a)*r;z=Math.sin(a)*r}ripple(x,z,L);pillar(x,z,col);burst(x,H(x,z)+.1,z,col,24);U.uK.value=1}
-  else if(id==='snare'){const t=pick(trunks);ripple(t[0],t[2],L);burst(t[0],1+Math.random()*3,t[2],col,16);U.uS.value=1;snT=0}
+  else if(id==='snare'){const t=pick(trunks.slice(0,32));ripple(t[0],t[2],L);burst(t[0],1+Math.random()*3,t[2],col,16);U.uS.value=1;snT=0}
   else if(id==='drum'){const r=pick(rocks);ripple(r[0],r[2],L);burst(r[0],r[1]+r[3]*.6,r[2],col,26);U.uD.value=1}
   else if(id==='shaker'){U.uH.value=.7;const a=Math.random()*6.283,r=1+Math.random()*4;burst(Math.cos(a)*r,.4+Math.random(),Math.sin(a)*r,col,4)}
   else if(id==='bass'){ripple(0,-1,L);pillar(0,-3.5,col,.4);U.uB.value=1}
@@ -341,7 +344,7 @@ function loop(now){frame++;const dt=Math.min(.05,(now-last)/1000);last=now;const
   U.uK.value*=Math.exp(-dt*5);U.uS.value*=Math.exp(-dt*2.6);U.uH.value*=Math.exp(-dt*9);U.uD.value*=Math.exp(-dt*5);U.uB.value*=Math.exp(-dt*3.5);U.uA.value*=Math.exp(-dt*2.2);
   U.uM.value=.5+.5*Math.sin(t*.17);U.uRec.value+=((rec?1:0)-U.uRec.value)*Math.min(1,dt*5);
   pillars.forEach(m=>{m.a*=Math.exp(-dt*3.2);m.material.opacity=m.a;m.material.color.copy(m.tint);m.visible=m.a>.01});
-  scene.background.setRGB(.008+U.uB.value*.03+U.uRec.value*.02,.016+U.uK.value*.018,.012+U.uA.value*.05);drawSparks(dt);
+  scene.background.setRGB(.008+U.uB.value*.03+U.uRec.value*.02,.016+U.uK.value*.018,.012+U.uA.value*.05);scene.fog.color.copy(scene.background);drawSparks(dt);
   if(!renderer.xr.isPresenting)walk(dt);
   if(renderer.xr.isPresenting){const pn=performance.now(),w=Math.min(.2,(pn-fpsL)/1e3);fpsL=pn;fpsW+=w;if(fpsW>0)fpsN++;
     if(fpsW>=1.5){if(fpsN/fpsW<64)U.uKeep.value=Math.max(.3,U.uKeep.value-.15);fpsW=0;fpsN=0}}
