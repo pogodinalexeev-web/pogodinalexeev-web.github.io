@@ -8,12 +8,13 @@ canvas{position:fixed;inset:0;display:block;touch-action:none}
 #ui{position:fixed;left:14px;top:12px;max-width:340px;z-index:5;font-size:13px;text-shadow:0 1px 3px #000;pointer-events:none}#ui button{pointer-events:auto}
 #joy{position:fixed;right:22px;bottom:26px;width:120px;height:120px;border-radius:50%;border:1px solid #9cff6a88;z-index:6;display:none;touch-action:none}
 #joy i{position:absolute;left:40px;top:40px;width:40px;height:40px;border-radius:50%;background:#9cff6a66}
-#ui b{display:inline;font-size:20px}#help summary{list-style:none;cursor:pointer;pointer-events:auto;margin-bottom:4px}#help summary::-webkit-details-marker{display:none}.how{margin-left:8px;font-size:12px;color:#9cff6a;border:1px solid #9cff6a88;border-radius:99px;padding:1px 8px;vertical-align:3px}#help[open] .how::after{content:" ▴"}#help:not([open]) .how::after{content:" ▾"}#vr{display:block}
+#ui b{display:block;font-size:20px;margin-bottom:4px}
 #vr{margin-top:10px;padding:12px 18px;border:1px solid #9cff6a;background:#0b1508;color:#d9ffc4;font:inherit;border-radius:8px;cursor:pointer}
 #vr[disabled]{opacity:.45;cursor:default}
 /* 03.11.2026, слово Влада: без зума и без выделений */
 *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;outline:none}
 html,body{touch-action:none;overscroll-behavior:none;-webkit-text-size-adjust:100%}
+#ui b{display:inline;font-size:20px}#help summary{list-style:none;cursor:pointer;pointer-events:auto;margin-bottom:4px}#help summary::-webkit-details-marker{display:none}.how{margin-left:8px;font-size:12px;color:#e0a050;border:1px solid #e0a05088;border-radius:99px;padding:1px 8px;vertical-align:3px}#help[open] .how::after{content:" ▴"}#help:not([open]) .how::after{content:" ▾"}#vr{display:block}
 </style>
 <script>
 (function(){var no=function(e){e.preventDefault()};
@@ -21,7 +22,7 @@ html,body{touch-action:none;overscroll-behavior:none;-webkit-text-size-adjust:10
 document.addEventListener('touchmove',function(e){if(e.touches.length>1||(e.scale&&e.scale!==1))e.preventDefault()},{passive:false});
 })();
 </script></head>
-<body><div id="chat" hidden></div><script src="/f/garden.js?v=12"></script>
+<body><script>window.THEME='koltsa'</script><div id="chat" hidden></div><script src="/f/garden.js?v=12"></script>
 <div id="ui"><details id="help"><summary><b>Круг в лесу</b><span class="how">как играть</span></summary>
 Тяни по пустому месту, чтобы осмотреться, WASD или стрелки, чтобы идти. Слева от круга камни дорожек: тык выбирает дорожку, она обводится кольцом. Справа «Запись»: всё сыгранное ложится в круг. Арфы по бокам, мох, стволы и камни тоже играют.
 <button id="vr" disabled>Проверяю шлем…</button></details></div>
@@ -91,8 +92,11 @@ renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth
 renderer.xr.enabled=true;renderer.xr.setReferenceSpaceType('local-floor');
 if(renderer.xr.setFramebufferScaleFactor)renderer.xr.setFramebufferScaleFactor(.9);
 document.body.appendChild(renderer.domElement);
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x020403);scene.fog=new THREE.Fog(0x020403,9,46);
-const camera=new THREE.PerspectiveCamera(66,innerWidth/innerHeight,.03,160);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x020403);
+const TH={koltsa:{tint:[1.15,.95,.7],side:0x2a1a0e,leg:0x1e130a,line:0xc98a3c,ring:0xe0a050,fog:0xffb060,dark:.62,btn:1.1},kamen:{tint:[.72,1,.98],side:0x24282a,leg:0x191d1e,line:0x8fd8e8,ring:0xbdf0ff,fog:0x7fb8c8,dark:.72,btn:1.5}}[window.THEME];
+const txl=new THREE.TextureLoader(),tex=n=>{const t=txl.load('t/'+n+'.jpg');t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t};
+const texDisk=tex('disk'),texBtn=tex('knopka');
+const camera=new THREE.PerspectiveCamera(66,innerWidth/innerHeight,.03,120);
 camera.position.set(0,1.55,.62);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
@@ -106,13 +110,16 @@ const pt=(x,y,z,c,k,s,d)=>{P.push(x,y,z);C.push(c[0],c[1],c[2]);K.push(k);S.push
 // мох
 for(let i=0;i<27000;i++){const r=13*Math.pow(rng(),.72)+.1,a=rng()*6.283,x=Math.cos(a)*r,z=Math.sin(a)*r,g=R(.35,1),w=rng()<.05?.8:.1;
   pt(x,H(x,z)+R(0,.05),z,[.2*g+w,.62*g+w*.7,.12*g+w*.3],0,R(.012,.026))}
-// 03.11.2026: дальний мох до 48, чтобы волны уходили в темноту
-for(let i=0;i<22000;i++){const r=13+35*Math.pow(rng(),.85),a=rng()*6.283,x=Math.cos(a)*r,z=Math.sin(a)*r,g=R(.35,1),w=rng()<.04?.7:.08;
-  pt(x,H(x,z)+R(0,.05),z,[.2*g+w,.62*g+w*.7,.12*g+w*.3],0,R(.016,.032))}
+for(let i=0;i<9000;i++){const r=R(13,58),a=rng()*6.283,x=Math.cos(a)*r,z=Math.sin(a)*r,g=R(.3,.9);pt(x,H(x,z)+R(0,.06),z,[.22*g,.58*g,.3*g],0,R(.03,.06))}
 // стволы
 const trunks=[];
-for(let i=0;i<96;i++){const a=rng()*6.283,r=i<32?R(3.2,13):R(13,46),x=Math.cos(a)*r,z=Math.sin(a)*r,tr=R(.13,.3);trunks.push([x,H(x,z),z,tr]);
-  for(let j=0,nj=r<13?400:220;j<nj;j++){const f=rng()*6.283,h=Math.pow(rng(),1.7)*12,lit=Math.max(.15,Math.cos(f-a-3.14));pt(x+Math.cos(f)*tr,H(x,z)+h,z+Math.sin(f)*tr,[.75*lit,.8*lit,.7*lit],1,R(.014,.03),[Math.cos(f),0,Math.sin(f)])}}
+for(let i=0;i<32;i++){const a=rng()*6.283,r=R(3.2,13),x=Math.cos(a)*r,z=Math.sin(a)*r,tr=R(.13,.3);trunks.push([x,H(x,z),z,tr]);
+  for(let j=0;j<400;j++){const f=rng()*6.283,h=Math.pow(rng(),1.7)*12,lit=Math.max(.15,Math.cos(f-a-3.14));pt(x+Math.cos(f)*tr,H(x,z)+h,z+Math.sin(f)*tr,[.75*lit,.8*lit,.7*lit],1,R(.014,.03),[Math.cos(f),0,Math.sin(f)])}}
+// дальние деревья рядами: тёмные колонны и светящаяся кора
+const farT=[];
+for(let i=0;i<110;i++){const a=rng()*6.283,r=14+44*Math.pow(rng(),.8),x=Math.cos(a)*r,z=Math.sin(a)*r,tr=R(.28,.75),hh=R(16,30),warm=rng()<.3;farT.push([x,z,tr,hh]);
+  for(let j=0;j<120;j++){const f=a+3.14+R(-1.2,1.2),h=Math.pow(rng(),1.5)*hh,lit=Math.pow(Math.max(0,Math.cos(f-a-3.14)),2)*R(.4,1);pt(x+Math.cos(f)*tr*(1-h/hh*.6),H(x,z)+h,z+Math.sin(f)*tr*(1-h/hh*.6),warm?[1*lit,.62*lit,.3*lit]:[.42*lit,.8*lit,.72*lit],1,R(.05,.09),[Math.cos(f),0,Math.sin(f)])}
+  for(let j=0;j<36;j++){const f=rng()*6.283,e=rng(),h=hh*(.55+.45*e),q=(1-e)*R(1.2,3.4);pt(x+Math.cos(f)*q,H(x,z)+h,z+Math.sin(f)*q,warm?[.5,.34,.16]:[.14,.34,.3],1,R(.06,.11),[Math.cos(f),0,Math.sin(f)])}}
 // камни
 const rocks=[];
 for(let i=0;i<7;i++){const a=rng()*6.283,r=R(2.2,7),x=Math.cos(a)*r,z=Math.sin(a)*r,s=R(.3,.8);rocks.push([x,H(x,z)+s*.2,z,s]);
@@ -123,7 +130,7 @@ for(let i=0;i<30;i++){const a=rng()*6.283,r=R(1.5,6.5),x=Math.cos(a)*r,z=Math.si
 // светлячки
 for(let i=0;i<260;i++){const a=rng()*6.283,r=R(1.2,9);pt(Math.cos(a)*r,R(.7,3.4),Math.sin(a)*r,[1,.75,.28],4,R(.03,.06))}
 // звёзды
-for(let i=0;i<1400;i++){const a=rng()*6.283,e=R(.2,1.45),r=110;pt(Math.cos(a)*Math.cos(e)*r,Math.sin(e)*r+2,Math.sin(a)*Math.cos(e)*r,[.75,.85,1],5,R(.1,.2))}
+for(let i=0;i<1400;i++){const a=rng()*6.283,e=R(.35,1.45),r=75;pt(Math.cos(a)*Math.cos(e)*r,Math.sin(e)*r+2,Math.sin(a)*Math.cos(e)*r,[.75,.85,1],5,R(.1,.2))}
 
 const pg=new THREE.BufferGeometry();
 pg.setAttribute('position',new THREE.Float32BufferAttribute(P,3));
@@ -133,14 +140,14 @@ pg.setAttribute('aSeed',new THREE.Float32BufferAttribute(S,1));
 pg.setAttribute('aSize',new THREE.Float32BufferAttribute(Z,1));
 pg.setAttribute('aDir',new THREE.Float32BufferAttribute(D,3));
 const PAL=LAYERS.map(L=>new THREE.Color(L.col));
-const U={uT:{value:0},uF:{value:0},uK:{value:0},uS:{value:0},uSn:{value:0},uH:{value:0},uD:{value:0},uB:{value:0},uA:{value:0},uM:{value:0},uRec:{value:0},uKeep:{value:1},uScale:{value:900},
+const U={uT:{value:0},uF:{value:0},uK:{value:0},uS:{value:0},uSn:{value:0},uH:{value:0},uD:{value:0},uB:{value:0},uA:{value:0},uM:{value:0},uRec:{value:0},uKeep:{value:1},uTint:{value:new THREE.Vector3(...TH.tint)},uScale:{value:900},
   uR:{value:Array.from({length:16},()=>new THREE.Vector4(0,0,-99,0))},uP:{value:PAL}};
 const WHITE=new THREE.Color(0xffffff);
 const pm=new THREE.ShaderMaterial({uniforms:U,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,
 vertexShader:`attribute vec3 aCol,aDir;attribute float aKind,aSeed,aSize;
-uniform float uT,uF,uK,uS,uSn,uH,uD,uB,uA,uM,uRec,uKeep,uScale;uniform vec4 uR[16];uniform vec3 uP[6];varying vec3 vC;
+uniform float uT,uF,uK,uS,uSn,uH,uD,uB,uA,uM,uRec,uKeep,uScale;uniform vec3 uTint;uniform vec4 uR[16];uniform vec3 uP[6];varying vec3 vC;
 void main(){if(aKind<1.5&&aSeed>uKeep){gl_Position=vec4(2.,2.,2.,1.);gl_PointSize=0.;vC=vec3(0.);return;}vec3 p=position,c=aCol;float g=1.;
- if(aKind<.5){c=mix(c,c.gbr*1.1,uM*.55);g+=uB*.8*aSeed+uK*.25;
+ if(aKind<.5){c*=uTint;c=mix(c,c.gbr*1.1,uM*.3);g+=uB*.8*aSeed+uK*.25;
   for(int i=0;i<16;i++){float a=uT-uR[i].z;if(a<8.){float d=length(p.xz-uR[i].xy),w=d-a*5.5,e=exp(-w*w*1.4)*(1.-a/8.);c+=uP[int(uR[i].w)]*e*1.6;p.y+=e*.34;}}
   p.y+=sin(p.x*1.1+uT*2.)*sin(p.z*.9-uT*1.6)*.05*uB;}
  else if(aKind<1.5){float w=p.y-uSn*13.;float e=exp(-w*w*.45)*uS;g+=e*5.+uK*.3;c=mix(c,vec3(1.,.95,1.),e);p+=aDir*e*.05*step(.4,aSeed);p.xz+=aDir.xz*uK*.03*aSeed;}
@@ -150,7 +157,7 @@ void main(){if(aKind<1.5&&aSeed>uKeep){gl_Position=vec4(2.,2.,2.,1.);gl_PointSiz
  else{g=.45+.3*sin(uT*.8+aSeed*80.)+uB*1.2+uA*1.3*step(.6,aSeed);p.y+=sin(uT*.1+aSeed*9.)*.3;c=mix(c,uP[5],uA*.5);}
  c=mix(c,c*vec3(1.25,.72,.72),uRec*.5);
  vec4 mv=modelViewMatrix*vec4(p,1.);float z=-mv.z;
- vC=c*g*(aKind>4.5?1.:(1.-smoothstep(4.,44.,z)*.97));
+ float fz=smoothstep(6.,50.,z);if(aKind<4.5)c=mix(c,vec3(.2,.34,.36)*(.4+uB*.5+uK*.25),fz*.55);vC=c*g*(aKind>4.5?1.:(1.-fz*.93));
  gl_PointSize=clamp(aSize*uScale*(1.+.25*min(g,3.))/z,1.,22.);gl_Position=projectionMatrix*mv;}`,
 fragmentShader:`varying vec3 vC;void main(){float d=length(gl_PointCoord-.5);float a=smoothstep(.5,.08,d);gl_FragColor=vec4(vC*a,a);}`});
 const forest=new THREE.Points(pg,pm);forest.frustumCulled=false;scene.add(forest);
@@ -158,11 +165,23 @@ const forest=new THREE.Points(pg,pm);forest.frustumCulled=false;scene.add(forest
 // тёмная земля, стволы и камни, чтобы точки лежали на чём-то
 const dark=new THREE.MeshBasicMaterial({color:0x030604});
 let groundM,trunkM,rockM;
-{const g=new THREE.PlaneGeometry(110,110,90,90);g.rotateX(-Math.PI/2);const p=g.attributes.position;for(let i=0;i<p.count;i++)p.setY(i,H(p.getX(i),p.getZ(i))-.02);groundM=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x061006}));scene.add(groundM);
+{const g=new THREE.PlaneGeometry(130,130,110,110);g.rotateX(-Math.PI/2);const p=g.attributes.position;for(let i=0;i<p.count;i++)p.setY(i,H(p.getX(i),p.getZ(i))-.02);groundM=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:0x061006}));scene.add(groundM);
  const t=new THREE.InstancedMesh(new THREE.CylinderGeometry(1,1,1,8,1,true),dark,trunks.length),m=new THREE.Matrix4();
  trunks.forEach(([x,y,z,r],i)=>{m.makeScale(r*.97,14,r*.97);m.setPosition(x,y+7,z);t.setMatrixAt(i,m)});scene.add(t);trunkM=t;
  const k=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),dark,rocks.length);
  rocks.forEach(([x,y,z,s],i)=>{m.makeScale(s*.96,s*.65,s*.96);m.setPosition(x,y,z);k.setMatrixAt(i,m)});scene.add(k);rockM=k}
+
+// глубина: туман, далёкие свечения
+const fogCv=document.createElement('canvas');fogCv.width=512;fogCv.height=64;{const c=fogCv.getContext('2d');c.fillStyle='#000';c.fillRect(0,0,512,64);for(let i=0;i<70;i++){const x=Math.random()*512,y=20+Math.random()*30,r=30+Math.random()*60,g=c.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba(255,255,255,.1)');g.addColorStop(1,'rgba(255,255,255,0)');c.fillStyle=g;c.fillRect(0,0,512,64);c.fillRect(0,0,512,64)}}
+{const c=fogCv.getContext('2d');c.globalCompositeOperation='multiply';const g=c.createLinearGradient(0,0,0,64);g.addColorStop(0,'#000');g.addColorStop(.35,'#fff');g.addColorStop(.75,'#fff');g.addColorStop(1,'#000');c.fillStyle=g;c.fillRect(0,0,512,64)}
+const fogT=new THREE.CanvasTexture(fogCv);fogT.wrapS=THREE.RepeatWrapping;fogT.repeat.set(3,1);
+const fogL=[17,24].map((r,i)=>{const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,5,32,1,true),new THREE.MeshBasicMaterial({map:fogT.clone(),color:TH.fog,transparent:true,opacity:.09-.03*i,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.BackSide}));m.material.map.repeat.set(3,1);m.material.map.needsUpdate=true;m.position.y=1.7;m.renderOrder=-1;scene.add(m);return m});
+
+const glowCv=document.createElement('canvas');glowCv.width=glowCv.height=128;{const c=glowCv.getContext('2d'),g=c.createRadialGradient(64,64,0,64,64,64);g.addColorStop(0,'#fff');g.addColorStop(.3,'#777');g.addColorStop(1,'#000');c.fillStyle=g;c.fillRect(0,0,128,128)}
+const glowT=new THREE.CanvasTexture(glowCv);
+const glows=[[0,-46,.16,0xffa040],[-20,-38,.09,0x5fd8c0],[24,-34,.11,0xff8a3c],[-42,-8,.11,0xffa040],[44,6,.09,0x5fd8c0],[-18,40,.1,0xff9a40],[26,38,.1,0x6fd0d0]].map(([x,z,o,c])=>{const m=new THREE.Sprite(new THREE.SpriteMaterial({map:glowT,color:c,transparent:true,opacity:o,blending:THREE.AdditiveBlending,depthWrite:false}));m.position.set(x,3,z);m.scale.set(42,13,1);m.o=o;scene.add(m);return m});
+{const g=new THREE.CylinderGeometry(.6,1,1,7,1,true),m=new THREE.InstancedMesh(g,new THREE.MeshBasicMaterial({color:0x020503}),farT.length),mt=new THREE.Matrix4();
+ farT.forEach(([x,z,tr,hh],i)=>{mt.makeScale(tr,hh,tr);mt.setPosition(x,H(x,z)+hh/2,z);m.setMatrixAt(i,mt)});m.frustumCulled=false;scene.add(m)}
 
 // столбы света и искры
 const pillars=[0,1,2].map(()=>{const g=new THREE.CylinderGeometry(1.1,.16,15,12,6,true);const n=g.attributes.position.count,cc=new Float32Array(n*3);for(let i=0;i<n;i++){const v=Math.pow(1-(g.attributes.position.getY(i)+7.5)/15,2.4);cc.set([v,v,v],i*3)}g.setAttribute('color',new THREE.BufferAttribute(cc,3));
@@ -194,13 +213,44 @@ function label(text,col,w=.11){const c=document.createElement('canvas');c.width=
 // ---- круг ---------------------------------------------------------------
 const R0=.09,R1=.33;
 const ring=new THREE.Group();ring.position.set(0,-.62,-.38);ring.rotation.x=-50*Math.PI/180;rig.add(ring);
-{const slab=new THREE.Mesh(new THREE.CylinderGeometry(R1+.045,R1+.075,.05,48),new THREE.MeshBasicMaterial({color:0x0b1409}));slab.rotation.x=Math.PI/2;slab.position.z=-.03;ring.add(slab);
- const leg=new THREE.Mesh(new THREE.CylinderGeometry(.06,.14,1,10),new THREE.MeshBasicMaterial({color:0x10190d}));leg.position.set(0,-1.13,-.41);rig.add(leg)}
+scene.add(new THREE.HemisphereLight(0x7f9fb8,0x1c120a,.7));
+{const d=new THREE.DirectionalLight(0xc4d6ec,1.1);d.position.set(-1.2,2.4,.9);scene.add(d)}
+const warmL=new THREE.PointLight(0xffa050,.6,3,2);warmL.position.set(0,-.12,-.1);rig.add(warmL);
+const rimL=new THREE.PointLight(0x6fe3a0,.9,3.5,2);rimL.position.set(0,-1,.25);rig.add(rimL);
+// кора рисуется кодом
+const barkCv=document.createElement('canvas');barkCv.width=barkCv.height=512;
+{const c=barkCv.getContext('2d');c.fillStyle='#3a2616';c.fillRect(0,0,512,512);
+ for(let i=0;i<1500;i++){const x=Math.random()*512,y=Math.random()*512,l=30+Math.random()*120,v=Math.random(),w=1+Math.random()*7;c.strokeStyle=v<.5?`rgba(12,7,3,${.3+v})`:`rgba(${120+v*50|0},${82+v*40|0},${48+v*20|0},${.1+v*.22})`;c.lineWidth=w;c.beginPath();c.moveTo(x,y);c.bezierCurveTo(x+(Math.random()-.5)*26,y+l*.3,x+(Math.random()-.5)*26,y+l*.7,x+(Math.random()-.5)*14,y+l);c.stroke()}}
+const barkT=new THREE.CanvasTexture(barkCv);barkT.wrapS=barkT.wrapT=THREE.RepeatWrapping;barkT.colorSpace=THREE.SRGBColorSpace;barkT.repeat.set(3,2);
+const barkB=new THREE.CanvasTexture(barkCv);barkB.wrapS=barkB.wrapT=THREE.RepeatWrapping;barkB.repeat.set(3,2);
+const barkM=new THREE.MeshStandardMaterial({map:barkT,bumpMap:barkB,bumpScale:5,roughness:.92,vertexColors:true});
+const barkS=barkM.clone();barkS.vertexColors=false;
+const Rt=R1+.06;
+const diskM=new THREE.MeshStandardMaterial({map:texDisk,bumpMap:texDisk,bumpScale:4,roughness:.72,vertexColors:true,emissive:0xff8a30,emissiveMap:texDisk,emissiveIntensity:.06});
+ring.updateMatrix();
+const cracks=[.5,1.7,2.9,4.1,5.3].map(a=>a+Math.random()*.4);
+{const NR=44,NT=128,p=[],uv=[],col=[],ix=[];
+ for(let i=0;i<=NR;i++)for(let j=0;j<=NT;j++){const t=i/NR,r=t*Rt,a=j/NT*6.283;let z=-.005-.0022*(1+Math.sin(r*210+1.6*Math.sin(a*3)))*.5,ao=1;
+   cracks.forEach(c=>{let d=Math.abs(((a-c+9.42)%6.283)-3.14);d=(3.14-d)*Math.max(r,.02);const e=Math.exp(-Math.pow(d*160,2))*sm(.1,.3,t);z-=.012*e;ao*=1-.75*e});
+   const ed=sm(.9,1,t);z-=.05*ed*ed;ao*=1-.5*ed;p.push(Math.sin(a)*r,Math.cos(a)*r,z);uv.push(.5+Math.sin(a)*t*.5,.5+Math.cos(a)*t*.5);col.push(ao,ao,ao)}
+ for(let i=0;i<NR;i++)for(let j=0;j<NT;j++){const a=i*(NT+1)+j,b=a+1,c=a+NT+1,d=c+1;ix.push(a,c,b,b,c,d)}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.setIndex(ix);g.computeVertexNormals();
+ const top=new THREE.Mesh(g,diskM);top.material.side=THREE.DoubleSide;ring.add(top)}
+{const NT=120,NV=30,p=[],uv=[],col=[],ix=[],v3=new THREE.Vector3(),moss=[],mossC=[];
+ for(let j=0;j<=NT;j++){const a=j/NT*6.283;v3.set(Math.sin(a)*Rt,Math.cos(a)*Rt,-.052).applyMatrix4(ring.matrix);const y0=v3.y,dx=v3.x,dz=v3.z+.38;
+   for(let i=0;i<=NV;i++){const v=i/NV,y=y0+(-1.62-y0)*v,lobe=Math.pow(Math.sin(a*2.5+1),2),rg=Math.sin(a*19+2.4*Math.sin(y*5))+.6*Math.sin(a*37+y*9),s=1+.022*rg*sm(0,.05,v)+.05*sm(0,.06,v)+1.1*Math.pow(v,3.2)*(.3+.7*lobe);
+     const x=dx*s,z=dz*s-.38;p.push(x,y,z);uv.push(j/NT,v*1.6);const ao=(.55+.2*rg+.35)*(1-.55*sm(.82,1,v));col.push(ao,ao,ao);
+     if(v>.25&&Math.random()<.62*v)for(let k=0;k<4;k++){const g=.4+Math.random()*.6;moss.push(x*(1+Math.random()*.02),y+Math.random()*.03,z);mossC.push(.2*g,.75*g,.25*g)}}}
+ for(let j=0;j<NT;j++)for(let i=0;i<NV;i++){const a=j*(NV+1)+i,b=a+1,c=a+NV+1,d=c+1;ix.push(a,b,c,b,d,c)}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));g.setIndex(ix);g.computeVertexNormals();
+ barkM.side=THREE.DoubleSide;rig.add(new THREE.Mesh(g,barkM));
+ const mg=new THREE.BufferGeometry();mg.setAttribute('position',new THREE.Float32BufferAttribute(moss,3));mg.setAttribute('color',new THREE.Float32BufferAttribute(mossC,3));
+ const mp=new THREE.Points(mg,new THREE.PointsMaterial({size:.016,map:new THREE.CanvasTexture(spCv),vertexColors:true,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));rig.add(mp)}
 const ang=s=>s/STEPS*Math.PI*2, spoke=(s,r)=>[Math.sin(ang(s))*r,Math.cos(ang(s))*r,0];
 {const v=[];for(let s=0;s<STEPS;s++){v.push(...spoke(s,R0),...spoke(s,R1))}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(v,3));
- ring.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0x2f4a2a})));
- [R0,(R0+R1)/2,R1].forEach(r=>{const q=[];for(let i=0;i<64;i++)q.push(Math.sin(i/64*6.283)*r,Math.cos(i/64*6.283)*r,0);const c=new THREE.BufferGeometry();c.setAttribute('position',new THREE.Float32BufferAttribute(q,3));ring.add(new THREE.LineLoop(c,new THREE.LineBasicMaterial({color:0x3f6438})))});
+ ring.add(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:TH.line,transparent:true,opacity:.65})));
+ [R0,(R0+R1)/2,R1].forEach(r=>{const q=[];for(let i=0;i<64;i++)q.push(Math.sin(i/64*6.283)*r,Math.cos(i/64*6.283)*r,0);const c=new THREE.BufferGeometry();c.setAttribute('position',new THREE.Float32BufferAttribute(q,3));ring.add(new THREE.LineLoop(c,new THREE.LineBasicMaterial({color:TH.ring,transparent:true,opacity:.8})))});
  for(let b=0;b<4;b++){const m=new THREE.Mesh(new THREE.SphereGeometry(.007,6,4),new THREE.MeshBasicMaterial({color:0xcfe8c0}));m.position.set(...spoke(b*4,R1+.022));ring.add(m)}}
 const curves=LAYERS.map(L=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(STEPS*3),3));const l=new THREE.LineLoop(g,new THREE.LineBasicMaterial({color:L.col,transparent:true}));ring.add(l);return l});
 const beads=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),new THREE.MeshBasicMaterial({color:0xffffff}),STEPS*LAYERS.length);
@@ -229,19 +279,26 @@ function nowStep(){const sd=60/bpm/4,k=Math.round((ac.currentTime-nextT)/sd);ret
 function lay(l,v){if(rec&&ac){pat[l][nowStep()]=v;return true}return false}
 // 03.11.2026, слово Влада: камни слева только выбирают дорожку, без звука, выбранный обведён кольцом
 LAYERS.forEach((L,i)=>stone(L.name,L.col,()=>{active=i;layerName.draw(L.name,L.col)},-.44,.25-i*.1,'l',i));
-// 03.11.2026, слово Влада: верхний ряд (Ровно, Тресильо, Клаве, Румба, Синквильо, Сброс) скрыт, остались камни слева и справа
+// 03.11.2026, слово Влада: верхний ряд (Ровно, Тресильо, Клаве, Румба, Синквильо, Сброс) скрыт
+if(0)[]
+  .forEach(([n,fn],i,A)=>stone(n,n==='Сброс'?0xff8a7a:0xffd9a0,fn,(i-(A.length-1)/2)*.112,R1+.1,'t'));
 stone('Запись',0xff3b30,()=>{rec=!rec;recS.draw(rec?'Пишу':'Запись',0xff3b30)},.44,.25,'r');
 stone('Бит',0xcfe8c0,()=>{set(1,[0,4,8,12],.85);set(2,[4,12],.8);set(3,[0,2,4,6,8,10,12,14],.55)},.44,.13,'r');
 stone('Быстрее',0x9fd0ff,()=>{bpm=Math.min(150,bpm+6)},.44,.01,'r');
 stone('Медленнее',0x9fd0ff,()=>{bpm=Math.max(60,bpm-6)},.44,-.11,'r');
 stone('На меня',0xffffff,()=>{calib=1},.44,-.23,'r');
-const stoneGeo=new THREE.IcosahedronGeometry(.026,1);let recS;ring.updateMatrix();
-stones.forEach(t=>{t.mesh=new THREE.Mesh(stoneGeo,new THREE.MeshBasicMaterial({color:t.col}));t.mesh.position.set(t.lx,t.ly,.03);t.mesh.userData.stone=t;ring.add(t.mesh);
+const stoneGeo=new THREE.CylinderGeometry(.03,.034,.02,28),stoneSide=barkS,coreGeo=new THREE.CircleGeometry(.0095,16);let recS;ring.updateMatrix();
+const capM=new THREE.MeshStandardMaterial({map:texBtn,bumpMap:texBtn,bumpScale:3,roughness:.7});
+[[-.44,.0,.68,0],[.44,.03,.62,0],[0,R1+.1,.72,1]].forEach(([x,y,l,h])=>{const g=new THREE.CylinderGeometry(.058,.062,l,16,14);const p=g.attributes.position;
+  for(let i=0;i<p.count;i++){const a=Math.atan2(p.getZ(i),p.getX(i)),k=1+.05*Math.sin(p.getY(i)*17+a*2)+.03*Math.sin(a*9+p.getY(i)*31);if(Math.hypot(p.getX(i),p.getZ(i))>.03){p.setX(i,p.getX(i)*k);p.setZ(i,p.getZ(i)*k)}}g.computeVertexNormals();
+  const b=new THREE.Mesh(g,[barkS,capM,capM]);b.position.set(x,y,-.036);if(h)b.rotation.z=Math.PI/2;ring.add(b)});
+[[[-.44,-.08,-.06],[-.47,-.27,-.2],[-.24,-.16,-.17]],[[.44,-.05,-.06],[.47,-.25,-.2],[.24,-.14,-.17]],[[-.2,R1+.1,-.06],[-.22,.3,-.2],[-.12,.2,-.17]],[[.2,R1+.1,-.06],[.22,.3,-.2],[.12,.2,-.17]]].forEach(q=>{
+  ring.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(q.map(a=>new THREE.Vector3(...a))),16,.019,7),barkS))});
+stones.forEach(t=>{t.mesh=new THREE.Mesh(stoneGeo,[stoneSide,new THREE.MeshStandardMaterial({map:texBtn,bumpMap:texBtn,bumpScale:3,roughness:.6,color:new THREE.Color(t.col).multiplyScalar(TH.btn),emissive:t.col,emissiveMap:texBtn,emissiveIntensity:.22}),stoneSide]);t.mesh.rotation.x=Math.PI/2;t.mesh.position.set(t.lx,t.ly,.03);{const c=new THREE.Mesh(coreGeo,new THREE.MeshBasicMaterial({color:t.col}));c.rotation.x=-Math.PI/2;c.position.y=.0105;t.mesh.add(c)}t.mesh.userData.stone=t;ring.add(t.mesh);
   t.rp=t.mesh.position.clone().applyMatrix4(ring.matrix);
   const l=label(t.name,t.col,t.side==='t'?.13:.15);l.position.set(t.lx+(t.side==='l'?-.1:t.side==='r'?.1:0),t.ly+(t.side==='t'?.05:0),.03);ring.add(l);if(t.name==='Запись')recS=l;t.glow=0;t.inside=new Set()});
 
-const selRing=new THREE.Mesh(new THREE.RingGeometry(.046,.056,40),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,transparent:true,opacity:.95}));selRing.position.z=.032;ring.add(selRing);
-
+const selRing=new THREE.Mesh(new THREE.RingGeometry(.05,.06,40),new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide,transparent:true,opacity:.95}));selRing.position.z=.045;ring.add(selRing);
 // ---- арфы ----------------------------------------------------------------
 const harps=[{x:.6,z0:-.18,dz:.058,notes:HARP.map(m=>m),col:0xbfe6ff,key:m=>m,top:.12,bot:-.82},
              {x:-.6,z0:-.18,dz:.105,notes:BHARP,col:0xff9ccb,key:m=>'b'+m,top:.12,bot:-.82}];
@@ -252,7 +309,7 @@ harps.forEach((h,hi)=>{h.layer=hi?4:5;h.vib=new Float32Array(h.notes.length);h.p
   h.line=new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:h.col}));h.line.frustumCulled=false;rig.add(h.line);
   const q=[];for(let i=0;i<n;i++)q.push(h.x,h.top_(i)+.02,h.z0+i*h.dz);for(let i=n-1;i>=0;i--)q.push(h.x,h.bot-.02,h.z0+i*h.dz);
   const f=new THREE.BufferGeometry();f.setAttribute('position',new THREE.Float32BufferAttribute(q,3));rig.add(new THREE.LineLoop(f,new THREE.LineBasicMaterial({color:0x8a6a3c})));
-  {const pts=[];for(let i=0;i<q.length;i+=3)pts.push(new THREE.Vector3(q[i],q[i+1],q[i+2]));rig.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,true,'catmullrom',.05),90,.013,6,true),new THREE.MeshBasicMaterial({color:0x6b4f2a})))}
+  {const pts=[];for(let i=0;i<q.length;i+=3)pts.push(new THREE.Vector3(q[i],q[i+1],q[i+2]));rig.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,true,'catmullrom',.05),90,.016,6,true),barkS))}
   const pad=new THREE.Mesh(new THREE.PlaneGeometry((n-1)*h.dz+.06,h.top-h.bot),new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));pad.rotation.y=Math.PI/2;pad.position.set(h.x,(h.top+h.bot)/2,h.z0+(n-1)*h.dz/2);pad.visible=false;rig.add(pad);h.pad=pad;
   const l=label(h===harps[0]?'Арфа':'Бас-арфа',h.col,.14);l.position.set(h.x,h.top+.07,h.z0+h.dz*(n-1)/2);rig.add(l)});
 function strum(h,i){h.vib[i]=1;pluck(h.key(h.notes[i]),.7);react(LAYERS[h.layer].id);lay(h.layer,(i+1)/h.notes.length)}
@@ -351,15 +408,18 @@ function loop(now){frame++;const dt=Math.min(.05,(now-last)/1000);last=now;const
   snT+=dt;U.uSn.value=Math.min(1,snT*1.1);U.uF.value+=dt*(1+U.uH.value*7+U.uB.value*2);
   U.uK.value*=Math.exp(-dt*5);U.uS.value*=Math.exp(-dt*2.6);U.uH.value*=Math.exp(-dt*9);U.uD.value*=Math.exp(-dt*5);U.uB.value*=Math.exp(-dt*3.5);U.uA.value*=Math.exp(-dt*2.2);
   U.uM.value=.5+.5*Math.sin(t*.17);U.uRec.value+=((rec?1:0)-U.uRec.value)*Math.min(1,dt*5);
+  glows.forEach(m=>{m.material.opacity=m.o*(1+U.uB.value*1.2+U.uK.value*.5+U.uRec.value*.3)});
+  fogL.forEach((m,i)=>{m.rotation.y=t*(.008+.004*i)*(i?-1:1);m.material.opacity=(.09-.03*i)*(1+U.uK.value*2.5+U.uD.value*1.5)});
+  diskM.emissiveIntensity=.06+U.uK.value*.3+U.uD.value*.45+U.uB.value*.3;warmL.intensity=.6+U.uK.value*2.2+U.uD.value*1.6+U.uA.value;rimL.intensity=.9+U.uB.value*3;
   pillars.forEach(m=>{m.a*=Math.exp(-dt*3.2);m.material.opacity=m.a;m.material.color.copy(m.tint);m.visible=m.a>.01});
-  scene.background.setRGB(.008+U.uB.value*.03+U.uRec.value*.02,.016+U.uK.value*.018,.012+U.uA.value*.05);scene.fog.color.copy(scene.background);drawSparks(dt);
+  scene.background.setRGB(.008+U.uB.value*.03+U.uRec.value*.02,.016+U.uK.value*.018,.012+U.uA.value*.05);drawSparks(dt);
   if(!renderer.xr.isPresenting)walk(dt);
   if(renderer.xr.isPresenting){const pn=performance.now(),w=Math.min(.2,(pn-fpsL)/1e3);fpsL=pn;fpsW+=w;if(fpsW>0)fpsN++;
     if(fpsW>=1.5){if(fpsN/fpsW<64)U.uKeep.value=Math.max(.3,U.uKeep.value-.15);fpsW=0;fpsN=0}}
   readHands();touch();
   if(letGo&&--mouseHold<=0){letGo=false;mouseF=null;if(fingers.mi)fingers.mi.seen=-9;stones.forEach(t=>t.inside.delete('mi'))}
   drawRing();harps.forEach(h=>drawHarp(h,dt,t));
-  {const S=stones.find(s=>s.isLayer===active);selRing.visible=!!S;if(S)selRing.position.set(S.lx,S.ly,.032)}stones.forEach(s=>{s.glow*=Math.exp(-dt*5);const on=s.isLayer===active||(s.name==='Запись'&&rec&&Math.sin(t*9)>0);s.mesh.scale.setScalar((on?1.4:1)+s.glow*.7)});
+  {const S=stones.find(s=>s.isLayer===active);selRing.visible=!!S;if(S)selRing.position.set(S.lx,S.ly,.045)}stones.forEach(s=>{s.glow*=Math.exp(-dt*5);const on=s.isLayer===active||(s.name==='Запись'&&rec&&Math.sin(t*9)>0);s.mesh.scale.setScalar((on?1.4:1)+s.glow*.7)});
   renderer.render(scene,camera)}
 renderer.setAnimationLoop(loop);
 window.__krug={pat,rig,ring,stones,harps,fingers,U,get active(){return active},get hasHands(){return hasHands},get frame(){return frame},get audio(){return ac&&ac.state},stepNow:()=>step,renderer,camera,keys,bones,dots,get rec(){return rec},peak(){if(!peakA)return 0;peakA.getFloatTimeDomainData(peakD);return Math.max(...peakD.map(Math.abs))}};
