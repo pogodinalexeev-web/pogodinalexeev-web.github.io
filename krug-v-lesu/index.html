@@ -97,7 +97,8 @@ const TH={koltsa:{tint:[1.15,.95,.7],side:0x2a1a0e,leg:0x1e130a,line:0xc98a3c,ri
 const txl=new THREE.TextureLoader(),tex=n=>{const t=txl.load('t/'+n+'.jpg');t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t};
 const texDisk=tex('disk'),texBtn=tex('knopka');
 const camera=new THREE.PerspectiveCamera(66,innerWidth/innerHeight,.03,120);
-camera.position.set(0,1.55,.62);
+// 03.11.2026, слово Влада: при подходе видно и лес, и пень, и кнопки; на узком экране стоим дальше
+const NARROW=innerWidth/innerHeight<1,BACK=NARROW?1.55:.55;camera.position.set(0,1.55+BACK*.4,.62+BACK);
 addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
 
 const rng=(s=>()=>(s=(s*16807)%2147483647)/2147483647)(7321);
@@ -283,10 +284,11 @@ LAYERS.forEach((L,i)=>stone(L.name,L.col,()=>{active=i;layerName.draw(L.name,L.c
 if(0)[]
   .forEach(([n,fn],i,A)=>stone(n,n==='Сброс'?0xff8a7a:0xffd9a0,fn,(i-(A.length-1)/2)*.112,R1+.1,'t'));
 stone('Запись',0xff3b30,()=>{rec=!rec;recS.draw(rec?'Пишу':'Запись',0xff3b30)},.44,.25,'r');
-stone('Бит',0xcfe8c0,()=>{set(1,[0,4,8,12],.85);set(2,[4,12],.8);set(3,[0,2,4,6,8,10,12,14],.55)},.44,.13,'r');
-stone('Быстрее',0x9fd0ff,()=>{bpm=Math.min(150,bpm+6)},.44,.01,'r');
-stone('Медленнее',0x9fd0ff,()=>{bpm=Math.max(60,bpm-6)},.44,-.11,'r');
-stone('На меня',0xffffff,()=>{calib=1},.44,-.23,'r');
+stone('Бит',0xcfe8c0,()=>{set(1,[0,4,8,12],.85);set(2,[4,12],.8);set(3,[0,2,4,6,8,10,12,14],.55)},.44,.15,'r');
+stone('Быстрее',0x9fd0ff,()=>{bpm=Math.min(150,bpm+6)},.44,.05,'r');
+stone('Медленнее',0x9fd0ff,()=>{bpm=Math.max(60,bpm-6)},.44,-.05,'r');
+stone('На меня',0xffffff,()=>{calib=1},.44,-.15,'r');
+stone('Сброс',0xff8a7a,()=>pat[active].fill(0),.44,-.25,'r');
 const stoneGeo=new THREE.CylinderGeometry(.03,.034,.02,28),stoneSide=barkS,coreGeo=new THREE.CircleGeometry(.0095,16);let recS;ring.updateMatrix();
 const capM=new THREE.MeshStandardMaterial({map:texBtn,bumpMap:texBtn,bumpScale:3,roughness:.7});
 [[-.44,.0,.68,0],[.44,.03,.62,0],[0,R1+.1,.72,1]].forEach(([x,y,l,h])=>{const g=new THREE.CylinderGeometry(.058,.062,l,16,14);const p=g.attributes.position;
@@ -361,7 +363,7 @@ function touch(){const loc=v1.clone();
 // ---- экран: осмотр, ходьба, клики ----------------------------------------
 const ray=new THREE.Raycaster(),ndc=new THREE.Vector2(),cv=renderer.domElement;
 const instr=()=>[ringPad,...stones.map(t=>t.mesh),...harps.map(x=>x.pad)];
-let yaw=0,pitch=-.42,look=null,moved=0,mouseHold=0,letGo=false,jx=0,jy=0;const keys={};
+let yaw=0,pitch=Math.atan2(.9-camera.position.y,camera.position.z+.38)+(NARROW?.14:.1),look=null,moved=0,mouseHold=0,letGo=false,jx=0,jy=0;const keys={};
 camera.rotation.order='YXZ';
 const aim=e=>{ndc.set(e.clientX/innerWidth*2-1,-e.clientY/innerHeight*2+1);ray.setFromCamera(ndc,camera)};
 function pick(e){aim(e);const h=ray.intersectObjects(instr(),false)[0];return h||null}
