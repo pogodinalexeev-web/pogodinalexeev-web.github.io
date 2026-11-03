@@ -23,7 +23,7 @@ document.addEventListener('touchmove',function(e){if(e.touches.length>1||(e.scal
 </script></head>
 <body><div id="chat" hidden></div><script src="/f/garden.js?v=12"></script>
 <div id="ui"><details id="help"><summary><b>Круг в лесу</b><span class="how">как играть</span></summary>
-Тяни по пустому месту, чтобы осмотреться, WASD или стрелки, чтобы идти. Слева от круга камни дорожек: тык выбирает дорожку, она обводится кольцом. Сверху рисунки на выбранную дорожку. Справа «Запись»: всё сыгранное ложится в круг. Арфы по бокам, мох, стволы и камни тоже играют.
+Тяни по пустому месту, чтобы осмотреться, WASD или стрелки, чтобы идти. Слева от круга камни дорожек: тык выбирает дорожку, она обводится кольцом. Справа «Запись»: всё сыгранное ложится в круг. Арфы по бокам, мох, стволы и камни тоже играют.
 <button id="vr" disabled>Проверяю шлем…</button></details></div>
 <div id="joy"><i></i></div>
 <script type="module">
@@ -229,8 +229,7 @@ function nowStep(){const sd=60/bpm/4,k=Math.round((ac.currentTime-nextT)/sd);ret
 function lay(l,v){if(rec&&ac){pat[l][nowStep()]=v;return true}return false}
 // 03.11.2026, слово Влада: камни слева только выбирают дорожку, без звука, выбранный обведён кольцом
 LAYERS.forEach((L,i)=>stone(L.name,L.col,()=>{active=i;layerName.draw(L.name,L.col)},-.44,.25-i*.1,'l',i));
-[['Ровно',()=>set(active,[0,4,8,12],.85)],...Object.keys(RH).map(n=>[n,()=>set(active,RH[n],.9)]),['Сброс',()=>pat[active].fill(0)]]
-  .forEach(([n,fn],i,A)=>stone(n,n==='Сброс'?0xff8a7a:0xffd9a0,fn,(i-(A.length-1)/2)*.112,R1+.1,'t'));
+// 03.11.2026, слово Влада: верхний ряд (Ровно, Тресильо, Клаве, Румба, Синквильо, Сброс) скрыт, остались камни слева и справа
 stone('Запись',0xff3b30,()=>{rec=!rec;recS.draw(rec?'Пишу':'Запись',0xff3b30)},.44,.25,'r');
 stone('Бит',0xcfe8c0,()=>{set(1,[0,4,8,12],.85);set(2,[4,12],.8);set(3,[0,2,4,6,8,10,12,14],.55)},.44,.13,'r');
 stone('Быстрее',0x9fd0ff,()=>{bpm=Math.min(150,bpm+6)},.44,.01,'r');
